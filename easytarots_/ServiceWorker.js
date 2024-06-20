@@ -2,8 +2,8 @@ const cacheName = "DefaultCompany-easy tarots-1.0";
 const contentToCache = [
     "Build/easytarots_.loader.js",
     "Build/d09b8d0138472d83519bdcde970be4ae.js",
-    "Build/dd2f61256d2addd7a6d51da08381ac36.data",
-    "Build/93f628bbce0743b2a166671024b0e7ce.wasm",
+    "Build/2c835bb803b4cb665da467c9bcacf78e.data",
+    "Build/46a02944f39335eb4b9dc26fe644f5ea.wasm",
     "TemplateData/style.css"
 
 ];
