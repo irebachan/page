@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text File Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        input[type="file"] {
+            margin-bottom: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+        }
+
+        button {
+            margin-top: 10px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>web再録用テキスト変換</h1>
+    <p>
+        縦式などで生成されたtxtファイルをweb用に編集します。<br>
+        ・[]で囲まれた部分を削除<br>
+        ・「」の前後に空行
+    </p>
+    <input type="file" id="fileInput" accept=".txt">
+    <textarea id="fileContent"></textarea>
+    <button id="processButton">Process Text</button>
+    <textarea id="processedContent"></textarea>
+    <button id="copyButton">Copy to Clipboard</button>
+    <button id="downloadButton">Download Processed Text</button>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
