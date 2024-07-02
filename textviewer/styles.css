@@ -1,0 +1,76 @@
+body {
+    font-family: Arial, sans-serif;
+    line-height: 2;
+    /* 行間を広めに設定 */
+    padding: 10px;
+    background-color: #ffffff;
+    /* ページ全体の背景色を白色に設定 */
+}
+
+header {
+    text-align: left;
+    /* ヘッダーのテキストを左寄せに設定 */
+    margin-bottom: 10px;
+}
+
+h1 {
+    font-size: 24px;
+    /* ヘッダーの文字サイズを設定 */
+    margin: 0;
+    /* マージンをゼロに設定 */
+}
+
+#controls {
+    display: flex;
+    justify-content: flex-start;
+    /* ファイル選択ボタンと保存ボタンを左寄せに設定 */
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+#container {
+    display: flex;
+    justify-content: space-between;
+    height: calc(100vh - 160px);
+    /* 画面サイズに収まるように設定（ヘッダーとコントロール部分の高さを考慮） */
+}
+
+#viewerContainer {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: scroll;
+    border: 1px solid #ccc;
+    padding: 10px;
+    background-color: #f0f0f0;
+    /* ビューワーの背景色をグレーに設定 */
+}
+
+#viewer {
+    display: inline-block;
+    font-family: monospace;
+    font-size: 16px;
+    /* ビューワーの文字サイズを設定 */
+    text-align: left;
+    /* テキストの表示位置を左寄せに設定 */
+    white-space: pre-wrap;
+    /* テキストの折り返しを設定 */
+}
+
+#editorContainer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#editor {
+    flex: 1;
+    border: 1px solid #ccc;
+    padding: 10px;
+    line-height: 2;
+    /* 行間をビューワーと同じに設定 */
+    white-space: pre-wrap;
+    /* 折り返しを設定 */
+    overflow-y: scroll;
+    font-size: 16px;
+    /* 文字サイズを設定 */
+}
