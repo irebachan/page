@@ -17,6 +17,8 @@ document.getElementById('fileInput').addEventListener('change', function (event)
 
 document.getElementById('saveButton').addEventListener('click', function () {
     const text = document.getElementById('editor').value;
+    const processedText = processText(text);
+    updateViewer(processedText);
 
     if (!currentFile) {
         alert('ファイルが開かれていません。ファイルを選択してください。');
@@ -25,7 +27,7 @@ document.getElementById('saveButton').addEventListener('click', function () {
 
     // ファイル名を元のファイル名に設定
     const filename = currentFile.name;
-    const file = new Blob([text], { type: 'text/plain' });
+    const file = new Blob([processedText], { type: 'text/plain' });
 
     // ファイルを保存するためのダウンロード用リンクを作成
     const a = document.createElement('a');
@@ -35,10 +37,20 @@ document.getElementById('saveButton').addEventListener('click', function () {
     // クリックして保存ダイアログを開く
     a.click();
     URL.revokeObjectURL(a.href);
-
-    // ビューワーの内容を更新する
-    document.getElementById('viewer').textContent = formatText(text, 47);
 });
+
+document.getElementById('updateButton').addEventListener('click', function () {
+    const text = document.getElementById('editor').value;
+    const processedText = processText(text);
+    updateViewer(processedText);
+    document.getElementById('editor').value = processedText;
+});
+
+function updateViewer(text) {
+    const charCountInputValue = document.getElementById('charCountInput').value;
+    const formattedText = formatText(text, charCountInputValue);
+    document.getElementById('viewer').textContent = formattedText;
+}
 
 function formatText(text, lineLength) {
     const lines = text.split('\n');
@@ -53,4 +65,9 @@ function formatText(text, lineLength) {
     });
 
     return formattedText;
+}
+
+function processText(text) {
+    // 文頭以外および!?！？の直後以外のスペースを削除
+    return text.replace(/(?<=.)(?<![!?！？])[ 　]/g, '');
 }

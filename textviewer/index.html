@@ -1,24 +1,35 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>テキストビューワー</title>
+    <title>Text Viewer and Editor</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
     <header>
-        <h1>テキストビューワー</h1>
-        <div id="controls">
-            <input type="file" id="fileInput" accept=".txt">
-            <button id="saveButton">保存</button>
-        </div>
+        <h1>Text Viewer and Editor</h1>
+        <span id ="controls">
+            <span id="input" >
+                <input type="file" id="fileInput">
+            </span>
+            <span id ="character">
+                <span id ="size">文字サイズ</span>
+                <input type="number" id="fontSizeInput"  value="16" min="1" max="100">
+                <span id="count">一列の文字数</span>
+                <input type="number" id="charCountInput" value="47" min="1" max="100">
+            </span>
+            <span id="save">
+                <button id="updateButton">更新</button>
+                <button id="saveButton">保存</button>
+            </span>
+        </span>
     </header>
     <div id="container">
         <div id="viewerContainer">
-            <pre id="viewer"></pre>
+            <div id="viewer"></div>
         </div>
         <div id="editorContainer">
             <textarea id="editor"></textarea>
