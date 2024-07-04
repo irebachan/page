@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resizable Textboxes</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header class="header">
+        <div class="controls">
+            <label><input type="radio" name="orientation" value="horizontal" checked> 横</label>
+            <label><input type="radio" name="orientation" value="vertical"> 縦</label>
+        </div>
+    </header>
+    <div class="container horizontal">
+        <div class="textbox" id="textbox1" contenteditable="true"></div>
+        <div class="resizer" id="resizer"></div>
+        <div class="textbox" id="textbox2" contenteditable="true"></div>
+    </div>
+    <footer class="footer">
+        フッターの内容
+    </footer>
+    <script src="script.js"></script>
+</body>
+
+</html>

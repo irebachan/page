@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web novel viewer & editor</title>
+    <link rel="stylesheet" href="styles_.css">
+</head>
+
+<body>
+    <header>
+        <h1>Web novel viewer & editor</h1>
+        <div class="header-row">
+            <input type="file" id="fileInput">
+            <div class="input-group">
+                <label for="fontSizeInput">文字サイズ</label>
+                <input type="number" id="fontSizeInput" value="16">
+            </div>
+            <div class="input-group">
+                <label for="lineHeightInput">行間</label>
+                <input type="number" id="lineHeightInput" value="2">
+            </div>
+            <div class="input-group">
+                <label for="lineLength">一列の文字数</label>
+                <input type="number" id="lineLength" value="47">
+            </div>
+            <button id="presetButton">プリセット</button>
+            <div class="input-group">
+                <label for="removeSpace">文法外の空白を削除</label>
+                <input type="checkbox" id="removeSpace">
+            </div>
+            <button id="updateButton">更新(cmd+R)</button>
+            <button id="saveButton">保存(cmd+S)</button>
+            <div class="input-group">
+                <label>画面分割方向：</label>
+                <label for="verticalSplit">縦</label>
+                <input type="radio" name="splitDirection" id="verticalSplit" checked>
+                <label for="horizontalSplit">横</label>
+                <input type="radio" name="splitDirection" id="horizontalSplit">
+            </div>
+            <span>総文字数：<span id="totalCharacters">0</span></span>
+        </div>
+    </header>
+    <script src="script.js"></script>
+</body>
+
+</html>

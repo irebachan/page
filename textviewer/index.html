@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 
 <head>
     <meta charset="UTF-8">
@@ -10,22 +10,42 @@
 
 <body>
     <header>
-        <h1>Text Viewer and Editor</h1>
-        <span id ="controls">
-            <span id="input" >
-                <input type="file" id="fileInput">
+        <h1>Web novel viewer & editor</h1>
+        <div class="header-row">
+            <input type="file" id="fileInput" accept=".txt">
+            <button id="updateButton">更新(cmd+R)</button>
+            <button id="saveButton">保存(cmd+S)</button>
+        </div>
+
+        <div id="controls">
+            <span>
+            <label for="fontSizeInput">文字サイズ</label>
+            <input type="number" id="fontSizeInput" value="16" min="10" max="20">
             </span>
-            <span id ="character">
-                <span id ="size">文字サイズ</span>
-                <input type="number" id="fontSizeInput"  value="16" min="1" max="100">
-                <span id="count">一列の文字数</span>
-                <input type="number" id="charCountInput" value="47" min="1" max="100">
+
+            <span>
+            <label for="lineHeightInput">行間</label>
+            <input type="number" id="lineHeightInput" value="2" min="1" max="10">
             </span>
-            <span id="save">
-                <button id="updateButton">更新</button>
-                <button id="saveButton">保存</button>
+
+            <span>
+            <label for="lineLengthInput">一列の文字数</label>
+            <input type="number" id="lineLengthInput" value="47" min="1" max="100">
             </span>
-        </span>
+
+            <span>
+            <form id="spacecheckbox">
+                <input type="checkbox" id="space" name="option" value="option1">
+                <label for="space">文法外の空白を削除</label>
+            </form>
+            </span>
+            
+            <span>
+            <label for="char-count">総文字数：</label>
+            <span id="char-count" class="_2nd">0</span>
+            </span>
+        </div>
+
     </header>
     <div id="container">
         <div id="viewerContainer">
