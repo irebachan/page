@@ -1,8 +1,8 @@
 /* 共通スタイル */
-body {
+html,body {
     font-family: Arial, sans-serif;
-    transition: background-color 0.1s, color 0.1s;
     line-height: 2;
+    transition: background-color 0.1s, color 0.1s;
     margin: 0;
     display: flex;
     flex-direction: column;
@@ -18,13 +18,18 @@ textarea {
 }
 
 header {    
-    text-align: left;
-    position: fixed;
     padding: 10px;
+    text-align: left;
     top: 0;
     width: 100%;
-    z-index: 1;
     /* border-bottom: 1px solid #cccccc;*/
+}
+
+footer {
+    padding: 10px;
+    /*text-align: center;
+    bottom: 0;
+    width: 100%;*/
 }
 
 span{
@@ -36,15 +41,6 @@ span{
 }
 .controls span{
     margin-right: 20px;
-}
-
-
-footer {
-    padding: 10px;
-    text-align: center;
-    position: fixed;
-    bottom: 0;
-    width: 100%;
 }
 
 
@@ -73,12 +69,11 @@ h1 {
     flex: 1;
     width: 100%;
     /* border: 1px solid #cccccc;*/
+    /*
     margin-top: 90px;
-    /* height of header */
     margin-bottom: 20px;
-    /* height of footer */
+    */
     overflow-y: scroll;
-    /* prevent scroll bars from appearing */
 }
 
 .container.horizontal {

@@ -18,9 +18,15 @@ function loadFile(file) {
 //ファイルの保存
 function saveEditorContent() {
     if (!currentFile) {
-        alert('ファイルが開かれていません。ファイルを選択してください。');
-        return;
+        if (myViewer.GetFormattedText() != "") {
+            console.log("開かれてないけどなんかは書かれてるよ");
+        } else {
+            alert('ファイルが開かれていません。ファイルを選択してください。');
+            return;
+        }
     }
+
+    myViewer.updateViewer();
     const processedText = myViewer.GetFormattedText(useEndOflineProcessing = false);
 
     // ファイル名を元のファイル名に設定
@@ -209,32 +215,58 @@ class TextFormatter {
 }
 
 //ダークモード
-document.addEventListener('DOMContentLoaded', (event) => {
-    const toggleSwitch = document.getElementById('darkModeToggle');
+const DarkMode = (() => {
+    const lightModeRadio = document.getElementById('lightMode');
+    const darkModeRadio = document.getElementById('darkMode');
 
-    // ローカルストレージからダークモードの状態を取得
-    const currentMode = localStorage.getItem('dark-mode');
-    if (currentMode === 'enabled') {
-        document.body.classList.add('dark-mode');
-        toggleSwitch.checked = true;
-    }
-
-    toggleSwitch.addEventListener('change', () => {
-        if (toggleSwitch.checked) {
+    const init = () => {
+        // ローカルストレージからダークモードの状態を取得
+        const currentMode = localStorage.getItem('dark-mode');
+        if (currentMode === 'enabled') {
             document.body.classList.add('dark-mode');
-            localStorage.setItem('dark-mode', 'enabled');
+            darkModeRadio.checked = true;
         } else {
-            document.body.classList.remove('dark-mode');
-            localStorage.setItem('dark-mode', 'disabled');
+            lightModeRadio.checked = true;
         }
-    });
+
+        lightModeRadio.addEventListener('change', handleRadioChange);
+        darkModeRadio.addEventListener('change', handleRadioChange);
+    };
+
+    const handleRadioChange = () => {
+        if (darkModeRadio.checked) {
+            enableDarkMode();
+        } else {
+            disableDarkMode();
+        }
+    };
+
+    const enableDarkMode = () => {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('dark-mode', 'enabled');
+    };
+
+    const disableDarkMode = () => {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('dark-mode', 'disabled');
+    };
+
+    return {
+        init
+    };
+})();
+
+document.addEventListener('DOMContentLoaded', (event) => {
+    DarkMode.init();
 });
+
+
 
 //スライド
 const ResizerApp = {
     resizer: document.getElementById('resizer'),
-    textbox1: document.getElementById('textbox1'),
-    textbox2: document.getElementById('textbox2'),
+    textbox1: document.getElementById('viewer'),
+    textbox2: document.getElementById('editor'),
     container: document.querySelector('.container'),
     radioButtons: document.querySelectorAll('input[name="orientation"]'),
     isResizing: false,
@@ -242,7 +274,6 @@ const ResizerApp = {
 
     init: function () {
         this.resizer.addEventListener('mousedown', this.onMouseDown);
-        this.resizer.addEventListener('touchstart', this.onTouchStart);
         this.radioButtons.forEach(radio => {
             radio.addEventListener('change', this.onOrientationChange);
         });
@@ -278,38 +309,6 @@ const ResizerApp = {
         ResizerApp.isResizing = false;
         document.removeEventListener('mousemove', ResizerApp.onMouseMove);
         document.removeEventListener('mouseup', ResizerApp.onMouseUp);
-    },
-
-    onTouchStart: function (e) {
-        ResizerApp.isResizing = true;
-        document.addEventListener('touchmove', ResizerApp.onTouchMove);
-        document.addEventListener('touchend', ResizerApp.onTouchEnd);
-    },
-
-    onTouchMove: function (e) {
-        if (!ResizerApp.isResizing) return;
-
-        const containerRect = ResizerApp.container.getBoundingClientRect();
-        let offset, size1, size2;
-
-        if (ResizerApp.isHorizontal) {
-            offset = e.touches[0].clientX - containerRect.left;
-            size1 = (offset / containerRect.width) * 100;
-        } else {
-            offset = e.touches[0].clientY - containerRect.top;
-            size1 = (offset / containerRect.height) * 100;
-        }
-
-        size2 = 100 - size1;
-
-        ResizerApp.textbox1.style.flexBasis = `${size1}%`;
-        ResizerApp.textbox2.style.flexBasis = `${size2}%`;
-    },
-
-    onTouchEnd: function () {
-        ResizerApp.isResizing = false;
-        document.removeEventListener('touchmove', ResizerApp.onTouchMove);
-        document.removeEventListener('touchend', ResizerApp.onTouchEnd);
     },
 
     onOrientationChange: function (e) {
