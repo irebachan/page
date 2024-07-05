@@ -1,21 +1,51 @@
+/* 共通スタイル */
 body {
     font-family: Arial, sans-serif;
+    transition: background-color 0.1s, color 0.1s;
     line-height: 2;
-    padding: 0px;
-    background-color: #ffffff;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
 }
 
-header {
+header {    
     text-align: left;
-    margin-bottom: 10px;
+    position: fixed;
+    padding: 10px;
+    top: 0;
+    width: 100%;
+    z-index: 1;
+    /* border-bottom: 1px solid #cccccc;*/
 }
+
+span{
+    margin-right: 20px;
+}
+
+.header-row span{
+    margin-right: 40px;
+}
+.controls span{
+    margin-right: 20px;
+}
+
+
+footer {
+    padding: 10px;
+    text-align: center;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
 
 h1 {
     font-size: 18px;
-    margin: 0;
 }
 
-#controls {
+.controls {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -23,40 +53,45 @@ h1 {
     margin-bottom: 2px;
 }
 
-#controls label
-#controls input,
-#controls span,
-#controls form {
-    margin-right: 20px;
+
+.small-input {
+    width: 2.8em;
+    padding: 0.2em;
+    font-size: 0.8em;
 }
 
-#buttons {
+
+.container {
     display: flex;
+    flex: 1;
+    width: 100%;
+    /* border: 1px solid #cccccc;*/
+    margin-top: 90px;
+    /* height of header */
+    margin-bottom: 20px;
+    /* height of footer */
+    overflow-y: scroll;
+    /* prevent scroll bars from appearing */
+}
+
+.container.horizontal {
+    flex-direction: row;
+}
+
+.container.vertical {
     flex-direction: column;
 }
 
-
-
-#fontSizeInput,
-#charCountInput {
-    width: 2em;
-    padding: 0.2em;
-    font-size: 1em;
-}
-
-#container {
-    display: flex;
-    justify-content: space-between;
-    height: calc(100vh - 160px);
-}
-
-#viewerContainer {
+.textbox {
     flex: 1;
+    padding: 20px;
     overflow-x: auto;
     overflow-y: scroll;
-    border: 1px solid #ccc;
-    padding: 10px;
-    background-color: #f0f0f0;
+}
+
+
+.resizer {
+    background-color: #cccccc;
 }
 
 #viewer,
@@ -70,18 +105,50 @@ h1 {
     display: inline-block;
     font-family: monospace;
     text-align: left;
+    background-color: #f6f6f6;
 }
 
-#editorContainer {
-    flex: 1;
-    display: flex;
+#editor
+{
     flex-direction: column;
 }
 
-#editor {
-    flex: 1;
-    border: 1px solid #ccc;
-    padding: 10px;
-    overflow-y: scroll;
+.container.horizontal .resizer {
+    width: 10px;
+    cursor: ew-resize;
 }
 
+.container.vertical .resizer {
+    height: 10px;
+    width: 100%;
+    cursor: ns-resize;
+}
+
+
+/* ダークモードのスタイル */
+body.dark-mode {
+    background-color: #121212;
+    color: #ffffff;
+}
+
+body.dark-mode .header {
+    background-color: #333;
+    color: #ffffff;
+}
+
+body.dark-mode .content {
+    background-color: #1e1e1e;
+    color: #ffffff;
+}
+
+body.dark-mode #viewer {
+    background-color: #333;
+    color: #ffffff;
+    border-color: #666;
+}
+
+body.dark-mode #editor {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    border-color: #666;
+}

@@ -207,3 +207,94 @@ class TextFormatter {
         return this;
     }
 }
+
+//ダークモード
+document.addEventListener('DOMContentLoaded', (event) => {
+    const toggleSwitch = document.getElementById('darkModeToggle');
+
+    // ローカルストレージからダークモードの状態を取得
+    const currentMode = localStorage.getItem('dark-mode');
+    if (currentMode === 'enabled') {
+        document.body.classList.add('dark-mode');
+        toggleSwitch.checked = true;
+    }
+
+    toggleSwitch.addEventListener('change', () => {
+        if (toggleSwitch.checked) {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('dark-mode', 'enabled');
+        } else {
+            document.body.classList.remove('dark-mode');
+            localStorage.setItem('dark-mode', 'disabled');
+        }
+    });
+});
+
+//スライド
+const ResizerApp = {
+    resizer: document.getElementById('resizer'),
+    textbox1: document.getElementById('viewer'),
+    textbox2: document.getElementById('editor'),
+    container: document.querySelector('.container'),
+    radioButtons: document.querySelectorAll('input[name="orientation"]'),
+    isResizing: false,
+    isHorizontal: true,
+
+    init: function () {
+        this.resizer.addEventListener('mousedown', this.onMouseDown);
+        this.radioButtons.forEach(radio => {
+            radio.addEventListener('change', this.onOrientationChange);
+        });
+    },
+
+    onMouseDown: function (e) {
+        ResizerApp.isResizing = true;
+        document.addEventListener('mousemove', ResizerApp.onMouseMove);
+        document.addEventListener('mouseup', ResizerApp.onMouseUp);
+    },
+
+    onMouseMove: function (e) {
+        if (!ResizerApp.isResizing) return;
+
+        const containerRect = ResizerApp.container.getBoundingClientRect();
+        let offset, size1, size2;
+
+        if (ResizerApp.isHorizontal) {
+            offset = e.clientX - containerRect.left;
+            size1 = (offset / containerRect.width) * 100;
+        } else {
+            offset = e.clientY - containerRect.top;
+            size1 = (offset / containerRect.height) * 100;
+        }
+
+        size2 = 100 - size1;
+
+        ResizerApp.textbox1.style.flexBasis = `${size1}%`;
+        ResizerApp.textbox2.style.flexBasis = `${size2}%`;
+    },
+
+    onMouseUp: function () {
+        ResizerApp.isResizing = false;
+        document.removeEventListener('mousemove', ResizerApp.onMouseMove);
+        document.removeEventListener('mouseup', ResizerApp.onMouseUp);
+    },
+
+    onOrientationChange: function (e) {
+        if (e.target.value === 'horizontal') {
+            ResizerApp.container.classList.remove('vertical');
+            ResizerApp.container.classList.add('horizontal');
+            ResizerApp.resizer.style.cursor = 'ew-resize';
+            ResizerApp.isHorizontal = true;
+        } else {
+            ResizerApp.container.classList.remove('horizontal');
+            ResizerApp.container.classList.add('vertical');
+            ResizerApp.resizer.style.cursor = 'ns-resize';
+            ResizerApp.isHorizontal = false;
+        }
+        ResizerApp.textbox1.style.flexBasis = '';
+        ResizerApp.textbox2.style.flexBasis = '';
+    }
+};
+
+// 初期化
+ResizerApp.init();
