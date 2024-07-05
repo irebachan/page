@@ -233,8 +233,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
 //スライド
 const ResizerApp = {
     resizer: document.getElementById('resizer'),
-    textbox1: document.getElementById('viewer'),
-    textbox2: document.getElementById('editor'),
+    textbox1: document.getElementById('textbox1'),
+    textbox2: document.getElementById('textbox2'),
     container: document.querySelector('.container'),
     radioButtons: document.querySelectorAll('input[name="orientation"]'),
     isResizing: false,
@@ -242,6 +242,7 @@ const ResizerApp = {
 
     init: function () {
         this.resizer.addEventListener('mousedown', this.onMouseDown);
+        this.resizer.addEventListener('touchstart', this.onTouchStart);
         this.radioButtons.forEach(radio => {
             radio.addEventListener('change', this.onOrientationChange);
         });
@@ -277,6 +278,38 @@ const ResizerApp = {
         ResizerApp.isResizing = false;
         document.removeEventListener('mousemove', ResizerApp.onMouseMove);
         document.removeEventListener('mouseup', ResizerApp.onMouseUp);
+    },
+
+    onTouchStart: function (e) {
+        ResizerApp.isResizing = true;
+        document.addEventListener('touchmove', ResizerApp.onTouchMove);
+        document.addEventListener('touchend', ResizerApp.onTouchEnd);
+    },
+
+    onTouchMove: function (e) {
+        if (!ResizerApp.isResizing) return;
+
+        const containerRect = ResizerApp.container.getBoundingClientRect();
+        let offset, size1, size2;
+
+        if (ResizerApp.isHorizontal) {
+            offset = e.touches[0].clientX - containerRect.left;
+            size1 = (offset / containerRect.width) * 100;
+        } else {
+            offset = e.touches[0].clientY - containerRect.top;
+            size1 = (offset / containerRect.height) * 100;
+        }
+
+        size2 = 100 - size1;
+
+        ResizerApp.textbox1.style.flexBasis = `${size1}%`;
+        ResizerApp.textbox2.style.flexBasis = `${size2}%`;
+    },
+
+    onTouchEnd: function () {
+        ResizerApp.isResizing = false;
+        document.removeEventListener('touchmove', ResizerApp.onTouchMove);
+        document.removeEventListener('touchend', ResizerApp.onTouchEnd);
     },
 
     onOrientationChange: function (e) {
