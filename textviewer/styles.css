@@ -10,6 +10,13 @@ body {
     overflow: hidden;
 }
 
+textarea {
+    font-family: inherit;
+    /* bodyのフォントファミリを継承 */
+    resize: none;
+        /* サイズ変更を無効にする */
+}
+
 header {    
     text-align: left;
     position: fixed;
@@ -103,7 +110,6 @@ h1 {
 
 #viewer {
     display: inline-block;
-    font-family: monospace;
     text-align: left;
     background-color: #f6f6f6;
 }
