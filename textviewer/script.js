@@ -43,13 +43,16 @@ const SaveFiles = {
     },
 
     getFineName: function () {
-        if (this.currentFile ==null) return 'ないよ';
+        if (this.currentFile ==null) return TextFormat.sanitizeFilename();
         return this.currentFile.name;
     },
 
+    getText: function () {
+        return myViewer.GetFormattedText(useEndOflineProcessing = false);
+    },
+
     createFile: function (filename) {
-        const processedText = myViewer.GetFormattedText(useEndOflineProcessing = false);
-        const blob = new Blob([processedText], { type: 'text/plain' });
+        const blob = new Blob([this.getText()], { type: 'text/plain' });
         const generatedFile = new File([blob], filename, { type: 'text/plain' });
 
         // ファイルを保存するためのダウンロード用リンクを作成
@@ -146,13 +149,13 @@ Viewer.prototype.setEditor = function (text) {
 
 Viewer.prototype.GetFormattedText = function (useEndOflineProcessing = true) {
     const text = this.editor.value;
-    let t = new TextFormatter(text).SpaceDeleate();
+    let t = TextFormat.init(text).SpaceDeleate();
 
     if (useEndOflineProcessing) {
         t = t.EndOflineProcessing();
     }
 
-    return t.value;
+    return t.text;
 }
 
 //エディタの中身に何か入っているのか
@@ -184,36 +187,32 @@ Viewer.prototype.updateViewer = function () {
     countCharacters();
 };
 
-
 //テキストの変換
-class TextFormatter {
-    constructor(value) {
-        this.value = value;
-        this.lineLengthElement = document.getElementById('lineLengthInput');
-    }
+const TextFormat = {
+    text: "",
+    lineLengthElement: document.getElementById('lineLengthInput'),
+    
+    init: function (text) {
+        this.text = text;
+        return this;
+    },
 
-    SetText(text) {
-        this.value = text;
-    }
-
-    // 文頭以外および!?！？の直後以外のスペースを削除
-    SpaceDeleate() {
+    SpaceDeleate: function () {
         const isChecked = document.getElementById("space").checked;
         if (isChecked) {
-            this.value = this.value.replace(/(?<=.)(?<![!?！？])[ 　]/g, '');
+            this.text = this.text.replace(/(?<=.)(?<![!?！？])[ 　]/g, '');
         }
         return this;
-    }
+    },
 
-    //行末処理 
-    EndOflineProcessing() {
+    EndOflineProcessing:function() {
         const len = Number(this.lineLengthElement.value); // 数値に変換する
         if (isNaN(len) || len <= 0) {
             console.error('Invalid line length');
             return this;
         }
 
-        const lines = this.value.split('\n');
+        const lines = this.text.split('\n');
         let formattedText = '';
 
         lines.forEach(line => {
@@ -235,8 +234,21 @@ class TextFormatter {
             formattedText += line + '\n';
         });
 
-        this.value = formattedText;
+        this.text = formattedText;
         return this;
+    },
+
+    sanitizeFilename:function() {
+        // 取り除く記号の正規表現パターン
+        const illegalChars = /[\/\\\:\*\?\"\<\>\|]/g;
+
+        // 入力文字列から一行目を取得
+        const firstLine = this.text.split('\n')[0];
+
+        // 取り除いた後のファイル名に使えない記号を取り除く
+        const sanitizedFilename = firstLine.replace(illegalChars, '');
+
+        return sanitizedFilename;
     }
 }
 
