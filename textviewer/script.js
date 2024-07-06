@@ -1,56 +1,78 @@
-let currentFile = null; // 現在開いているファイル
 const myViewer = new Viewer();
 
-// ファイルの読み込みと表示を行う関数
-function loadFile(file) {
-    if (!file) return;
+const SaveFiles = {
+    currentFile: null, // 現在開いているファイル
+    
+    loadFile : function (file) {
+        if (!file) return;
 
-    currentFile = file; // 現在開いているファイルを保存
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        const text = e.target.result;
-        myViewer.setEditor(text);
-        myViewer.updateViewer();
-    };
-    reader.readAsText(file);
-}
+        this.currentFile = file; // 現在開いているファイルを保存
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const text = e.target.result;
+            myViewer.setEditor(text);
+            myViewer.updateViewer();
+        };
+        reader.readAsText(file);
+    },
 
-//ファイルの保存
-function saveEditorContent() {
-    if (!currentFile) {
-        if (myViewer.GetFormattedText() != "") {
-            console.log("開かれてないけどなんかは書かれてるよ");
-        } else {
-            alert('ファイルが開かれていません。ファイルを選択してください。');
-            return;
+    saveFile: function () {
+        if (!this.currentFile)
+        {
+            if (!myViewer.GetEditorTrim()) {
+                alert('ファイルが開かれていません。ファイルを選択してください。');
+                return;
+            }   
         }
-    }
+        
+        //更新
+        myViewer.updateViewer();
 
-    myViewer.updateViewer();
-    const processedText = myViewer.GetFormattedText(useEndOflineProcessing = false);
+        // ファイル名を設定
+        const filename = this.getFineName();
+        //ファイルを生成
+        const file = this.createFile(filename);
 
-    // ファイル名を元のファイル名に設定
-    const filename = currentFile.name;
-    const file = new Blob([processedText], { type: 'text/plain' });
+        if (this.currentFile == null) {
+            this.loadFile(file);
+            // ファイル入力フィールドの表示を更新
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            document.getElementById('fileInput').files = dataTransfer.files;
+        }
+    },
 
-    // ファイルを保存するためのダウンロード用リンクを作成
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(file);
-    a.download = filename;
+    getFineName: function () {
+        if (this.currentFile ==null) return 'ないよ';
+        return this.currentFile.name;
+    },
 
-    // クリックして保存ダイアログを開く
-    a.click();
-    URL.revokeObjectURL(a.href);
-}
+    createFile: function (filename) {
+        const processedText = myViewer.GetFormattedText(useEndOflineProcessing = false);
+        const blob = new Blob([processedText], { type: 'text/plain' });
+        const generatedFile = new File([blob], filename, { type: 'text/plain' });
+
+        // ファイルを保存するためのダウンロード用リンクを作成
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        // クリックして保存ダイアログを開く
+        a.click();
+        URL.revokeObjectURL(a.href);
+        return generatedFile;
+    },
+
+    
+};
 
 //ボタン
 document.getElementById('fileInput').addEventListener('change', function (event) {
     const file = event.target.files[0];
-    loadFile(file);
+    SaveFiles.loadFile(file);
 });
 
 document.getElementById('saveButton').addEventListener('click', function () {
-    saveEditorContent();
+    SaveFiles.saveFile();
 });
 
 document.getElementById('updateButton').addEventListener('click', function () {
@@ -70,7 +92,7 @@ document.addEventListener('keydown', function (event) {
 document.addEventListener('keydown', function (event) {
     if ((event.metaKey || event.ctrlKey) && event.key === 's') {
         event.preventDefault(); // デフォルトのショートカット動作を無効化
-        saveEditorContent();
+        document.getElementById('saveButton').click(); // ファイル入力をクリック
     }
 });
 
@@ -133,6 +155,10 @@ Viewer.prototype.GetFormattedText = function (useEndOflineProcessing = true) {
     return t.value;
 }
 
+//エディタの中身に何か入っているのか
+Viewer.prototype.GetEditorTrim = function () {
+    return this.editor.value.trim() !== '';
+}
 
 Viewer.prototype.updateViewer = function () {
     //viewの中を書き換える

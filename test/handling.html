@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Handling Example</title>
+</head>
+
+<body>
+    <h1>ファイルハンドリングの例</h1>
+    <button id="generateFile">ファイルを生成</button>
+    <input type="file" id="loadFile">
+    <textarea id="viewer" rows="10" cols="50" readonly></textarea>
+    <textarea id="editor" rows="10" cols="50"></textarea>
+
+    <script>
+        document.getElementById('generateFile').addEventListener('click', () => {
+            const textToWrite = "これは生成されたファイルの内容です。";
+            const blob = new Blob([textToWrite], { type: 'text/plain' });
+            const generatedFile = new File([blob], 'generatedFile.txt', { type: 'text/plain' });
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                document.getElementById('viewer').value = text;
+                document.getElementById('editor').value = text;
+
+                // ファイル入力フィールドの表示を更新
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(generatedFile);
+                document.getElementById('loadFile').files = dataTransfer.files;
+            };
+            reader.readAsText(generatedFile);
+
+            // ダウンロードリンクを作成してクリック
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'generatedFile.txt';
+            link.click();
+        });
+
+        document.getElementById('loadFile').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    document.getElementById('viewer').value = text;
+                    document.getElementById('editor').value = text;
+                };
+                reader.readAsText(file);
+            }
+        });
+    </script>
+</body>
+
+</html>
