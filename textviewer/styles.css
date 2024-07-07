@@ -27,7 +27,7 @@ header {
 }
 
 footer {
-    padding: 30px;
+    padding: 20px;
     flex: 0 0 auto; /* 自動サイズ調整せず、高さはコンテンツに依存 */
     /*text-align: center;
     bottom: 0;
