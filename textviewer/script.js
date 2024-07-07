@@ -5,8 +5,8 @@ const SaveFiles = {
     
     loadFile : function (file) {
         if (!file) return;
-
         this.currentFile = file; // 現在開いているファイルを保存
+
         const reader = new FileReader();
         reader.onload = function (e) {
             const text = e.target.result;
@@ -16,6 +16,22 @@ const SaveFiles = {
         reader.readAsText(file);
     },
 
+    newFile: function () {
+        /*if (myViewer.GetEditorTrim()) {
+            // ユーザーにYes/Noを尋ねる確認ダイアログを表示
+            let userResponse = confirm("エディタを初期化しますか？");
+            if (userResponse) {
+            } 
+        }*/
+        
+        this.currentFile = null;
+        myViewer.setEditor("");
+        myViewer.updateViewer();
+        document.getElementById('fileInput').value = null;// ファイル入力フィールドの表示をリセット
+
+    },
+
+    
     saveFile: function () {
         if (!this.currentFile)
         {
@@ -74,6 +90,15 @@ document.getElementById('fileInput').addEventListener('change', function (event)
     SaveFiles.loadFile(file);
 });
 
+document.getElementById('newButton').addEventListener('click', function () {
+    SaveFiles.newFile();
+});
+
+
+document.getElementById('optionButton').addEventListener('click', function () {
+    console.log("オプション");
+});
+
 document.getElementById('saveButton').addEventListener('click', function () {
     SaveFiles.saveFile();
 });
@@ -88,6 +113,23 @@ document.addEventListener('keydown', function (event) {
     if ((event.metaKey || event.ctrlKey) && event.key === 'o') {
         event.preventDefault(); // デフォルトのショートカット動作を無効化
         document.getElementById('fileInput').click(); // ファイル入力をクリック
+    }
+});
+
+//新規　cmd n
+document.addEventListener('keydown', function (event) {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'n') {
+        event.preventDefault(); // デフォルトのショートカット動作を無効化
+        event.stopPropagation(); // イベントの伝播を停止
+        document.getElementById('newButton').click(); // ファイル入力をクリック
+    }
+});
+
+//設定
+document.addEventListener('keydown', function (event) {
+    if ((event.metaKey || event.ctrlKey) && event.key === ',') {
+        event.preventDefault(); // デフォルトのショートカット動作を無効化
+        document.getElementById('optionButton').click(); // ファイル入力をクリック
     }
 });
 
@@ -106,6 +148,7 @@ document.addEventListener('keydown', function (event) {
         myViewer.updateViewer();
     }
 });
+
 
 //インプット
 fontSizeInput.addEventListener('input', function () {
