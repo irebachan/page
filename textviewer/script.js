@@ -396,6 +396,7 @@ const ResizerApp = {
 
     init: function () {
         this.resizer.addEventListener('mousedown', this.onMouseDown);
+        this.resizer.addEventListener('touchstart', this.onTouchStart, { passive: false });
         this.radioButtons.forEach(radio => {
             radio.addEventListener('change', this.onOrientationChange);
         });
@@ -405,6 +406,25 @@ const ResizerApp = {
         ResizerApp.isResizing = true;
         document.addEventListener('mousemove', ResizerApp.onMouseMove);
         document.addEventListener('mouseup', ResizerApp.onMouseUp);
+    },
+
+    onMouseUp: function () {
+        ResizerApp.isResizing = false;
+        document.removeEventListener('mousemove', ResizerApp.onMouseMove);
+        document.removeEventListener('mouseup', ResizerApp.onMouseUp);
+    },
+
+    onTouchStart: function (e) {
+        e.preventDefault(); // Prevent default touch behavior like scrolling
+        ResizerApp.isResizing = true;
+        document.addEventListener('touchmove', ResizerApp.onTouchMove, { passive: false });
+        document.addEventListener('touchend', ResizerApp.onTouchEnd);
+    },
+
+    onTouchEnd: function () {
+        ResizerApp.isResizing = false;
+        document.removeEventListener('touchmove', ResizerApp.onTouchMove);
+        document.removeEventListener('touchend', ResizerApp.onTouchEnd);
     },
 
     onMouseMove: function (e) {
@@ -427,11 +447,27 @@ const ResizerApp = {
         ResizerApp.textbox2.style.flexBasis = `${size2}%`;
     },
 
-    onMouseUp: function () {
-        ResizerApp.isResizing = false;
-        document.removeEventListener('mousemove', ResizerApp.onMouseMove);
-        document.removeEventListener('mouseup', ResizerApp.onMouseUp);
+
+    onTouchMove: function (e) {
+        if (!ResizerApp.isResizing) return;
+
+        const containerRect = ResizerApp.container.getBoundingClientRect();
+        let offset, size1, size2;
+
+        if (ResizerApp.isHorizontal) {
+            offset = e.touches[0].clientX - containerRect.left;
+            size1 = (offset / containerRect.width) * 100;
+        } else {
+            offset = e.touches[0].clientY - containerRect.top;
+            size1 = (offset / containerRect.height) * 100;
+        }
+
+        size2 = 100 - size1;
+
+        ResizerApp.textbox1.style.flexBasis = `${size1}%`;
+        ResizerApp.textbox2.style.flexBasis = `${size2}%`;
     },
+
 
     onOrientationChange: function (e) {
         if (e.target.value === 'horizontal') {
