@@ -485,6 +485,40 @@ const ResizerApp = {
         ResizerApp.textbox2.style.flexBasis = '';
     }
 };
-
 // 初期化
 ResizerApp.init();
+
+
+const Padding = {
+    viewerTextarea: document.getElementById('viewer'),
+    editorTextarea: document.getElementById('editor'),
+
+    init: function () {
+        // 初期設定としてupdatePaddingを呼び出します
+        this.updatePadding(this.viewerTextarea);
+        this.updatePadding(this.editorTextarea);
+
+        // リサイズ時のイベントリスナーを追加します
+        window.addEventListener('resize', () => {
+            this.updatePadding(this.viewerTextarea);
+            this.updatePadding(this.editorTextarea);
+        })
+    },
+
+    // テキストエリアのサイズに応じてパディングを更新する関数
+    updatePadding: function (textarea) {
+        // テキストエリアの現在の幅と高さを取得します
+        const textareaWidth = textarea.clientWidth;
+        const textareaHeight = textarea.clientHeight;
+
+        // 例: パディングをテキストエリアの幅と高さの5%に設定します
+        const paddingPercentage = 10; // 必要に応じて調整してください
+
+        const horizontalPadding = (textareaWidth * paddingPercentage / 100) + 'px';
+        const verticalPadding = (textareaHeight * 2 / 100) + 'px';
+
+        textarea.style.padding = `${verticalPadding} ${horizontalPadding}`;
+    }
+}
+
+//Padding.init();
