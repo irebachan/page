@@ -238,7 +238,8 @@ const TextFormat = {
         return this;
     },
 
-    sanitizeFilename:function() {
+    sanitizeFilename: function () {
+        if (this.text == "") return "タイトル";
         // 取り除く記号の正規表現パターン
         const illegalChars = /[\/\\\:\*\?\"\<\>\|]/g;
 
@@ -251,6 +252,47 @@ const TextFormat = {
         return sanitizedFilename;
     }
 }
+
+//一列文字数のプリセット
+const LineLengthPreset = {
+    // オブジェクトの配列を保持するプロパティ
+    items: [
+        { name: "47:Privatter、PictBlandなど", value: 47 },
+        { name: "39:pixiv", value: 39 }
+    ],
+
+    // プルダウンリストを動的に生成する関数
+    createDropdownList: function () {
+        const select = document.getElementById("itemSelect");
+
+        // オプションをクリア（初期化）
+        select.innerHTML = "";
+
+        // 各オブジェクトをプルダウンリストのオプションに追加
+        this.items.forEach(item => {
+            const option = document.createElement("option");
+            option.textContent = item.name;
+            option.value = item.value;
+            select.appendChild(option);
+        });
+
+        // プルダウンリストが変更されたときの処理を設定
+        select.addEventListener("change", function () {
+            const selectedValue = parseInt(this.value); // 選択された値を取得し数値に変換
+            const selectedItem = LineLengthPreset.items.find(item => item.value === selectedValue); // 選択されたオブジェクトを取得
+            // ここに選択されたアイテムに対する処理を記述
+            // 選択されたアイテムの数値をinput要素に表示
+            const selectedValueInput = document.getElementById("lineLengthInput");
+            selectedValueInput.value = selectedItem.value;
+            selectedValueInput.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    }
+};
+
+// ページの読み込みが完了したらプルダウンリストを生成する
+document.addEventListener("DOMContentLoaded", function () {
+    LineLengthPreset.createDropdownList();
+});
 
 //ダークモード
 const DarkMode = (() => {
@@ -297,7 +339,6 @@ const DarkMode = (() => {
 document.addEventListener('DOMContentLoaded', (event) => {
     DarkMode.init();
 });
-
 
 
 //スライド

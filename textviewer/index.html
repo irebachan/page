@@ -3,19 +3,38 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--<meta name="viewport" content="width=device-width, initial-scale=1.0">!-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Text Viewer and Editor</title>
     <link rel="stylesheet" href="styles.css">
+    
 </head>
 
 <body>
     <header>
         <div class="header-row">
-            <input type="file" id="fileInput" accept=".txt">
+            <span>
+                <button id="newButton">新規</button>
+                <input type="file" id="fileInput" accept=".txt">
+            </span>
+
             <span>
             <button id="updateButton">更新(cmd+R)</button>
             <button id="saveButton">保存(cmd+S)</button>
             </span>
+
+            <span>
+            <button id="optionButton">設定</button>
+            </span>
+
+            <span>
+                <label for="char-count">文字数：</label>
+                <span id="char-count" class="_2nd">0</span>
+            </span>
+        </div>
+        
+
+        <div class="controls">
             <span>
                 画面分割：
                 <label><input type="radio" name="orientation" value="horizontal" checked> 横</label>
@@ -31,9 +50,7 @@
                     Dark Mode
                 </label>
             </label>
-        </div>
 
-        <div class="controls">
             <span>
             <label for="fontSizeInput">文字サイズ</label>
             <input type="number" id="fontSizeInput" value="16" min="10" max="20" class ="small-input">
@@ -47,6 +64,9 @@
             <span>
             <label for="lineLengthInput">一列の字数</label>
             <input type="number" id="lineLengthInput" value="47" min="1" max="100" class ="small-input">
+            <select id="itemSelect">
+                <!-- JavaScriptで生成されるオプションがここに追加される -->
+            </select>
             </span>
 
             <span>
@@ -54,11 +74,6 @@
                 <input type="checkbox" id="space" name="option" value="option1">
                 <label for="space">文法外の空白を削除</label>
             </form>
-            </span>
-            
-            <span>
-            <label for="char-count">文字数：</label>
-            <span id="char-count" class="_2nd">0</span>
             </span>
         </div>
 
