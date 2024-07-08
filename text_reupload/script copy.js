@@ -28,6 +28,23 @@ function processText() {
     document.getElementById('processedContent').value = content;
 }
 
+const originalText = `
+
+「なんだお前」 
+腹いてえ「かわいそう」と思った
+「そうかもな」
+「ほんまかいな」
+
+
+
+おれんち
+「気まぐれ」`;
+
+function Start() {
+    document.getElementById('fileContent').value = originalText;
+}
+
+Start();
 
 
 

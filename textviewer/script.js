@@ -3,7 +3,7 @@ const myViewer = new Viewer();
 const SaveFiles = {
     currentFile: null, // 現在開いているファイル
     
-    loadFile : function (file) {
+    loadFile: function (file) {
         if (!file) return;
         this.currentFile = file; // 現在開いているファイルを保存
 
@@ -13,8 +13,12 @@ const SaveFiles = {
             myViewer.setEditor(text);
             myViewer.updateViewer();
         };
+        reader.onerror = function (e) {
+            console.error('Error reading file:', e);
+        };
         reader.readAsText(file);
     },
+
 
     newFile: function () {
         /*if (myViewer.GetEditorTrim()) {
@@ -111,9 +115,13 @@ window.addEventListener("click", function (event) {
 
 
 //ボタン
+
+
 document.getElementById('fileInput').addEventListener('change', function (event) {
     const file = event.target.files[0];
     SaveFiles.loadFile(file);
+    // ファイルインプットの値をクリアする
+    this.value = '';
 });
 
 document.getElementById('newButton').addEventListener('click', function () {
