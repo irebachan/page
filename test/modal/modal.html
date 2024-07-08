@@ -10,7 +10,7 @@
 
 <body>
     <button id="openModal">Open Modal</button>
-
+<!--
     <div id="myModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
@@ -24,6 +24,55 @@
                 <input type="radio" id="radioOption2" name="radioOption" value="Option 2">
                 <br>
                 <button type="button" id="submitBtn">Submit</button>
+            </form>
+        </div>
+    </div>
+    -->
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <form id="modalForm">
+                <div>
+                    画面分割：
+                    <label><input type="radio" name="orientation" value="horizontal" checked> 横</label>
+                    <label><input type="radio" name="orientation" value="vertical"> 縦</label>
+                </div>
+                <div class="switch">
+                    表示モード：
+                    <label>
+                        <input type="radio" name="theme" id="lightMode" value="light">
+                        Light
+                    </label>
+                    <label>
+                        <input type="radio" name="theme" id="darkMode" value="dark">
+                        Dark
+                    </label>
+                </div>
+    
+                <div>
+                    <span>
+                        <label for="fontSizeInput">文字サイズ</label>
+                        <input type="number" id="fontSizeInput" value="16" min="10" max="20" class="small-input">
+                    </span>
+    
+                    <span>
+                        <label for="lineHeightInput">行間</label>
+                        <input type="number" id="lineHeightInput" value="2" min="1" max="10" class="small-input">
+                    </span>
+                </div>
+    
+                <div>
+                    <label for="lineLengthInput">一列の字数</label>
+                    <input type="number" id="lineLengthInput" value="47" min="1" max="100" class="small-input">
+                    <select id="itemSelect">
+                        <!-- JavaScriptで生成されるオプションがここに追加される -->
+                    </select>
+                </div>
+    
+                <div>
+                    <button id="spaceDeleteButton">文法外の空白を削除</button>
+                </div>
             </form>
         </div>
     </div>
