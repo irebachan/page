@@ -84,6 +84,32 @@ const SaveFiles = {
     
 };
 
+const optModal = {
+    modal : document.getElementById("optModal"),
+    openModalBtn : document.getElementById("optionButton"),
+    closeModalBtn : document.querySelector(".close"),
+
+}
+
+
+// Open modal
+optModal.openModalBtn.onclick = function () {
+    optModal.modal.style.display = "block";
+}
+
+// Close modal
+optModal.closeModalBtn.onclick = function () {
+    optModal.modal.style.display = "none";
+}
+
+// Close modal when clicking outside of the modal
+window.onclick = function (event) {
+    if (event.target === optModal.modal) {
+        optModal.modal.style.display = "none";
+    }
+}
+
+
 //ボタン
 document.getElementById('fileInput').addEventListener('change', function (event) {
     const file = event.target.files[0];
@@ -97,6 +123,10 @@ document.getElementById('newButton').addEventListener('click', function () {
 
 document.getElementById('optionButton').addEventListener('click', function () {
     console.log("オプション");
+});
+
+document.getElementById('spaceDeleteButton').addEventListener('click', function () {
+    myViewer.SpaceDelete();
 });
 
 document.getElementById('saveButton').addEventListener('click', function () {
@@ -171,6 +201,8 @@ function Viewer() {
 
     this.fontSizeInput = document.getElementById('fontSizeInput');
     this.lineHeightInput = document.getElementById('lineheightinput');
+
+    this.spaceDeleteButton = document.getElementById('spaceDeleteButton');
 }
  
 Viewer.prototype.UpdateStyle = function () {
@@ -188,15 +220,22 @@ Viewer.prototype.UpdateStyle = function () {
 
 Viewer.prototype.setEditor = function (text) {
     this.editor.value = text;
- }
+}
+ 
+Viewer.prototype.SpaceDelete = function () {
+    const text = this.GetFormattedText( useEndOflineProcessing = false,useSpaceDelete = true);
+    this.setEditor(text);
+    this.updateViewer();
+    
+}
 
-Viewer.prototype.GetFormattedText = function (useEndOflineProcessing = true) {
+Viewer.prototype.GetFormattedText = function (useEndOflineProcessing = true, useSpaceDelete = false) {
     const text = this.editor.value;
-    let t = TextFormat.init(text).SpaceDeleate();
+    let t = TextFormat.init(text);
 
-    if (useEndOflineProcessing) {
-        t = t.EndOflineProcessing();
-    }
+    if (useSpaceDelete) t.SpaceDeleate();
+
+    if (useEndOflineProcessing) t.EndOflineProcessing();
 
     return t.text;
 }
@@ -209,7 +248,7 @@ Viewer.prototype.GetEditorTrim = function () {
 Viewer.prototype.updateViewer = function () {
     //viewの中を書き換える
     this.viewer.textContent = this.GetFormattedText();
-    this.editor.value = this.GetFormattedText(useEndOflineProcessing = false);
+    this.setEditor(this.GetFormattedText(useEndOflineProcessing = false));
 };
 
 // プロトタイプのメソッドをラップする
@@ -241,10 +280,7 @@ const TextFormat = {
     },
 
     SpaceDeleate: function () {
-        const isChecked = document.getElementById("space").checked;
-        if (isChecked) {
-            this.text = this.text.replace(/(?<=.)(?<![!?！？])[ 　]/g, '');
-        }
+        this.text = this.text.replace(/(?<=.)(?<![!?！？])[ 　]/g, '');
         return this;
     },
 
@@ -400,6 +436,39 @@ const ResizerApp = {
         this.radioButtons.forEach(radio => {
             radio.addEventListener('change', this.onOrientationChange);
         });
+
+        this.loadRadioButtonState(); // ラジオボタンの状態をロード
+    },
+
+    loadRadioButtonState: function () {
+        const selectedValue = localStorage.getItem('selectedOrientation');
+        if (selectedValue) {
+            const radioButton = document.querySelector(`input[name="orientation"][value="${selectedValue}"]`);
+            if (radioButton) {
+                radioButton.checked = true;
+                // 必要なら変更処理を呼び出す
+                this.onOrientationChange({ target: radioButton });
+            }
+        }
+    },
+
+    onOrientationChange: function (e) {
+        if (e.target.value === 'horizontal') {
+            ResizerApp.container.classList.remove('vertical');
+            ResizerApp.container.classList.add('horizontal');
+            ResizerApp.resizer.style.cursor = 'ew-resize';
+            ResizerApp.isHorizontal = true;
+        } else {
+            ResizerApp.container.classList.remove('horizontal');
+            ResizerApp.container.classList.add('vertical');
+            ResizerApp.resizer.style.cursor = 'ns-resize';
+            ResizerApp.isHorizontal = false;
+        }
+        ResizerApp.textbox1.style.flexBasis = '';
+        ResizerApp.textbox2.style.flexBasis = '';
+
+        // ラジオボタンの選択状態をローカルストレージに保存
+        localStorage.setItem('selectedOrientation', e.target.value);
     },
 
     onMouseDown: function (e) {
@@ -466,24 +535,8 @@ const ResizerApp = {
 
         ResizerApp.textbox1.style.flexBasis = `${size1}%`;
         ResizerApp.textbox2.style.flexBasis = `${size2}%`;
-    },
-
-
-    onOrientationChange: function (e) {
-        if (e.target.value === 'horizontal') {
-            ResizerApp.container.classList.remove('vertical');
-            ResizerApp.container.classList.add('horizontal');
-            ResizerApp.resizer.style.cursor = 'ew-resize';
-            ResizerApp.isHorizontal = true;
-        } else {
-            ResizerApp.container.classList.remove('horizontal');
-            ResizerApp.container.classList.add('vertical');
-            ResizerApp.resizer.style.cursor = 'ns-resize';
-            ResizerApp.isHorizontal = false;
-        }
-        ResizerApp.textbox1.style.flexBasis = '';
-        ResizerApp.textbox2.style.flexBasis = '';
     }
+
 };
 // 初期化
 ResizerApp.init();
