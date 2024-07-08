@@ -117,12 +117,16 @@ window.addEventListener("click", function (event) {
 //ボタン
 
 
+fileInput.addEventListener('click', function () {
+    this.value = ''; // クリアすることで同じファイルが再選択されたときに変更と見なされる
+});
+
 document.getElementById('fileInput').addEventListener('change', function (event) {
     const file = event.target.files[0];
     SaveFiles.loadFile(file);
-    // ファイルインプットの値をクリアする
-    this.value = '';
+
 });
+
 
 document.getElementById('newButton').addEventListener('click', function () {
     SaveFiles.newFile();
