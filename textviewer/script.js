@@ -85,29 +85,29 @@ const SaveFiles = {
 };
 
 const optModal = {
-    modal : document.getElementById("optModal"),
+    modal: document.getElementById("optModal"),
     openModalBtn : document.getElementById("optionButton"),
     closeModalBtn : document.querySelector(".close"),
 
 }
 
 
-// Open modal
-optModal.openModalBtn.onclick = function () {
+// オプションボタンをクリックしたときにモーダルを開く
+optModal.openModalBtn.addEventListener("click", function () {
     optModal.modal.style.display = "block";
-}
+});
 
-// Close modal
-optModal.closeModalBtn.onclick = function () {
+// 閉じるボタンをクリックしたときにモーダルを閉じる
+optModal.closeModalBtn.addEventListener("click", function () {
     optModal.modal.style.display = "none";
-}
+});
 
-// Close modal when clicking outside of the modal
-window.onclick = function (event) {
+// モーダルの外側をクリックしたときにモーダルを閉じる
+window.addEventListener("click", function (event) {
     if (event.target === optModal.modal) {
         optModal.modal.style.display = "none";
     }
-}
+});
 
 
 //ボタン
