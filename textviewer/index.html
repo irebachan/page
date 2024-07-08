@@ -23,13 +23,11 @@
             <button id="saveButton">保存(cmd+S)</button>
             </span>
 
-            <span>
-            <button id="optionButton">設定</button>
-            </span>
+                <lavel>文字数:</lavel>
+                <span id="char-count">0</span>
 
             <span>
-                <label for="char-count">文字数：</label>
-                <span id="char-count">0</span>
+                <button id="optionButton">設定</button>
             </span>
         </div>
         
@@ -85,7 +83,7 @@
     </header>
     
     <div class="container horizontal">
-        <textarea class="textbox" id="viewer" contenteditable="false" readonly placeholder="プレビュー"></textarea>
+        <textarea class="textbox" id="viewer" contenteditable="false" placeholder="プレビュー" readonly ></textarea>
         <div class="resizer" id="resizer"></div>
         <textarea class="textbox" id="editor" contenteditable="true" placeholder="編集エリア"></textarea>
     </div>
