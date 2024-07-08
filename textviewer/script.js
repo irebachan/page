@@ -121,10 +121,6 @@ document.getElementById('newButton').addEventListener('click', function () {
 });
 
 
-document.getElementById('optionButton').addEventListener('click', function () {
-    console.log("オプション");
-});
-
 document.getElementById('spaceDeleteButton').addEventListener('click', function () {
     myViewer.SpaceDelete();
 });
@@ -202,7 +198,7 @@ function Viewer() {
     this.fontSizeInput = document.getElementById('fontSizeInput');
     this.lineHeightInput = document.getElementById('lineheightinput');
 
-    this.spaceDeleteButton = document.getElementById('spaceDeleteButton');
+    //this.spaceDeleteButton = document.getElementById('spaceDeleteButton');
 }
  
 Viewer.prototype.UpdateStyle = function () {
