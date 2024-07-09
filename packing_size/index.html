@@ -1,0 +1,38 @@
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>梱包材サイズ計算</title>
+		<!--<link rel="stylesheet" href="styles.css">!-->
+	</head>
+
+	<body>
+		<h2>中身</h2>
+		<form id="bookInfo">
+			<div>
+				<label for="bookname">管理名</label>
+				<input type="text" id="bookname" value="name">
+				<br>
+				<label for="horizontal">横mm</label>
+				<input type="number" id="horizontal" value="0" min="0">
+				<br>
+				<label for="vertical">縦mm</label>
+				<input type="number" id="vertical" value="0" min="0">
+				<br>
+				<label for="depth">厚さmm</label>
+				<input type="number" id="depth" value="0" min="0">
+				<br>
+				<button type="button" id="addBook">荷物を追加</button>
+				<br>
+			</div>
+		</form>
+		<div>
+			<span>データ</span>
+			<button type="button" id="add">↑</button>
+			<span id="bookCount">0</span>
+			<button type="button" id="remove">↓</button>
+		</div>
+
+
+	<script src="script.js"></script>
+	</body>
+</html>

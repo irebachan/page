@@ -18,11 +18,9 @@ function processText() {
     
     let content = document.getElementById('fileContent').value;
 
-    // Remove text within brackets and ［＃...］ sections
-    content = content.replace(/\[.*?\]/g, '').replace(/［＃.*?］/g, '');
+    content = content.replace(/\[.*?\]/g, '').replace(/［＃.*?］/g, '');//[]に囲まれた部分を取り除く
 
-    // Add empty lines before and after quotes, except for consecutive quotes
-    content = content.replace(/(「.*?」)(?!「.*?」)/g, '\n\n$1\n\n').replace(/\n{3,}/g, '\n\n');
+    content = ss(content);
 
     // Display processed content
     document.getElementById('processedContent').value = content;
@@ -30,61 +28,19 @@ function processText() {
 
 
 
+function ss(text) {
 
-function formatText(text) {
-    // 「」で囲まれた部分を抽出する正規表現
-    const regex = /([^「]*)「([^」]*)」([^「]*)/g;
+    text = text.replace(/([^「\n])「/g, '$1\n「') // 「の前に文字がある（\nは例外）「を \n「に置き換える
+        .replace(/」([^」\n])/g, '」\n$1') // 」の後に文字がある（\nは例外）を 」\nに置き換える
+        .replace(/([^\n」])\n「/g, '$1\n\n「') // 手前に \n と 」以外の文字がある \n「 を \n\n「 に置き換える
+        .replace(/」\n([^\n「])/g, '」\n\n$1'); // 後ろに \n と 「以外の文字がある 」\n を 」\n\n に置き換える
 
-    // 正規表現にマッチする部分を全て取得
-    let match;
-    let formattedText = '';
-    let lastIndex = 0;
-
-    while ((match = regex.exec(text)) !== null) {
-        // 「」で囲まれた部分の前後に改行と空行を追加する
-        const before = match[1];
-        const inside = match[2];
-        const after = match[3];
-
-        // 改行を挿入する際、前後が空文字列でないことを確認してから挿入する
-        formattedText += (before.trim() !== '' ? before + '\n\n' : '') + '「' + inside + '」' + '\n\n' + (after.trim() !== '' ? after + '\n' : '');
-
-        lastIndex = regex.lastIndex;
-    }
-
-    // 残りの部分を追加する
-    formattedText += text.substring(lastIndex);
-
-    return formattedText;
+    //let escapedText =line.replace(/\n/g, "\\n");//改行チェック用
+    //console.log(escapedText);
+    
+    return text;
 }
 
-function replace(text) {
-    // 文字列全体を保持する変数
-    let result = '';
-
-    // 文字列を改行で分割
-    let lines = text.split('\n');
-
-    // 各行に対して処理を行う
-    for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
-
-        if (line.includes('「') && !line.startsWith('「')) {
-            line = line.replace(/([^「])「/g, '$1\n「');
-        }
-
-        if (line.includes('」') && !line.endsWith('」')) {
-            line = line.replace(/([^」])」/g, '$1」\n');
-        }
-
-
-        result += line;
-
-    }
-
-    // 最終的な結果をcontentに代入する
-    return result;
-}
 
 function copyToClipboard() {
     const processedContent = document.getElementById('processedContent');

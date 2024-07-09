@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>梱包材サイズ計算アプリ</title>
+    <style>
+        .book-entry {
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            border: 1px solid #000;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>梱包材サイズ計算アプリ</h1>
+    <form id="sizeForm">
+        <label for="sheetWidth">シートの幅 (cm):</label>
+        <input type="number" id="sheetWidth" name="sheetWidth" required><br><br>
+        <label for="sheetHeight">シートの高さ (cm):</label>
+        <input type="number" id="sheetHeight" name="sheetHeight" required><br><br>
+        <div class="book-entry">
+            <label for="preset1">プリセットサイズ:</label>
+            <select id="preset1" name="preset1" onchange="updateSize(1)">
+                <option value="">任意サイズ</option>
+                <option value="A4">A4 (21cm x 29.7cm)</option>
+                <option value="A5">A5 (14.8cm x 21cm)</option>
+                <option value="B5">B5 (18.2cm x 25.7cm)</option>
+            </select><br><br>
+            <label for="width1">冊子の幅 (cm):</label>
+            <input type="number" id="width1" name="width1"><br><br>
+            <label for="height1">冊子の高さ (cm):</label>
+            <input type="number" id="height1" name="height1"><br><br>
+            <label for="depth1">冊子の厚さ (cm):</label>
+            <input type="number" id="depth1" name="depth1" required><br><br>
+        </div>
+        <button type="button" onclick="addBook()">本を追加する</button><br><br>
+        <label for="padding">余裕のスペース (cm):</label>
+        <input type="number" id="padding" name="padding" required><br><br>
+        <button type="button" onclick="calculateSize()">計算する</button>
+    </form>
+    <h2>必要な梱包材のサイズ</h2>
+    <p id="result"></p>
+    <canvas id="sheetCanvas" width="500" height="500"></canvas>
+    <h2>封筒の推奨サイズ</h2>
+    <p id="envelopeRecommendation"></p>
+
+    <script>
+        let bookCount = 1;
+        const envelopes = [
+            { name: '角形2号', width: 24, height: 33.2 },
+            { name: '角形3号', width: 21.6, height: 27.7 },
+            { name: '角形4号', width: 19.7, height: 26.7 },
+            { name: '角形5号', width: 19, height: 24 },
+            { name: '角形6号', width: 16.2, height: 22.9 },
+        ];
+
+        function updateSize(bookId) {
+            const preset = document.getElementById(`preset${bookId}`).value;
+            if (preset === 'A4') {
+                document.getElementById(`width${bookId}`).value = 21;
+                document.getElementById(`height${bookId}`).value = 29.7;
+            } else if (preset === 'A5') {
+                document.getElementById(`width${bookId}`).value = 14.8;
+                document.getElementById(`height${bookId}`).value = 21;
+            } else if (preset === 'B5') {
+                document.getElementById(`width${bookId}`).value = 18.2;
+                document.getElementById(`height${bookId}`).value = 25.7;
+            } else {
+                document.getElementById(`width${bookId}`).value = '';
+                document.getElementById(`height${bookId}`).value = '';
+            }
+        }
+
+        function addBook() {
+            bookCount++;
+            const bookEntry = document.createElement('div');
+            bookEntry.className = 'book-entry';
+            bookEntry.innerHTML = `
+        <label for="preset${bookCount}">プリセットサイズ:</label>
+        <select id="preset${bookCount}" name="preset${bookCount}" onchange="updateSize(${bookCount})">
+          <option value="">任意サイズ</option>
+          <option value="A4">A4 (21cm x 29.7cm)</option>
+          <option value="A5">A5 (14.8cm x 21cm)</option>
+          <option value="B5">B5 (18.2cm x 25.7cm)</option>
+        </select><br><br>
+        <label for="width${bookCount}">冊子の幅 (cm):</label>
+        <input type="number" id="width${bookCount}" name="width${bookCount}"><br><br>
+        <label for="height${bookCount}">冊子の高さ (cm):</label>
+        <input type="number" id="height${bookCount}" name="height${bookCount}"><br><br>
+        <label for="depth${bookCount}">冊子の厚さ (cm):</label>
+        <input type="number" id="depth${bookCount}" name="depth${bookCount}" required><br><br>
+      `;
+            document.getElementById('sizeForm').insertBefore(bookEntry, document.getElementById('padding').parentElement);
+        }
+
+        function calculateSize() {
+            let totalWidth = 0;
+            let totalHeight = 0;
+            let totalDepth = 0;
+
+            for (let i = 1; i <= bookCount; i++) {
+                const width = parseFloat(document.getElementById(`width${i}`).value);
+                const height = parseFloat(document.getElementById(`height${i}`).value);
+                const depth = parseFloat(document.getElementById(`depth${i}`).value);
+
+                if (isNaN(width) || isNaN(height) || isNaN(depth)) {
+                    document.getElementById('result').textContent = 'すべてのフィールドに有効な数値を入力してください。';
+                    return;
+                }
+
+                totalWidth = Math.max(totalWidth, width);
+                totalHeight = Math.max(totalHeight, height);
+                totalDepth += depth;
+            }
+
+            const padding = parseFloat(document.getElementById('padding').value);
+            if (isNaN(padding)) {
+                document.getElementById('result').textContent = '余裕のスペースに有効な数値を入力してください。';
+                return;
+            }
+
+            totalWidth += 2 * padding;
+            totalHeight += 2 * padding;
+            totalDepth += 2 * padding;
+
+            const sheetWidth = parseFloat(document.getElementById('sheetWidth').value);
+            const sheetHeight = parseFloat(document.getElementById('sheetHeight').value);
+            if (isNaN(sheetWidth) || isNaN(sheetHeight)) {
+                document.getElementById('result').textContent = 'シートのサイズに有効な数値を入力してください。';
+                return;
+            }
+
+            const sheetsWide = Math.floor(sheetWidth / totalWidth);
+            const sheetsHigh = Math.floor(sheetHeight / totalHeight);
+            const totalSheets = sheetsWide * sheetsHigh;
+
+            document.getElementById('result').textContent =
+                `必要な梱包材のサイズは、幅: ${totalWidth} cm, 高さ: ${totalHeight} cm, 厚さ: ${totalDepth} cm です。シートから ${totalSheets} 枚取れます。`;
+
+            recommendEnvelope(totalWidth, totalHeight);
+            drawCuttingPlan(sheetWidth, sheetHeight, totalWidth, totalHeight, sheetsWide, sheetsHigh);
+        }
+
+        function recommendEnvelope(totalWidth, totalHeight) {
+            let recommendedEnvelope = '適切な封筒サイズが見つかりません。';
+            for (const envelope of envelopes) {
+                if (envelope.width >= totalWidth && envelope.height >= totalHeight) {
+                    recommendedEnvelope = `${envelope.name} (${envelope.width}cm x ${envelope.height}cm)`;
+                    break;
+                }
+            }
+            document.getElementById('envelopeRecommendation').textContent = recommendedEnvelope;
+        }
+
+        function drawCuttingPlan(sheetWidth, sheetHeight, totalWidth, totalHeight, sheetsWide, sheetsHigh) {
+            const canvas = document.getElementById('sheetCanvas');
+            const context = canvas.getContext('2d');
+            const scale = Math.min(canvas.width / sheetWidth, canvas.height / sheetHeight);
+
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.strokeStyle = 'black';
+            context.lineWidth = 1;
+
+                // Draw sheet boundary
+                context.strokeRect(0, 0, sheetWidth * scale, sheetHeight * scale);
+
+                // Draw cutting lines
+                for (let i = 0; i <= sheetsWide; i++) {
+                    const x = i * totalWidth * scale;
+                    context.beginPath();
+                    context.moveTo(x, 0);
+                    context.lineTo(x, sheetHeight * scale);
+                    context.stroke();
+                }
+
+                for (let i = 0; i <= sheetsHigh; i++) {
+                    const y = i * totalHeight * scale;
+                    context.beginPath();
+                    context.moveTo(0, y);
+                    context.lineTo(sheetWidth * scale, y);
+                    context.stroke();
+                }
+            }
+        </script>
+</body>
+</html>

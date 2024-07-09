@@ -22,7 +22,8 @@ function processText() {
     content = content.replace(/\[.*?\]/g, '').replace(/［＃.*?］/g, '');
 
     // Add empty lines before and after quotes, except for consecutive quotes
-    content = content.replace(/(「.*?」)(?!「.*?」)/g, '\n\n$1\n\n').replace(/\n{3,}/g, '\n\n');
+    //content = content.replace(/(「.*?」)(?!「.*?」)/g, '\n\n$1\n\n').replace(/\n{3,}/g, '\n\n');
+    content = replace(content);
 
     // Display processed content
     document.getElementById('processedContent').value = content;
@@ -30,15 +31,15 @@ function processText() {
 
 const originalText = `
 
-「なんだお前」 
-腹いてえ「かわいそう」と思った
-「そうかもな」
-「ほんまかいな」
+「なんだお前」
+腹いてえ「かわいそう」と思った「なんてな」
+「そうかもな」「ららら」「がむしゃら」
+「ほんまかいな」 ですよ「ね」
 
 
 
 おれんち
-「気まぐれ」`;
+「気まぐれ」」`;
 
 function Start() {
     document.getElementById('fileContent').value = originalText;
@@ -86,17 +87,52 @@ function replace(text) {
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
 
-        if (line.includes('「') && !line.startsWith('「')) {
-            line = line.replace(/([^「])「/g, '$1\n「');
+        if (line.includes('「')) {
+            if (i > 0 && lines[i - 1].trim() !== "") {
+                line = line.replace(/([^「])「/g, '$1\n「');
+
+            }
         }
 
         if (line.includes('」') && !line.endsWith('」')) {
             line = line.replace(/([^」])」/g, '$1」\n');
         }
 
+        result += line + "\n";
+        //console.log(line);
+    }
 
-        result += line;
+    // 最終的な結果をcontentに代入する
 
+    return replace2(result);
+}
+
+function replace2(text) {
+    // 文字列全体を保持する変数
+    let result = '';
+
+    // 文字列を改行で分割
+    let lines = text.split('\n');
+    //console.log(lines);
+
+    // 各行に対して処理を行う
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+
+        if (line.includes('「') && i > 0) {
+            if (!lines[i - 1].includes('「') && lines[i - 1].trim() !== "") {
+                line = "\n" + line;
+        }
+        }
+
+        if (line.includes('」') && i < lines.length) {
+            if (!lines[i + 1].includes('」') && lines[i + 1].trim() !== "") {
+                line = line + "\n";
+            }
+        }
+
+        result += line + "\n";
+       // console.log(line);
     }
 
     // 最終的な結果をcontentに代入する
