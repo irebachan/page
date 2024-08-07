@@ -1,0 +1,7 @@
+[
+null,
+{"id":1,"autoRemovalTiming":0,"chanceByDamage":100,"traits":[],"iconIndex":0,"maxTurns":1,"message1":"","message2":"","message3":"","message4":"","minTurns":1,"motion":0,"name":"","note":"","overlay":0,"priority":50,"removeAtBattleEnd":false,"removeByDamage":false,"removeByRestriction":false,"removeByWalking":false,"restriction":0,"stepsToRemove":100,"messageType":1},
+{"id":2,"autoRemovalTiming":0,"chanceByDamage":100,"traits":[],"iconIndex":16,"maxTurns":1,"message1":"","message2":"","message3":"","message4":"","minTurns":1,"motion":0,"name":"ニュートラル","note":"","overlay":0,"priority":60,"removeAtBattleEnd":false,"removeByDamage":false,"removeByRestriction":false,"removeByWalking":false,"restriction":0,"stepsToRemove":100,"messageType":1},
+{"id":3,"autoRemovalTiming":0,"chanceByDamage":100,"traits":[],"iconIndex":4,"maxTurns":1,"message1":"","message2":"","message3":"","message4":"","minTurns":1,"motion":0,"name":"真面目","note":"","overlay":0,"priority":65,"removeAtBattleEnd":false,"removeByDamage":false,"removeByRestriction":false,"removeByWalking":false,"restriction":0,"stepsToRemove":100,"messageType":1},
+{"id":4,"autoRemovalTiming":0,"chanceByDamage":100,"traits":[],"iconIndex":6,"maxTurns":1,"message1":"","message2":"","message3":"","message4":"","minTurns":1,"motion":0,"name":"お調子者","note":"","overlay":0,"priority":50,"removeAtBattleEnd":false,"removeByDamage":false,"removeByRestriction":false,"removeByWalking":false,"restriction":0,"stepsToRemove":100,"messageType":1}
+]

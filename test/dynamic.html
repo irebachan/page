@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic HTML Elements with Input and Total Sum</title>
+    <style>
+        #container {
+            height: 300px;
+            /* 表示領域の最大高さを設定 */
+            overflow-y: auto;
+            /* 縦方向のスクロールバーを表示する */
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+
+        .dynamic-div {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            position: relative;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+        }
+
+        .dynamic-div p {
+            margin: 0;
+        }
+
+        #totalSum {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+
+<body>
+    <button id="addDivButton">Add Div</button>
+    <div id="container"></div>
+    <div id="totalSum">Total Sum: 0</div>
+
+    <script>
+        document.getElementById('addDivButton').addEventListener('click', function () {
+            // 新しい<div>要素を作成
+            const newDiv = document.createElement('div');
+            newDiv.className = 'dynamic-div';
+
+            // テキストを追加
+            const text = document.createElement('p');
+            text.textContent = 'This is some text.';
+            newDiv.appendChild(text);
+
+            // 数字を追加
+            const number = document.createElement('p');
+            number.textContent = 'Number: 1';
+            number.classList.add("number-text");
+            newDiv.appendChild(number);
+
+            // ボタン1を追加
+            const button1 = document.createElement('button');
+            button1.textContent = 'Increase';
+            button1.addEventListener('click', function () {
+                const currentNumber = parseInt(number.textContent.split(': ')[1]);
+                number.textContent = 'Number: ' + (currentNumber + 1);
+                updateTotalSum();
+            });
+            newDiv.appendChild(button1);
+
+            // ボタン2を追加
+            const button2 = document.createElement('button');
+            button2.textContent = 'Decrease';
+            button2.addEventListener('click', function () {
+                const currentNumber = parseInt(number.textContent.split(': ')[1]);
+                if(currentNumber >0){
+                    number.textContent = 'Number: ' + (currentNumber - 1);
+                    updateTotalSum();
+                }
+            });
+            newDiv.appendChild(button2);
+
+            // 閉じるボタンを追加
+            const closeButton = document.createElement('button');
+            closeButton.className = 'close-button';
+            closeButton.textContent = 'Close';
+            closeButton.addEventListener('click', function () {
+                newDiv.remove();
+                updateTotalSum();
+            });
+            newDiv.appendChild(closeButton);
+
+            // コンテナに新しい<div>要素を追加
+            document.getElementById('container').appendChild(newDiv);
+
+            // 合計を更新する関数
+            function updateTotalSum() {
+                const dynamicDivs = document.querySelectorAll('.dynamic-div');
+                let sum = 0;
+                dynamicDivs.forEach(div => {
+                    // `p.number-text` を指定して、そのテキストコンテンツを取得
+                    const numText = div.querySelector('p.number-text').textContent;
+                    // `Number:` の部分を削除して、数値だけを取得
+                    const numValue = parseInt(numText.replace('Number: ', '')) || 0;
+                    sum += numValue; // 数字を合計に加算
+                });
+                document.getElementById('totalSum').textContent = 'Total Sum: ' + sum;
+            }
+
+
+            // 初回の合計更新
+            updateTotalSum();
+        });
+    </script>
+</body>
+
+</html>

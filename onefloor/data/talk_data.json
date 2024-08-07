@@ -1,0 +1,426 @@
+[
+    null,
+   {"evId":1,"name":"爺擦","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"西ホール　朝食","condition":" checkTime(8,10,8,30) ","once":false},
+        {"id":"計器をいじる","condition":" checkTime(8,30,8,50) ","once":false},
+        {"id":"当たりをウロウロ","condition":" checkTime(9,10,9,30) ","once":false},
+        {"id":"モブ１開始","condition":" checkTime(9,30,9,60) ","once":false},
+        {"id":"モブA２","condition":" checkTime(10,0,10,30) ","once":false},
+        {"id":"（跳ねるのをやめる）","condition":" checkTime(11,10,11,30) ","once":false},
+        {"id":"モブA３","condition":" checkTime(12,0,12,20) ","once":false},
+        {"id":"マッドな大手術","condition":" checkTime(12,20,12,40) ","once":false},
+        {"id":"長丁場","condition":" checkTime(12,40,12,60) ","once":false},
+        {"id":"午前　閉店","condition":" checkTime(13,0,13,10) ","once":false},
+        {"id":"タコスの店へ","condition":" checkTime(13,20,13,30) ","once":false},
+        {"id":"（紅梅はすでにいない）","condition":" checkTime(13,50,14,10) ","once":false},
+        {"id":"白米　美味い","condition":" checkTime(14,10,14,30) ","once":false},
+        {"id":"モブ　複数来店","condition":" checkTime(14,40,15,0) ","once":false},
+
+        {"id":"書類なくす","condition":" checkTime(18,20,18,40) ","once":false},
+        {"id":"店じまい・東ホール","condition":" checkTime(19,10,19,30) ","once":false},
+        {"id":"マッサージ屋に行く","condition":" checkTime(19,30,20,0) ","once":false},
+        {"id":"屋上（中）へ行く","condition":" checkTime(20,10,20,30) ","once":false},
+        {"id":"実験中","condition":" checkTime(21,50,22,10) ","once":false},
+        {"id":"実験結果","condition":" checkTime(22,10,22,30) ","once":false},
+        {"id":"手洗い","condition":" checkTime(22,30,22,50) ","once":false},
+        {"id":"待合室のソファー","condition":" checkTime(22,50,23,0) ","once":false}
+        ]
+    },
+
+    {"evId":2,"name":"霜手","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"カルテチェック","condition":" checkTime(9,10,9,20) ","once":false},
+        {"id":"空き時間１","condition":" checkTime(9,30,10,40) && !checkTime(10,10,10,20) ","once":false},
+        {"id":"空き時間２","condition":" checkTime(9,30,10,40) && !checkTime(10,10,10,20) ","once":false},
+        {"id":"空き時間３","condition":" checkTime(11,40,12,0) ","once":false},
+        {"id":"空き時間４","condition":" checkTime(12,10,13,10) && !checkTime(12,40,13,0) ","once":false},
+        {"id":"空き時間５","condition":" checkTime(12,10,13,10) && !checkTime(12,40,13,0) ","once":false},
+        {"id":"登場（西）昼","condition":" checkTime(14,40,14,50) ","once":false},
+        {"id":"医院へ行く","condition":" checkTime(14,50,15,0) ","once":false},
+
+        {"id":"受付にいる","condition":" checkTime(18,0,18,20) ","once":false},
+        {"id":"医院の掃除","condition":" checkTime(18,20,18,40) ","once":false},
+        {"id":"手洗い","condition":" checkTime(19,10,19,20) ","once":false},
+        {"id":"退勤","condition":" checkTime(19,20,19,30) ","once":false},
+        {"id":"屋上（中）に行く","condition":" checkTime(20,50,21,20) ","once":false},
+        {"id":"西Ev前へ行く","condition":" checkTime(21,20,21,30) ","once":false},
+        {"id":"兄とはゆみの会話を盗み見る","condition":" checkTime(21,30,21,40) ","once":false}
+        ]
+    },
+
+    {"evId":3,"name":"メヌ","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"登場（玄関口）","condition":" checkTime(7,10,7,20) ","once":false},
+        {"id":"自販機の前","condition":" checkTime(7,50,8,10) ","once":false},
+        {"id":"トイレで手洗い","condition":" checkTime(8,10,8,20) ","once":false},
+        {"id":"謎のベランダ的な場所","condition":" checkTime(8,20,8,30) ","once":false},
+        {"id":"自分の店の前","condition":" checkTime(8,30,8,40) ","once":false},
+        {"id":"出勤","condition":" checkTime(8,40,9,0) ","once":false},
+        {"id":"開店","condition":" checkTime(9,0,9,10) ","once":false},
+        {"id":"荷物ゴソゴソ","condition":" checkTime(9,10,9,20) ","once":false},
+        {"id":"雑談０","condition":" checkTime(9,40,12,40) && !checkTime(10,40,11,10) ","once":false},
+        {"id":"雑談１","condition":" checkTime(9,40,12,40) && !checkTime(10,40,11,10) ","once":false},
+        {"id":"雑談２","condition":" checkTime(9,40,12,40) && !checkTime(10,40,11,10) ","once":false},
+        {"id":"雑談３","condition":" checkTime(9,40,12,40) && !checkTime(10,40,11,10) ","once":false},
+        {"id":"雑談４","condition":" checkTime(9,40,12,40) && !checkTime(10,40,11,10) ","once":false},
+        {"id":"雑談５","condition":" checkTime(13,0,13,30) ","once":false},
+        {"id":"(闇商人が帰った後)","condition":" checkTime(13,50,14,0) ","once":false},
+        {"id":"荷物が届く　モブ宅配人","condition":" checkTime(14,0,14,20) ","once":false},
+        {"id":"犯行予告","condition":" checkTime(14,20,14,40) ","once":false},
+        {"id":"臨時休業","condition":" checkTime(14,40,15,0) ","once":false},
+       
+        {"id":"閉店","condition":" checkTime(18,30,18,50) ","once":false},
+        {"id":"準備をする","condition":" checkTime(19,10,19,40) ","once":false},
+        {"id":"西evまえへ行く","condition":" checkTime(19,40,19,50) ","once":false},
+        {"id":"登場 玄関口　夜","condition":" checkTime(22,0,22,10) ","once":false},
+        {"id":"風呂に行く","condition":" checkTime(22,10,22,40) ","once":false},
+        {"id":"玄関に行く ベンチ","condition":" checkTime(22,40,23,0) ","once":false}
+        ]
+    },
+
+    {"evId":4,"name":"田子須","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"仕込み1","condition":" checkTime(10,0,10,40) ","once":false},
+        {"id":"仕込み2","condition":" checkTime(10,0,10,40) ","once":false},
+        {"id":"メヌの店から戻る","condition":" checkTime(11,10,11,20) ","once":false},
+        {"id":"午前　開店","condition":" checkTime(11,30,12,0) ","once":false},
+        {"id":"ランチタイム１","condition":" checkTime(12,0,13,0) ","once":false},
+        {"id":"ランチタイム２","condition":" checkTime(12,0,13,0) ","once":false},
+        {"id":"ランチ　ラッシュ終了","condition":" checkTime(13,0,13,20) ","once":false},
+        {"id":"料理１","condition":" checkTime(13,40,14,30) ","once":false},
+        {"id":"料理２","condition":" checkTime(13,40,14,30) ","once":false},
+        {"id":"料理３　賄","condition":" checkTime(14,0,14,50) ","once":false},
+
+        {"id":"料理４","condition":" checkTime(18,0,19,0) && !checkTime(18,10,18,30) ","once":false},
+        {"id":"料理５","condition":" checkTime(18,0,19,0) && !checkTime(18,10,18,30) ","once":false},
+        {"id":"ディナーラッシュ１","condition":" checkTime(19,0,20,10) && !checkTime(19,30,19,40) ","once":false},
+        {"id":"ディナーラッシュ２","condition":" checkTime(19,0,20,10) && !checkTime(19,30,19,40) ","once":false},
+        {"id":"ヒヨンの心配","condition":" checkTime(20,10,20,30) ","once":false},
+        {"id":"面倒な客の騒ぎ","condition":" checkTime(20,30,20,50) ","once":false},
+        {"id":"緑陽の様子を見る","condition":" checkTime(20,50,21,10) ","once":false},
+        {"id":"ディナーラッシュ３","condition":" checkTime(21,10,21,30) ","once":false},
+        {"id":"ディナー　ラッシュ終了","condition":" checkTime(21,30,21,50) ","once":false},
+        {"id":"料理６","condition":" checkTime(21,50,23,0) ","once":false}
+        ]
+    },
+
+    {"evId":5,"name":"ヒヨン","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"清掃　床とか","condition":" checkTime(10,0,10,20) ","once":false},
+        {"id":"台掃除","condition":" checkTime(10,50,11,20) ","once":false},
+        {"id":"午前　開店","condition":" checkTime(11,30,12,0) ","once":false},
+        {"id":"ランチタイム１","condition":" checkTime(12,0,13,0) ","once":false},
+        {"id":"ランチタイム２","condition":" checkTime(12,0,13,0) ","once":false},
+        {"id":"ランチ　ラッシュ終了","condition":" checkTime(13,0,13,10) ","once":false},
+        {"id":"！トイレへ行きたい","condition":" checkTime(13,10,13,40) ","once":false},
+        {"id":"昼営業","condition":" checkTime(13,40,14,30) ","once":false},
+
+        {"id":"午後","condition":" checkTime(18,0,18,10) ","once":false},
+        {"id":"出前準備","condition":" checkTime(18,30,18,50) ","once":false},
+        {"id":"派手に気絶した人に驚く","condition":" checkTime(19,10,19,30) ","once":false},
+        {"id":"通常営業","condition":" checkTime(19,30,19,50) ","once":false},
+        {"id":"緑陽……","condition":" checkTime(21,10,21,30) ","once":false},
+        {"id":"ディナー　ラッシュ終了","condition":" checkTime(21,30,21,50) ","once":false},
+        {"id":"夜営業２","condition":" checkTime(22,10,23,0) ","once":false}
+        ]
+    },
+
+    {"evId":6,"name":"兄","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"玄関横（左）で体操","condition":" checkTime(7,0,7,20) ","once":false},
+        {"id":"冷蔵庫","condition":" checkTime(7,20,7,30) ","once":false},
+        {"id":"朝食を食べる","condition":" checkTime(7,30,7,50) ","once":false},
+        {"id":"片付けてコーヒー入れる","condition":" checkTime(7,50,7,60) ","once":false},
+        {"id":"支度をする","condition":" checkTime(8,0,8,10) ","once":false},
+        {"id":"登場(玄関)","condition":" checkTime(11,50,11,60) ","once":false},
+        {"id":"自販機の前に行く","condition":" checkTime(12,10,12,30) ","once":false},
+        {"id":"玄関前に行く","condition":" checkTime(12,30,12,50) ","once":false},
+
+        {"id":"登場（西）","condition":" checkTime(18,50,18,60) ","once":false},
+        {"id":"紅梅と霜手が喧嘩する","condition":" checkTime(20,30,20,50) ","once":false},
+        {"id":"女達が出ていく","condition":" checkTime(20,50,20,60) ","once":false},
+        {"id":"風呂に行く","condition":" checkTime(21,0,21,30) ","once":false},
+        {"id":"西ホールに行く","condition":" checkTime(21,40,21,50) ","once":false},
+        {"id":"帰宅","condition":" checkTime(22,10,22,20) ","once":false},
+        {"id":"ベッドで読書","condition":" checkTime(22,20,22,40) ","once":false},
+        {"id":"弟が帰ってこなくて不安","condition":" checkTime(22,40,22,60) ","once":false},
+
+        {"id":"接点3","condition":" eventPoint(0,'x >= 3') ","once":true},
+        {"id":"接点5","condition":" eventPoint(0,'x >= 5') && eventSelf(0,'A') ","once":true},
+
+        {"id":"兄？","condition":" eventName(0,'兄') ","once":false}
+        ]
+    },
+
+    {"evId":7,"name":"弟","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"顔を洗う","condition":" checkTime(8,0,8,10) ","once":false},
+        {"id":"チンタラ飯食っとる","condition":" checkTime(8,30,8,40) ","once":false},
+        {"id":"ゲームを始める","condition":" checkTime(8,40,9,10) ","once":false},
+        {"id":"味方に文句をいう","condition":" checkTime(9,10,9,30) ","once":false},
+        {"id":"ベッドに寝転ぶ","condition":" checkTime(9,30,9,50) ","once":false},
+        {"id":"着替える","condition":" checkTime(9,50,10,0) ","once":false},
+        {"id":"外出　医院の外","condition":" checkTime(10,0,10,10) ","once":false},
+        {"id":"医院の待合室","condition":" checkTime(10,20,10,30) ","once":false},
+        {"id":"ガクブル","condition":" checkTime(11,0,11,30) ","once":false},
+        {"id":"病院から帰る","condition":" checkTime(11,40,11,50) ","once":false},
+        {"id":"チャット・昼","condition":" checkTime(11,50,12,10) ","once":false},
+        {"id":"西Ev前（飯）","condition":" checkTime(12,10,12,20) ","once":false},
+        {"id":"登場（西）風呂行きたい","condition":" checkTime(13,20,13,30) ","once":false},
+        {"id":"血の跡にビビる","condition":" checkTime(13,30,14,0) ","once":false},
+        {"id":"風呂から戻る","condition":" checkTime(14,0,14,20) ","once":false},
+        {"id":"待ち合わせ場所へ行く","condition":" checkTime(14,20,14,40) ","once":false},
+        {"id":"友達を待つ","condition":" checkTime(14,40,15,0) ","once":false},
+
+        {"id":"兄へ電話","condition":" checkTime(18,0,18,20) ","once":false},
+        {"id":"勉強","condition":" checkTime(18,20,19,0) ","once":false},
+        {"id":"気まずい……","condition":" checkTime(19,30,19,40) ","once":false},
+        {"id":"先に帰宅して勉強","condition":" checkTime(19,40,20,0) ","once":false},
+        {"id":"またかよ……","condition":" checkTime(20,0,20,10) ","once":false},
+        {"id":"トイレに避難","condition":" checkTime(20,10,20,30) ","once":false},
+        {"id":"玄関口西でぼんやり","condition":" checkTime(20,30,20,50) ","once":false},
+        {"id":"女達に驚く","condition":" checkTime(20,50,21,0) ","once":false},
+        {"id":"チャット・夜","condition":" checkTime(21,0,21,20) ","once":false}
+        ]
+    },
+
+    {"evId":8,"name":"鬱金河原","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"屋上（中）で観察","condition":" checkTime(7,0,7,20) ","once":false},
+        {"id":"犬を見ている","condition":" checkTime(7,20,7,40) ","once":false},
+        {"id":"物干し場に謎の装置","condition":" checkTime(7,40,8,10) ","once":false},
+        {"id":"屋上（西）にアンテナ","condition":" checkTime(8,10,8,30) ","once":false},
+        {"id":"医院の看板","condition":" checkTime(8,30,8,40) ","once":false},
+        {"id":"西ev　アベックの横","condition":" checkTime(8,40,8,50) ","once":false},
+        {"id":"メヌの店へ行く","condition":" checkTime(11,20,11,50) ","once":false},
+        {"id":"出勤","condition":" checkTime(11,50,12,10) ","once":false},
+        {"id":"丸薬を食う","condition":" checkTime(12,10,12,30) ","once":false},
+        {"id":"喉に張り付く","condition":" checkTime(12,30,12,50) ","once":false},
+        {"id":"弁当食べる","condition":" checkTime(13,10,13,40) ","once":false},
+        {"id":"遅刻者を待つ（個別）","condition":" checkTime(14,0,14,20) ","once":false},
+        {"id":"会合　始業（個別）","condition":" checkTime(14,20,14,40) ","once":false},
+
+        {"id":"各自 休憩","condition":" checkTime(18,10,18,30) ","once":false},
+        {"id":"グダグダ討論会（個別）","condition":" checkTime(18,50,19,10) ","once":false},
+        {"id":"討論＋晩餐会（個別）","condition":" checkTime(19,10,19,30) ","once":false}
+        ]
+    },
+
+    {"evId":9,"name":"黒豆","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"登場（玄関口）","condition":" checkTime(8,20,8,30) ","once":false},
+        {"id":"玄関東の喫煙所へ行く","condition":" checkTime(8,30,8,50) ","once":false},
+        {"id":"梯子に登ってみる","condition":" checkTime(8,50,9,0) ","once":false},
+        {"id":"惰眠","condition":" checkTime(9,0,9,30) ","once":false},
+        {"id":"会議室を眺める","condition":" checkTime(9,30,9,40) ","once":false},
+        {"id":"鬱金河原の席に座る","condition":" checkTime(9,40,10,0) ","once":false},
+        {"id":"タコスの店を覗く","condition":" checkTime(10,0,10,10) ","once":false},
+        {"id":"マッサージを見物","condition":" checkTime(10,10,10,20) ","once":false},
+        {"id":"マッサージ３０分","condition":" checkTime(10,30,11,0) ","once":false},
+        {"id":"会議室を覗く","condition":" checkTime(11,0,11,10) ","once":false},
+        {"id":"出勤","condition":" checkTime(11,10,11,40) ","once":false},
+        {"id":"タコスの屋台","condition":" checkTime(12,30,12,50) ","once":false},
+        {"id":"自分の席に着く","condition":" checkTime(13,10,13,40) ","once":false},
+        {"id":"遅刻者を待つ（個別）","condition":" checkTime(14,0,14,20) ","once":false},
+        {"id":"会合　始業（個別）","condition":" checkTime(14,20,14,40) ","once":false},
+
+        {"id":"討論＋晩餐会（個別）","condition":" checkTime(19,10,19,30) ","once":false},
+        {"id":"自分の席で待機","condition":" checkTime(21,20,21,40) ","once":false} 
+        ]
+    },
+
+    {"evId":10,"name":"白参道","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') && !checkTime(11,30,12,0) ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"屋上（中）に行く","condition":" checkTime(12,10,12,20) ","once":false},
+        {"id":"医院を覗く","condition":" checkTime(13,10,13,20) ","once":false},
+        {"id":"西ev前に残る","condition":" checkTime(13,40,13,50) ","once":false},
+        {"id":"出勤","condition":" checkTime(13,50,14,0) ","once":false},
+        {"id":"遅刻者を待つ（個別）","condition":" checkTime(14,0,14,20) ","once":false},
+        {"id":"会合　始業（個別）","condition":" checkTime(14,20,14,40) ","once":false},
+
+        {"id":"各自 休憩","condition":" checkTime(18,10,18,30) ","once":false},
+        {"id":"グダグダ討論会（個別）","condition":" checkTime(18,50,19,10) ","once":false},
+        {"id":"討論＋晩餐会（個別）","condition":" checkTime(19,10,19,30) ","once":false},
+        {"id":"喫煙所を通る","condition":" checkTime(20,30,20,40) ","once":false},
+        {"id":"殴られて気絶する","condition":" checkTime(20,50,21,20) ","once":false},
+        {"id":"目を覚ます","condition":" checkTime(21,20,21,30) ","once":false}
+        ]
+    },
+
+    {"evId":11,"name":"緑陽","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"登場（西）","condition":" checkTime(11,40,11,50) ","once":false},
+        {"id":"廊下から店を見てる","condition":" checkTime(11,50,12,0) ","once":false},
+        {"id":"タコスの屋台","condition":" checkTime(12,0,12,10) ","once":false},
+        {"id":"物干場へ行く","condition":" checkTime(12,40,13,10) ","once":false},
+        {"id":"トイレへ行く","condition":" checkTime(13,10,13,30) ","once":false},
+        {"id":"トイレ待ちに気付く","condition":" checkTime(13,30,13,40) ","once":false},
+        {"id":"喫煙所に行く","condition":" checkTime(13,40,14,0) ","once":false},
+        {"id":"出勤","condition":" checkTime(14,0,14,20) ","once":false},
+        {"id":"遅刻者を待つ（個別）","condition":" checkTime(14,0,14,20) ","once":false},
+        {"id":"会合　始業（個別）","condition":" checkTime(14,20,14,40) ","once":false},
+
+        {"id":"各自 休憩","condition":" checkTime(18,10,18,30) ","once":false},
+        {"id":"グダグダ討論会（個別）","condition":" checkTime(18,50,19,10) ","once":false},
+        {"id":"討論＋晩餐会（個別）","condition":" checkTime(19,10,19,30) ","once":false},
+        {"id":"タコスの店へ行く","condition":" checkTime(20,10,20,30) ","once":false},
+        {"id":"ヒヨンを見ている","condition":" checkTime(20,30,20,50) ","once":false},
+        {"id":"帰る前・東Ev","condition":" checkTime(22,10,22,20) ","once":false}
+        ]
+    },
+
+    {"evId":12,"name":"紅梅","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"風呂で血を落とす","condition":" checkTime(12,10,12,40) ","once":false},
+        {"id":"鏡の前","condition":" checkTime(12,40,13,0) ","once":false},
+        {"id":"タコスの店へ行く","condition":" checkTime(13,0,13,30) ","once":false},
+        {"id":"トイレへ行く","condition":" checkTime(13,50,14,0) ","once":false},
+
+        {"id":"各自 休憩","condition":" checkTime(18,10,18,30) ","once":false},
+        {"id":"グダグダ討論会（個別）","condition":" checkTime(18,50,19,10) ","once":false},
+        {"id":"討論＋晩餐会（個別）","condition":" checkTime(19,10,19,30) ","once":false},
+        {"id":"つまらん","condition":" checkTime(19,30,19,50) ","once":false},
+        {"id":"グダグダ","condition":" checkTime(20,10,20,20) ","once":false},
+        {"id":"家を出る","condition":" checkTime(20,50,21,0) ","once":false},
+        {"id":"歯医者に行く","condition":" checkTime(21,0,21,10) ","once":false},
+        {"id":"実験中","condition":" checkTime(21,50,22,10) ","once":false},
+        {"id":"実験が一段落","condition":" checkTime(22,10,22,30) ","once":false},
+        {"id":"医院のソファーで寝る","condition":" checkTime(22,30,23,0) ","once":false}
+        ]
+    },
+
+    {"evId":13,"name":"はゆみ","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"洗顔","condition":" checkTime(7,30,7,40) ","once":false},
+        {"id":"植物の世話","condition":" checkTime(7,40,8,0) ","once":false},
+        {"id":"ぼんやり","condition":" checkTime(8,10,8,20) ","once":false},
+        {"id":"鏡の前で身嗜み","condition":" checkTime(8,20,8,50) ","once":false},
+        {"id":"朝食を食べる","condition":" checkTime(8,50,9,20) ","once":false},
+        {"id":"勉強","condition":" checkTime(9,40,10,0) ","once":false},
+
+        {"id":"閉店作業","condition":" checkTime(18,30,18,50) ","once":false},
+        {"id":"ひと段落","condition":" checkTime(19,50,20,0) ","once":false},
+        {"id":"動揺する","condition":" checkTime(20,30,20,40) ","once":false},
+        {"id":"風呂に入る","condition":" checkTime(20,40,21,10) ","once":false},
+        {"id":"東トイレに行き","condition":" checkTime(21,10,21,30) ","once":false},
+        {"id":"用を足す","condition":" checkTime(21,40,21,50) ","once":false},
+        {"id":"帰宅・夜食を作る","condition":" checkTime(22,10,22,30) ","once":false},
+        {"id":"料理失敗","condition":" checkTime(22,30,22,50) ","once":false},
+        {"id":"就寝準備","condition":" checkTime(22,50,23,0) ","once":false}
+        ]
+    },
+
+    {"evId":14,"name":"マロニエ","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"登場（東）","condition":" checkTime(7,50,8,0) ","once":false},
+        {"id":"朝食を作る","condition":" checkTime(8,10,8,50) && !checkTime(8,20,8,30) ","once":false},
+        {"id":"床に何かをこぼす","condition":" checkTime(8,20,8,30) ","once":false},
+        {"id":"はゆみを見守る","condition":" checkTime(8,50,9,20) ","once":false},
+        {"id":"キッチンでおやつ","condition":" checkTime(9,30,9,40) ","once":false},
+        {"id":"キッチンの掃除","condition":" checkTime(9,40,10,0) ","once":false},
+        {"id":"洗濯機を回す","condition":" checkTime(10,10,10,30) ","once":false},
+        {"id":"筋トレ","condition":" checkTime(10,30,10,50) ","once":false},
+        {"id":"東ホールで休憩","condition":" checkTime(10,50,11,0) ","once":false},
+        {"id":"洗濯物を干す","condition":" checkTime(11,0,11,20) ","once":false},
+        {"id":"タコスの店の裏口","condition":" checkTime(11,20,11,30) ","once":false},
+        {"id":"タコスの店","condition":" checkTime(11,30,11,40) ","once":false},
+        {"id":"めっちゃ酒を飲む","condition":" checkTime(12,30,12,50) ","once":false},
+        {"id":"帰宅","condition":" checkTime(12,50,13,0) ","once":false},
+        {"id":"洗面所の掃除","condition":" checkTime(13,0,13,20) ","once":false},
+        {"id":"！転倒して気絶","condition":" checkTime(13,20,13,40) ","once":false},
+        {"id":"気絶のち入眠","condition":" checkTime(13,40,15,0) ","once":false},
+
+        {"id":"武器の手入れ","condition":" checkTime(18,0,18,20) ","once":false},
+        {"id":"ストレッチ","condition":" checkTime(18,20,18,40) ","once":false},
+        {"id":"夕食作り再開","condition":" checkTime(18,40,19,10) ","once":false},
+        {"id":"後片付け","condition":" checkTime(19,50,20,0) ","once":false},
+        {"id":"喫煙所に行く","condition":" checkTime(20,10,20,20) ","once":false},
+        {"id":"フラフラの男にビビる","condition":" checkTime(20,20,20,30) ","once":false},
+        {"id":"男を殴る","condition":" checkTime(20,50,21,0) ","once":false}
+        ]
+    },
+
+    {"evId":15,"name":"生贄","data":[
+        {"id":"自己紹介","condition":" !eventSelf(0,'A') ","once":false,"slot":"自己紹介","add_able":false},
+        {"id":"登場（玄関口）","condition":" checkTime(13,10,13,20) ","once":false},
+        {"id":"ウロウロ","condition":" checkTime(13,20,13,30) ","once":false},
+        {"id":"トイレ待ち","condition":" checkTime(13,30,13,40) ","once":false},
+        {"id":"！下痢","condition":" checkTime(13,40,14,0) ","once":false},
+        {"id":"実験台にされる","condition":" checkTime(14,40,15,0) ","once":false},
+
+        {"id":"実験終了……","condition":" checkTime(18,0,18,10) ","once":false},
+        {"id":"解放される","condition":" checkTime(18,10,18,30) ","once":false},
+        {"id":"フラフラ","condition":" checkTime(18,30,18,50) ","once":false},
+        {"id":"タコスの店へ行く","condition":" checkTime(18,50,19,10) ","once":false},
+        {"id":"店内で派手に気絶","condition":" checkTime(19,10,19,30) ","once":false},
+        {"id":"東ホールへ行く","condition":" checkTime(19,50,20,10) ","once":false},
+        {"id":"喫煙所に行く","condition":" checkTime(20,10,20,20) ","once":false},
+        {"id":"梯子に登りだす","condition":" checkTime(20,20,20,30) ","once":false},
+        {"id":"グルグルしてる","condition":" checkTime(20,40,21,0) ","once":false}
+        ]
+    },
+
+    {"evId":16,"name":"闇","data":[
+        {"id":"登場(東)","condition":" checkTime(12,10,12,20) ","once":false},
+        {"id":"東ホールで何かの作業","condition":" checkTime(12,40,13,0) ","once":false},
+        {"id":"宅配便に細工する","condition":" checkTime(13,50,14,0) ","once":false}
+        ]
+    },
+
+    {"evId":17,"name":"マッサージ屋","data":[
+        {"id":"登場（東）","condition":" checkTime(9,30,9,40) ","once":false},
+        {"id":"帳簿の確認","condition":" checkTime(9,40,9,50) ","once":false},
+        {"id":"大家への施術","condition":" checkTime(10,0,10,20) ","once":false},
+        {"id":"黒豆への施術","condition":" checkTime(10,30,11,0) ","once":false},
+        {"id":"モブの施術","condition":" checkTime(11,0,12,30) && checkTime(18,30,19,30) ","once":false},
+        {"id":"空き時間１","condition":" checkTime(12,30,12,50) ","once":false},
+        {"id":"椅子を磨く","condition":" checkTime(12,50,13,10) ","once":false},
+        {"id":"花を眺める","condition":" checkTime(13,10,13,30) ","once":false},
+        {"id":"一時閉店","condition":" checkTime(13,30,13,50) ","once":false},
+        {"id":"清掃員の怪しい行動","condition":" checkTime(13,50,14,10) ","once":false},
+        {"id":"不安な気持ちで飯","condition":" checkTime(14,10,14,30) ","once":false},
+
+        {"id":"空き時間２","condition":" checkTime(18,0,18,30) ","once":false},
+        {"id":"ジーサス30分","condition":" checkTime(19,30,10,0) ","once":false},
+        {"id":"閉店","condition":" checkTime(20,0,20,10) ","once":false},
+        {"id":"物干し場へ行く","condition":" checkTime(20,10,20,30) ","once":false},
+        {"id":"東ev前","condition":" checkTime(20,30,20,40) ","once":false}
+        ]
+    },
+
+    {"evId":18,"name":"祖母","data":[
+        {"id":"玄関口の掃除","condition":" checkTime(7,0,7,20) ","once":false},
+        {"id":"再登場（東）","condition":" checkTime(9,20,9,30) ","once":false},
+        {"id":"花に水をやる","condition":" checkTime(9,30,9,50) ","once":false},
+        {"id":"マッサージ２０分","condition":" checkTime(10,0,10,20) ","once":false},
+        {"id":"西ホールでまったり","condition":" checkTime(11,0,11,20) ","once":false},
+        {"id":"中央の廊下","condition":" checkTime(11,20,11,30) ","once":false},
+        {"id":"タコスの店へ","condition":" checkTime(11,30,11,40) ","once":false},
+        {"id":"食事","condition":" checkTime(11,40,12,10) ","once":false},
+        {"id":"東Ev前","condition":" checkTime(12,40,12,50) ","once":false},
+        {"id":"西トイレ","condition":" checkTime(18,20,18,40) ","once":false},
+        {"id":"玄関西","condition":" checkTime(18,40,19,0) ","once":false},
+        {"id":"帰宅前","condition":" checkTime(19,20,19,30) ","once":false}
+        ]
+    },
+
+    {"evId":59,"name":"おめかし","add_able":true,"data":[
+        {"id":"複数条件","condition":" checkTime(7,0,7,20) && eventAt(59,28,53) ","once":false},
+        {"id":"過去の話","condition":" eventTalked(0,'複数条件') ","once":false},
+        {"id":"五人の部屋","condition":" eventRoom(0,5) ","once":false},
+        {"id":"水を持ってない","condition":" !haveItem('きれいな水',1) ","once":false},
+        {"id":"BGMポッド","condition":" haveItem(5,1) ","once":false},
+        {"id":"偶数","condition":" $gameVariables.value(11) % 2 == 0 ","once":false,"slot":"ちゃんちゃんこ"},
+        {"id":"特定座標","condition":" eventAt(0,28,53) ","once":false},
+        {"id":"セルフBがtrue","condition":" eventSelf(0,'B') ","once":false},
+        {"id":"兄は壮年の男性","condition":" eventName(6,'壮年の男性') ","once":false},
+        {"id":"兄は仲土狩","condition":" eventName(6,'仲土狩') ","once":false},
+        {"id":"３点以上","condition":" eventPoint(0,'x >= 3') ","once":false},
+        {"id":"7:10分まで","condition":" checkTime(7,0,7,10) ","once":false},
+        {"id":"1000円","condition":" $gameParty.gold() <= 1000 ","once":false}
+        ]
+    }
+
+
+]

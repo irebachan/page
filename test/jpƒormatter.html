@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本語テキスト整形</title>
+    <style>
+        #formattedText {
+            border: 1px solid #000;
+            padding: 10px;
+            width: 200px;
+            /* 吹き出しの幅 */
+            font-family: Arial, sans-serif;
+            white-space: pre-wrap;
+            /* 改行を維持する */
+        }
+    </style>
+</head>
+
+<body>
+    <textarea id="inputText" rows="5" cols="40">おっと 位置がズレると面倒だから動かすな</textarea><br>
+    <button onclick="formatText()">テキストを整形</button>
+    <div id="formattedText"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/tiny-segmenter/tiny_segmenter.js"></script>
+    <script>
+        function formatText() {
+            const inputText = document.getElementById('inputText').value;
+            const segmenter = new TinySegmenter();
+            const segments = segmenter.segment(inputText);
+            const maxWidth = 180; // 吹き出しの幅（パディングを考慮）
+            const formattedText = wrapText(segments, maxWidth);
+            document.getElementById('formattedText').innerText = formattedText;
+        }
+
+        function wrapText(segments, maxWidth) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            context.font = '16px Arial';
+            let line = '';
+            let result = '';
+
+            for (const segment of segments) {
+                const testLine = line + segment;
+                const metrics = context.measureText(testLine);
+                const testWidth = metrics.width;
+
+                if (testWidth > maxWidth && line !== '') {
+                    result += line.trim() + '\n';
+                    line = segment;
+                } else {
+                    line = testLine;
+                }
+            }
+            result += line.trim();
+            return result;
+        }
+    </script>
+</body>
+
+</html>

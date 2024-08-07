@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>セリフ抽出ウェブアプリ</title>
+    <style>
+        textarea {
+            width: 80%;
+            height: 300px;
+        }
+
+        button {
+            margin-top: 10px;
+        }
+
+        #scrollTopBtn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>漫画プロットからセリフを抽出</h1>
+    <input type="file" id="fileInput" accept=".txt">
+    <br>
+    <textarea id="inputText" placeholder="ここにプロットを入力してください"></textarea>
+    <br>
+    <button onclick="extractDialogues()">セリフを抽出</button>
+    <br>
+    <button onclick="copyDialogues()">セリフをコピー</button>
+    <button onclick="saveDialogues()">セリフを保存</button>
+    <h2>抽出されたセリフ</h2>
+    <ul id="dialogueList"></ul>
+
+    <button id="scrollTopBtn" onclick="scrollToTop()">トップに戻る</button>
+
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('inputText').value = e.target.result;
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function extractDialogues() {
+            const text = document.getElementById('inputText').value;
+            const dialogueList = document.getElementById('dialogueList');
+            dialogueList.innerHTML = '';
+
+            // 全てのセリフを正規表現で抽出
+            const dialogues = text.match(/[「｢]([^」｣]+)[」｣]/g);
+
+            if (dialogues) {
+                // 抽出されたセリフをスペースまたは「。」で区切って改行し、間に空行を挿入
+                const extractedDialogues = dialogues.map(dialogue =>
+                    dialogue.slice(1, -1).split(/。|\s+/).filter(line => line.trim() !== "").join('\n')
+                ).join('\n\n');
+
+                // セリフをリストに追加
+                extractedDialogues.split('\n').forEach(dialogue => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = dialogue;
+                    dialogueList.appendChild(listItem);
+                });
+            } else {
+                const listItem = document.createElement('li');
+                listItem.textContent = 'セリフが見つかりませんでした';
+                dialogueList.appendChild(listItem);
+            }
+        }
+
+        function copyDialogues() {
+            const dialogueList = document.getElementById('dialogueList');
+            const dialogues = Array.from(dialogueList.children).map(li => li.textContent).join('\n');
+            navigator.clipboard.writeText(dialogues).then(() => {
+                alert('セリフをコピーしました');
+            }).catch(err => {
+                console.error('コピーに失敗しました', err);
+            });
+        }
+
+        function saveDialogues() {
+            const dialogueList = document.getElementById('dialogueList');
+            const dialogues = Array.from(dialogueList.children).map(li => li.textContent).join('\n');
+            const blob = new Blob([dialogues], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'extracted_dialogues.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        window.onscroll = function () {
+            const scrollTopBtn = document.getElementById('scrollTopBtn');
+            if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+                scrollTopBtn.style.display = 'block';
+            } else {
+                scrollTopBtn.style.display = 'none';
+            }
+        };
+
+        function scrollToTop() {
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+        }
+    </script>
+</body>
+
+</html>
