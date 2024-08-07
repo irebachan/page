@@ -19,33 +19,6 @@
     const script = 'ish_menu';
     const parameters = PluginManager.parameters(script);
 
-
-
-    const _Scene_Message_messageWindowRect = Scene_Message.prototype.messageWindowRect; //テキストボックス行を変える
-    Scene_Message.prototype.messageWindowRect = function() {
-    _Scene_Message_messageWindowRect.apply(this, arguments);
-    const ww = Graphics.boxWidth;
-    const wh = this.calcWindowHeight(2, false) + 8; //変更箇所　def:4,8
-    const wx = (Graphics.boxWidth - ww) / 2;
-    const wy = 0;
-    return new Rectangle(wx, wy, ww, wh);
-    };
-
-        //セルフスイッチが不安定なんで……どうにかなりませんこと？？？　原因が本当にセルフスイッチ なのかは分からず
-
-        const _Game_SelfSwitches_setValue = Game_SelfSwitches.prototype.setValue
-        Game_SelfSwitches.prototype.setValue = function(key, value) {
-            _Game_SelfSwitches_setValue.apply(this, arguments)
-            this.onChange(key);//onChangeが2回呼ばれることになるが、1回目はkeyがないので弾かれる
-        }
-        Game_SelfSwitches.prototype.onChange = function(key) {
-            if(!Array.isArray(key)){ return; }// keyが渡されなかったり配列でなかったら抜ける
-            const [mapId, eventId, switchId] = key;
-            // mapIdが一致しなかったら更新しない(マップ読み込み時に更新される)
-            if(mapId === $gameMap.mapId() && $gameMap.event(eventId)){ $gameMap.event(eventId).refresh(); }
-        };
-        
-
     //----ステータス
 
 

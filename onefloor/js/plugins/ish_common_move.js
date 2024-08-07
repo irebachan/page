@@ -232,8 +232,7 @@ let only_turn = (dir,evId) => {
     };
     //console.log(`[${dir}]を向いてくださいね`)
 
-    let turn = {"skippable":false,"repeat":false,"list":[ //
-        {'code':36},//向き固定OFF
+    let turn = {"skippable":false,"repeat":false,"list":[ //停止してプレイヤーの方を向く
         {"code":code},//方向転換
         {'code':0} ]
         };  
@@ -248,7 +247,7 @@ let turn_to_player = () => { //停止して主人公の方を見る
     let dir = $gameMap._events[ev]['_direction']; //画像の方向　これ？
     $gameVariables._data[org_dir] = dir;
 
-    console.log(`[${ev}]動作中断中`)
+    //console.log(`[${ev}]動作中断中`)
     $gameSwitches._data[s_road] = true; //中断しました！という意味のスイッチ
     Game_Map.prototype.move_common(ev,'停止してプレイヤーの方を向く',true)
 }; //ノールックプラグインを入れると……　振り向いたあとどうやって元の向きに戻すか？が問題になるのです……。
@@ -418,7 +417,7 @@ let turn_to_player = () => { //停止して主人公の方を見る
 
     let move_stop = {"skippable":false,"repeat":false,"list":[ //歩行アニメを止める
         {'code':32},
-        {'code':36},//向き固定OFF
+        {'code':34},//向き固定OFF
         {'code':33},//足踏みON
         {"code":45,"parameters":["this.setOffsets(0,0);"]},　//スクリプト　座標オフセットクリア
         {"code":45,"parameters":["this.setAngle(0);"]},　//スクリプト　画像の回転リセット
@@ -427,7 +426,6 @@ let turn_to_player = () => { //停止して主人公の方を見る
         };   
 
 let move_turn_to_player = {"skippable":false,"repeat":false,"list":[ //停止してプレイヤーの方を向く
-        {'code':36},//向き固定OFF
         {'code':32},//歩行アニメOFF
         {"code":25},//主人公の方を向く
         {'code':0} ]
@@ -751,7 +749,7 @@ let move_quarrel_left = {"skippable":false,"repeat":true,"list":[ //押し合い
     {'code':15,"parameters":[30]}, //ウェイト
 
     {'code':2},//左に移動
-    {'code':36},//向き固定OFF
+    {'code':34},//向き固定OFF
     {'code':15,"parameters":[30]}, //ウェイト
     {'code':0} ]
 };   
@@ -763,7 +761,7 @@ let move_quarrel_left = {"skippable":false,"repeat":true,"list":[ //押し合い
     
     {"code":44,"parameters":[{"name":"Blow3","volume":45,"pitch":90,"pan":0}]},//効果音
     {'code':2},//左に移動
-    {'code':36},//向き固定OFF
+    {'code':34},//向き固定OFF
     {'code':15,"parameters":[30]}, //ウェイト
     {'code':0} ]
 }; 

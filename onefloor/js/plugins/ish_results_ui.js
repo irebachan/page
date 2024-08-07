@@ -81,17 +81,6 @@
  * @desc 
  * 
  * 
- * @command line
- * @text 文字の高さ
- * @desc 行間を設定する
- * 
- * @arg height
- * @text 文字の高さ
- * @desc ツクール のデフォは３６やで
- * @default 36
- * @type number
- * 
- * 
  */
 
 (() => {
@@ -156,22 +145,6 @@
         num_count('調べた回数');
     });
 
-    PluginManagerEx.registerCommand(document.currentScript, "line", args => {
-        let the_num =  Number(args.height);
-        set_lineHeight(the_num);
-    }); ///文字の高さを変える
-
-
-
-
-
-    let set_lineHeight = (num) => { //行間変える関数
-        const _Window_base_LineHeight = Window_Base.prototype.lineHeight;
-        Window_Base.prototype.lineHeight = function() {
-        _Window_base_LineHeight.apply(this, arguments);
-        return num; //編集　行間　デフォ36
-        };
-    };
 
 
     //テキストピクチャ　をパクって来ました……

@@ -10,6 +10,16 @@
  * 行間変えたり　デバッグ用に接点いじったり
  * 
  * 
+ * @command line
+ * @text 文字の高さ
+ * @desc 行間を設定する
+ * 
+ * @arg height
+ * @text 文字の高さ
+ * @desc ツクール のデフォは３６やで
+ * @default 36
+ * @type number
+ * 
  * 
  * @command debug_point
  * @text 接点を操作
@@ -58,6 +68,12 @@
  
     //ここから
 
+    PluginManager.registerCommand(script, "line", args => {
+        the_num =  Number(args.height);
+        set_lineHeight(the_num);
+    }); ///文字の高さを変える
+
+
 
     PluginManager.registerCommand(script, "debug_point", args => { //接点のデバッグ用
         let num = Number(args.value);
@@ -94,8 +110,24 @@
 
 
 
+let set_lineHeight = (num) => { //行間変える関数
+    const _Window_base_LineHeight = Window_Base.prototype.lineHeight;
+    Window_Base.prototype.lineHeight = function() {
+    _Window_base_LineHeight.apply(this, arguments);
+    return num; //編集　行間　デフォ36
+    };
+};
 
 
+const _Scene_Message_messageWindowRect = Scene_Message.prototype.messageWindowRect; //テキストボックス行を変える
+    Scene_Message.prototype.messageWindowRect = function() {
+    _Scene_Message_messageWindowRect.apply(this, arguments);
+    const ww = Graphics.boxWidth;
+    const wh = this.calcWindowHeight(2, false) + 8; //変更箇所　def:4,8
+    const wx = (Graphics.boxWidth - ww) / 2;
+    const wy = 0;
+    return new Rectangle(wx, wy, ww, wh);
+};
 
 
 

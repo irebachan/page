@@ -1,0 +1,23 @@
+[
+    { "Id": "",  "type_name": "",  "name": "",  "volume": "",  "pitch": "",  "pan": ""}, 
+    { "Id": "1",  "type_name": "ピョイッ",  "name": "Miss",  "volume": "60",  "pitch": "110",  "pan": "0"}, 
+    { "Id": "2",  "type_name": "ビョイーン",  "name": "Jump2",  "volume": "60",  "pitch": "90",  "pan": "0"}, 
+    { "Id": "3",  "type_name": "キラリン",  "name": "VSQSE_0007_kirarin_07",  "volume": "60",  "pitch": "140",  "pan": "0"}, 
+    { "Id": "4",  "type_name": "お金",  "name": "Shop2",  "volume": "60",  "pitch": "130",  "pan": "0"}, 
+    { "Id": "5",  "type_name": "アイテム入手",  "name": "Save2",  "volume": "60",  "pitch": "110",  "pan": "0"}, 
+    { "Id": "6",  "type_name": "どっ",  "name": "Crow",  "volume": "60",  "pitch": "110",  "pan": "0"}, 
+    { "Id": "7",  "type_name": "ガーン",  "name": "Bell1",  "volume": "60",  "pitch": "70",  "pan": "0"}, 
+    { "Id": "8",  "type_name": "イライラ",  "name": "Paralyze2",  "volume": "60",  "pitch": "110",  "pan": "0"}, 
+    { "Id": "9",  "type_name": "ちゃっかり",  "name": "Bell3",  "volume": "60",  "pitch": "110",  "pan": "0"}, 
+    { "Id": "10",  "type_name": "どんより",  "name": "Blind",  "volume": "60",  "pitch": "90",  "pan": "0"}, 
+    { "Id": "11",  "type_name": "グサッ",  "name": "Blow8",  "volume": "60",  "pitch": "110",  "pan": "0"}, 
+    { "Id": "12",  "type_name": "ごにょごにょ",  "name": "Darkness6",  "volume": "60",  "pitch": "110",  "pan": "0"}, 
+    { "Id": "13",  "type_name": "",  "name": "",  "volume": "60",  "pitch": "",  "pan": "0"}, 
+    { "Id": "14",  "type_name": "",  "name": "",  "volume": "60",  "pitch": "",  "pan": "0"}, 
+    { "Id": "15",  "type_name": "",  "name": "",  "volume": "60",  "pitch": "",  "pan": "0"}, 
+    { "Id": "16",  "type_name": "",  "name": "",  "volume": "60",  "pitch": "",  "pan": "0"}, 
+    { "Id": "17",  "type_name": "",  "name": "",  "volume": "60",  "pitch": "",  "pan": "0"}, 
+    { "Id": "18",  "type_name": "",  "name": "",  "volume": "60",  "pitch": "",  "pan": "0"}, 
+    { "Id": "19",  "type_name": "",  "name": "",  "volume": "60",  "pitch": "",  "pan": "0"}, 
+    { "Id": "20",  "type_name": "",  "name": "",  "volume": "60",  "pitch": "",  "pan": "0"}
+    ]

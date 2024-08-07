@@ -1,0 +1,23 @@
+[
+    { "Id": "",  "name": "",  "pic_id_min": "",  "pic_id_max": "",  "origin": "",  "x": "左端X",  "y": "左端Y",  "low": "列の数",  "collum": "行の数",  "offset_x": "行間",  "offset_y": "列の高さ",  "value_min": "",  "value_max": ""}, 
+    { "Id": "1",  "name": "背景画像",  "pic_id_min": "1",  "pic_id_max": "1",  "origin": "1",  "x": "552",  "y": "312",  "low": "0",  "collum": "1",  "offset_x": "0",  "offset_y": "0",  "value_min": "",  "value_max": ""}, 
+    { "Id": "2",  "name": "リザルト（バナー）",  "pic_id_min": "2",  "pic_id_max": "2",  "origin": "1",  "x": "552",  "y": "96",  "low": "0",  "collum": "1",  "offset_x": "0",  "offset_y": "0",  "value_min": "",  "value_max": ""}, 
+    { "Id": "3",  "name": "リザルト（題字）",  "pic_id_min": "3",  "pic_id_max": "3",  "origin": "1",  "x": "552",  "y": "48",  "low": "0",  "collum": "1",  "offset_x": "0",  "offset_y": "0",  "value_min": "",  "value_max": ""}, 
+    { "Id": "3",  "name": "キャラアイコン",  "pic_id_min": "4",  "pic_id_max": "24",  "origin": "0",  "x": "45",  "y": "174",  "low": "5",  "collum": "4",  "offset_x": "264",  "offset_y": "72",  "value_min": "",  "value_max": ""}, 
+    { "Id": "4",  "name": "キャラ名",  "pic_id_min": "25",  "pic_id_max": "28",  "origin": "0",  "x": "96",  "y": "150",  "low": "5",  "collum": "4",  "offset_x": "264",  "offset_y": "72",  "value_min": "28",  "value_max": "31"}, 
+    { "Id": "5",  "name": "接点",  "pic_id_min": "29",  "pic_id_max": "32",  "origin": "0",  "x": "264",  "y": "174",  "low": "5",  "collum": "4",  "offset_x": "264",  "offset_y": "72",  "value_min": "",  "value_max": ""}, 
+    { "Id": "6",  "name": "ゲージ・ベース",  "pic_id_min": "33",  "pic_id_max": "53",  "origin": "0",  "x": "96",  "y": "198",  "low": "5",  "collum": "4",  "offset_x": "264",  "offset_y": "72",  "value_min": "",  "value_max": ""}, 
+    { "Id": "7",  "name": "ゲージ",  "pic_id_min": "54",  "pic_id_max": "74",  "origin": "0",  "x": "96",  "y": "198",  "low": "5",  "collum": "4",  "offset_x": "264",  "offset_y": "72",  "value_min": "",  "value_max": ""}, 
+    { "Id": "8",  "name": "キャラ名：最大接点",  "pic_id_min": "75",  "pic_id_max": "75",  "origin": "0",  "x": "150",  "y": "450",  "low": "",  "collum": "1",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "9",  "name": "画像：最大接点",  "pic_id_min": "76",  "pic_id_max": "76",  "origin": "0",  "x": "288",  "y": "144",  "low": "",  "collum": "1",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "10",  "name": "t_人と話した回数",  "pic_id_min": "4",  "pic_id_max": "4",  "origin": "0",  "x": "120",  "y": "192",  "low": "",  "collum": "",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "11",  "name": "n_人と話した回数",  "pic_id_min": "5",  "pic_id_max": "5",  "origin": "0",  "x": "408",  "y": "192",  "low": "",  "collum": "",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "12",  "name": "d_人と話した回数",  "pic_id_min": "6",  "pic_id_max": "6",  "origin": "0",  "x": "144",  "y": "216",  "low": "",  "collum": "",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "13",  "name": "t_調べた回数",  "pic_id_min": "7",  "pic_id_max": "7",  "origin": "0",  "x": "120",  "y": "288",  "low": "",  "collum": "",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "14",  "name": "n_調べた回数",  "pic_id_min": "8",  "pic_id_max": "8",  "origin": "0",  "x": "408",  "y": "288",  "low": "",  "collum": "",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "15",  "name": "d_調べた回数",  "pic_id_min": "9",  "pic_id_max": "9",  "origin": "0",  "x": "144",  "y": "312",  "low": "",  "collum": "",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "16",  "name": "t_最も接点が高い",  "pic_id_min": "10",  "pic_id_max": "10",  "origin": "0",  "x": "120",  "y": "384",  "low": "",  "collum": "",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "17",  "name": "n_最も接点が高い",  "pic_id_min": "11",  "pic_id_max": "11",  "origin": "0",  "x": "192",  "y": "432",  "low": "",  "collum": "",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "18",  "name": "p_最も接点が高い",  "pic_id_min": "12",  "pic_id_max": "12",  "origin": "1",  "x": "811",  "y": "267",  "low": "",  "collum": "",  "offset_x": "",  "offset_y": "",  "value_min": "",  "value_max": ""}, 
+    { "Id": "12",  "name": "！最小・最大",  "pic_id_min": "",  "pic_id_max": "",  "origin": "",  "x": "",  "y": "",  "low": "",  "collum": "",  "offset_x": "",  "offset_y": "",  "value_min": "1",  "value_max": "76"}
+    ]

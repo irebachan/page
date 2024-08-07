@@ -116,9 +116,18 @@
     const door_switch = Number(parameters['door_switch'] || 10);
    
     let room_name = '';
- 
+    let xx_min = 0;
+    let xx_max = 0;
+    let yy_min = 0;
+    let yy_max = 0;
+    let per = true;
+    
+  
+
+
 
     //ここから
+
 
     PluginManagerEx.registerCommand(document.currentScript, "in_home", args => {
         let evId = Number(args.evId);
@@ -127,18 +136,56 @@
         let che = ev_at_home(evId,room_name);
         if (che) {$gameSwitches._data[door_switch] = true
         } else {$gameSwitches._data[door_switch] = false};
+   
     });
 
-    PluginManagerEx.registerCommand(document.currentScript, "at_home", args => {
+
+
+    PluginManager.registerCommand(script, "at_home", args => {
         room_name = String(args.room_name);
+        let num = Game_Map.prototype.room_num(room_name) ;//振り分け
+        const room = $dataUniques.room_list;
+        //console.log(`${room_name}:${num}`)
 
-        let che = ev_in_home(room_name);
-        if (che) {$gameSwitches._data[door_switch] = true
-        } else {$gameSwitches._data[door_switch] = false};
+
+        xx_min = Number(room[num]['x_min']);
+        xx_max = Number(room[num]['x_max']);
+        yy_min = Number(room[num]['y_min']);
+        yy_max = Number(room[num]['y_max']);
+        //進入方向は保留（縦か横かでイベントの動作が変わる）　とりあえずコモンイベント内で分岐しておく
+
+        if (room[num]['per'] == '人がいる') { //進入可能条件　中に人がいる時：true　いない時:false
+            per = true;
+        } else {
+            per =false;
+        };
+
+        $gameSwitches._data[door_switch] = false;//初期化？
+
+        //console.log(`x幅：${xx_min}~${xx_max} Y幅：${yy_min}~${yy_max}`);
+        //プレイヤーが部屋の中にいるならtrueが返る
+        let in_home = Game_Map.prototype.player_in_home(xx_min,xx_max,yy_min,yy_max);
+        if (in_home) {//プレイヤーが部屋の中にいるならtrue
+            $gameSwitches._data[door_switch] = true;
+
+        } else { //プレイヤーが部屋の外にいるなら　内部にイベントがあるか確かめる
+            let at = Game_Map.prototype.at_home(xx_min,xx_max,yy_min,yy_max);
+            //console.log(at)
+
+            if (per) { //人がいる時進入可能
+                if (at) { //人がいる
+                    $gameSwitches._data[door_switch] = true;
+                    //console.log(`人がいるそうです　${xx_min},${xx_max},${yy_min},${yy_max}`)
+                };
+            } else if (at == false) { //人がいない時進入可能 
+                //console.log(`人がいないそうです　${xx_min},${xx_max},${yy_min},${yy_max}`)
+                $gameSwitches._data[door_switch] = true; //人がいない
+            }
+        };
     });
 
 
-   //設定しやすさの関係でプラグインコマンド使うけど、別に条件分岐をする必要がある
+    //設定しやすさの関係でプラグインコマンド使うけど、別に条件分岐をする必要がある
 
     Game_Map.prototype.door_open = function() { //
         if ($gameSwitches.value(door_switch)) {
@@ -149,17 +196,15 @@
 
     
 
-    //クラス定義
     function home_room() {
         this.initialize.apply(this, arguments);
     }
      
     home_room.prototype.initialize = function() {
         this.data = $dataUniques.room_list;
+        this.possible = false;
     };
 
-
-    //メソッド
     home_room.prototype.room_num = function(name) { //部屋名を部屋番号に変換
         let num = 0;
         switch (name) {
@@ -228,29 +273,18 @@
     
 
 
-    home_room.prototype.permission = function() { //進入条件
-        const lm = this.data[this.roomNum];
-        if (lm['per'] == '人がいる') { //進入可能条件　中に人がいる時：true　いない時:false
-            this.per = true;
-        } else {
-            this.per =false;
-        };
-        return this;
-    };
 
-
-   home_room.prototype.check_player_in_room = function() {  //主人公が部屋の中（指定座標内）にいるか
-        this.player_in = false;
+   //主人公が部屋の中（指定座標内）にいる場合は無条件？で外に出られる
+   home_room.prototype.player_in_home = function() {
         if ($gamePlayer._realX >= this.x_min && $gamePlayer._realX <= this.x_max) {
             if ( $gamePlayer._realY >= this.y_min && $gamePlayer._realY <= this.y_max) {
-                this.player_in = true;
+                this.possible = true;
             };
         };
         return this;
     };
 
-    home_room.prototype.check_ev_in_home = function() { //イベントの位置を確かめる
-        this.event_in = false;
+    home_room.prototype.at_home = function() { //イベントの位置を確かめる
         let y = 0;
         for (let cntY = this.y_min, lenY = this.y_max ; cntY <= lenY ; cntY++) {
             y = cntY;
@@ -261,7 +295,7 @@
                     let key_c = [$gameMap.mapId(), ev, "C"];
 
                     if($gameSelfSwitches.value(key_d) || $gameSelfSwitches.value(key_c) ){ // D:trueなら
-                     this.event_in = true;
+                     this.possible = true;
                     };
                 };
             };
@@ -278,16 +312,90 @@
         } else {return false};
     }
 
-    let ev_in_home = (name) => {
-        let iy = new home_room().room_num(name).set_room_con().permission().check_player_in_room().check_ev_in_home();
-        if (iy.player_in) { //プレイヤーが内部にいる
-            return true;
-        } else if (iy.per && iy.event_in) { //外部、条件：人がいる　部屋：人がいる
-            return true;
-        } else if (!iy.per && !iy.event_in) { //外部、条件：人がいない　部屋：人がいない
-            return true;
-        } else {return false};
+
+
+
+
+
+    Game_Map.prototype.room_num = function(name) { //部屋名を部屋番号に変換
+        let num = 0;
+        switch (name) {
+            case '医院':
+            num = 1;
+            break;
+
+            case 'メヌの店':
+            num = 2;
+            break;
+
+            case '田子須の店':
+            num = 3;
+            break;
+
+            case '仲土狩家':
+            num = 4;
+            break;
+
+            case '五人組':
+            num = 5;
+            break;
+
+            case 'はゆみ':
+            num = 6;
+            break;
+
+            case '西トイレ':
+            num = 7;
+            break;
+
+            case '東トイレ':
+            num = 8;
+            break;
+        } //
+        return num;
+
     };
+ 
+    //主人公が部屋の中（指定座標内）にいる場合は無条件？で外に出られる
+    Game_Map.prototype.player_in_home = function(x_min,x_max,y_min,y_max) {
+        if ($gamePlayer._realX >= x_min && $gamePlayer._realX <= x_max) {
+            if ( $gamePlayer._realY >= y_min && $gamePlayer._realY <= y_max) {
+                return true;
+            };
+        };
+    };
+
+
+    Game_Map.prototype.at_home = function(x_min,x_max,y_min,y_max) { //イベントの位置を確かめる
+        let in_ev = false;
+        for (let cnt_y = 0, len_y = y_max - y_min; cnt_y <= len_y ; cnt_y++) {
+            let thistime = cnt_y + y_min;
+
+            for (let cnt_x = 0,len_x = x_max - x_min; cnt_x <= len_x ;cnt_x++) {
+                //console.log(`${cnt_x + x_min},${thistime}の調査`);
+                if ($gameMap.eventIdXy(cnt_x + x_min,thistime) > 0) { //イベント発見
+
+                    let ev = $gameMap.eventIdXy(cnt_x + x_min,thistime);//ID取得
+                    let key_d = [$gameMap.mapId(), ev, "D"]; //マップID　暫定　イベントのセルフスイッチD
+                    let key_c = [$gameMap.mapId(), ev, "C"];
+
+                    if($gameSelfSwitches.value(key_d) || $gameSelfSwitches.value(key_c) ){ // D:trueなら
+                        in_ev = true;
+                    
+                    };
+                };
+            };
+        };
+        return in_ev;
+    }; // $gameMap.
+
+ 
+
+
+
+
+
+    
 
 
 

@@ -51,6 +51,8 @@
  * @default 
  * @type String
  * 
+ * 
+ * 
  */
 
 (() => {
@@ -78,6 +80,23 @@
 
 
     //ここから
+
+    PluginManagerEx.registerCommand(document.currentScript, "mob_set", args => {
+        mobSet();
+    });
+
+    PluginManagerEx.registerCommand(document.currentScript, "mob_delete", args => {
+        mobDelete();
+    });
+
+    PluginManagerEx.registerCommand(document.currentScript, "mob_random", args => {
+        mobRandom();
+    });
+
+
+
+
+
 
     PluginManager.registerCommand(script, "fade_In", args => {
         $gameSwitches.setValue(c_fadeIn,true) //フェードイン用のスイッチをtrue 
@@ -126,42 +145,28 @@
     });
 
 
+//これは意味あります……　アイテムデータテーブル.jsonを　オブジェクトとして登録するにあたり　プラグインを分ける必要があって？
+    let $dataTable       = null;
+    DataManager._databaseFiles.push(
+        { name: '$dataTable', src: 'item_table.json'}
+    );
+
+   
 
 
+    //セルフスイッチが不安定なんで……どうにかなりませんこと？？？　原因が本当にセルフスイッチ なのかは分からず
 
-
-
-
-    /*
-好感度分岐　プラグインの方で式を入力できないか？
-イベントID：３
-式；　x >= 10
-みたいにさあ　メヌの接点が１０以上　みたいな。
-
-    */
-
-
-    let point_con = (evId = 1,tx = 'x == 0') => { //指定したイベントの接点を　文字列で指定した式で評価する
-        let point = $gameVariables.value(talking_point)[talking_head + Number(evId)];
-        let str = `if (${tx}) {return true;
-        } else {return false} `;//式（文字列）
-
-        let fun = new Function('x',str);//新しい関数だよ
-        console.log(`${str} x = ${point}`)
-
-        if (fun(point)) {
-            return true;
-        } else {
-            return false;
-        };
-    };
-
-
-     
-
-
-
-
+    const _Game_SelfSwitches_setValue = Game_SelfSwitches.prototype.setValue
+Game_SelfSwitches.prototype.setValue = function(key, value) {
+    _Game_SelfSwitches_setValue.apply(this, arguments)
+    this.onChange(key);//onChangeが2回呼ばれることになるが、1回目はkeyがないので弾かれる
+}
+Game_SelfSwitches.prototype.onChange = function(key) {
+    if(!Array.isArray(key)){ return; }// keyが渡されなかったり配列でなかったら抜ける
+    const [mapId, eventId, switchId] = key;
+    // mapIdが一致しなかったら更新しない(マップ読み込み時に更新される)
+    if(mapId === $gameMap.mapId() && $gameMap.event(eventId)){ $gameMap.event(eventId).refresh(); }
+};
 
 
 
