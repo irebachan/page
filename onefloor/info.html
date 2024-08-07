@@ -1,0 +1,693 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>ワンフロアハイツ　プロトタイプ</title><style>
+/* cspell:disable-file */
+/* webkit printing magic: print all background colors */
+html {
+	-webkit-print-color-adjust: exact;
+}
+* {
+	box-sizing: border-box;
+	-webkit-print-color-adjust: exact;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+@media only screen {
+	body {
+		margin: 2em auto;
+		max-width: 900px;
+		color: rgb(55, 53, 47);
+	}
+}
+
+body {
+	line-height: 1.5;
+	white-space: pre-wrap;
+}
+
+a,
+a.visited {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.pdf-relative-link-path {
+	font-size: 80%;
+	color: #444;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+	font-weight: 600;
+	margin-bottom: 0;
+}
+
+.page-title {
+	font-size: 2.5rem;
+	font-weight: 700;
+	margin-top: 0;
+	margin-bottom: 0.75em;
+}
+
+h1 {
+	font-size: 1.875rem;
+	margin-top: 1.875rem;
+}
+
+h2 {
+	font-size: 1.5rem;
+	margin-top: 1.5rem;
+}
+
+h3 {
+	font-size: 1.25rem;
+	margin-top: 1.25rem;
+}
+
+.source {
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	padding: 1.5em;
+	word-break: break-all;
+}
+
+.callout {
+	border-radius: 3px;
+	padding: 1rem;
+}
+
+figure {
+	margin: 1.25em 0;
+	page-break-inside: avoid;
+}
+
+figcaption {
+	opacity: 0.5;
+	font-size: 85%;
+	margin-top: 0.5em;
+}
+
+mark {
+	background-color: transparent;
+}
+
+.indented {
+	padding-left: 1.5em;
+}
+
+hr {
+	background: transparent;
+	display: block;
+	width: 100%;
+	height: 1px;
+	visibility: visible;
+	border: none;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.09);
+}
+
+img {
+	max-width: 100%;
+}
+
+@media only print {
+	img {
+		max-height: 100vh;
+		object-fit: contain;
+	}
+}
+
+@page {
+	margin: 1in;
+}
+
+.collection-content {
+	font-size: 0.875rem;
+}
+
+.column-list {
+	display: flex;
+	justify-content: space-between;
+}
+
+.column {
+	padding: 0 1em;
+}
+
+.column:first-child {
+	padding-left: 0;
+}
+
+.column:last-child {
+	padding-right: 0;
+}
+
+.table_of_contents-item {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.3;
+	padding: 0.125rem;
+}
+
+.table_of_contents-indent-1 {
+	margin-left: 1.5rem;
+}
+
+.table_of_contents-indent-2 {
+	margin-left: 3rem;
+}
+
+.table_of_contents-indent-3 {
+	margin-left: 4.5rem;
+}
+
+.table_of_contents-link {
+	text-decoration: none;
+	opacity: 0.7;
+	border-bottom: 1px solid rgba(55, 53, 47, 0.18);
+}
+
+table,
+th,
+td {
+	border: 1px solid rgba(55, 53, 47, 0.09);
+	border-collapse: collapse;
+}
+
+table {
+	border-left: none;
+	border-right: none;
+}
+
+th,
+td {
+	font-weight: normal;
+	padding: 0.25em 0.5em;
+	line-height: 1.5;
+	min-height: 1.5em;
+	text-align: left;
+}
+
+th {
+	color: rgba(55, 53, 47, 0.6);
+}
+
+ol,
+ul {
+	margin: 0;
+	margin-block-start: 0.6em;
+	margin-block-end: 0.6em;
+}
+
+li > ol:first-child,
+li > ul:first-child {
+	margin-block-start: 0.6em;
+}
+
+ul > li {
+	list-style: disc;
+}
+
+ul.to-do-list {
+	padding-inline-start: 0;
+}
+
+ul.to-do-list > li {
+	list-style: none;
+}
+
+.to-do-children-checked {
+	text-decoration: line-through;
+	opacity: 0.375;
+}
+
+ul.toggle > li {
+	list-style: none;
+}
+
+ul {
+	padding-inline-start: 1.7em;
+}
+
+ul > li {
+	padding-left: 0.1em;
+}
+
+ol {
+	padding-inline-start: 1.6em;
+}
+
+ol > li {
+	padding-left: 0.2em;
+}
+
+.mono ol {
+	padding-inline-start: 2em;
+}
+
+.mono ol > li {
+	text-indent: -0.4em;
+}
+
+.toggle {
+	padding-inline-start: 0em;
+	list-style-type: none;
+}
+
+/* Indent toggle children */
+.toggle > li > details {
+	padding-left: 1.7em;
+}
+
+.toggle > li > details > summary {
+	margin-left: -1.1em;
+}
+
+.selected-value {
+	display: inline-block;
+	padding: 0 0.5em;
+	background: rgba(206, 205, 202, 0.5);
+	border-radius: 3px;
+	margin-right: 0.5em;
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+	white-space: nowrap;
+}
+
+.collection-title {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.page-description {
+    margin-bottom: 2em;
+}
+
+.simple-table {
+	margin-top: 1em;
+	font-size: 0.875rem;
+	empty-cells: show;
+}
+.simple-table td {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table th {
+	height: 29px;
+	min-width: 120px;
+}
+
+.simple-table-header-color {
+	background: rgb(247, 246, 243);
+	color: black;
+}
+.simple-table-header {
+	font-weight: 500;
+}
+
+time {
+	opacity: 0.5;
+}
+
+.icon {
+	display: inline-block;
+	max-width: 1.2em;
+	max-height: 1.2em;
+	text-decoration: none;
+	vertical-align: text-bottom;
+	margin-right: 0.5em;
+}
+
+img.icon {
+	border-radius: 3px;
+}
+
+.user-icon {
+	width: 1.5em;
+	height: 1.5em;
+	border-radius: 100%;
+	margin-right: 0.5rem;
+}
+
+.user-icon-inner {
+	font-size: 0.8em;
+}
+
+.text-icon {
+	border: 1px solid #000;
+	text-align: center;
+}
+
+.page-cover-image {
+	display: block;
+	object-fit: cover;
+	width: 100%;
+	max-height: 30vh;
+}
+
+.page-header-icon {
+	font-size: 3rem;
+	margin-bottom: 1rem;
+}
+
+.page-header-icon-with-cover {
+	margin-top: -0.72em;
+	margin-left: 0.07em;
+}
+
+.page-header-icon img {
+	border-radius: 3px;
+}
+
+.link-to-page {
+	margin: 1em 0;
+	padding: 0;
+	border: none;
+	font-weight: 500;
+}
+
+p > .user {
+	opacity: 0.5;
+}
+
+td > .user,
+td > time {
+	white-space: nowrap;
+}
+
+input[type="checkbox"] {
+	transform: scale(1.5);
+	margin-right: 0.6em;
+	vertical-align: middle;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+.image {
+	border: none;
+	margin: 1.5em 0;
+	padding: 0;
+	border-radius: 0;
+	text-align: center;
+}
+
+.code,
+code {
+	background: rgba(135, 131, 120, 0.15);
+	border-radius: 3px;
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+	font-size: 85%;
+	tab-size: 2;
+}
+
+code {
+	color: #eb5757;
+}
+
+.code {
+	padding: 1.5em 1em;
+}
+
+.code-wrap {
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.code > code {
+	background: none;
+	padding: 0;
+	font-size: 100%;
+	color: inherit;
+}
+
+blockquote {
+	font-size: 1.25em;
+	margin: 1em 0;
+	padding-left: 1em;
+	border-left: 3px solid rgb(55, 53, 47);
+}
+
+.bookmark {
+	text-decoration: none;
+	max-height: 8em;
+	padding: 0;
+	display: flex;
+	width: 100%;
+	align-items: stretch;
+}
+
+.bookmark-title {
+	font-size: 0.85em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	height: 1.75em;
+	white-space: nowrap;
+}
+
+.bookmark-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.bookmark-info {
+	flex: 4 1 180px;
+	padding: 12px 14px 14px;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+.bookmark-image {
+	width: 33%;
+	flex: 1 1 180px;
+	display: block;
+	position: relative;
+	object-fit: cover;
+	border-radius: 1px;
+}
+
+.bookmark-description {
+	color: rgba(55, 53, 47, 0.6);
+	font-size: 0.75em;
+	overflow: hidden;
+	max-height: 4.5em;
+	word-break: break-word;
+}
+
+.bookmark-href {
+	font-size: 0.75em;
+	margin-top: 0.25em;
+}
+
+.sans { font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol"; }
+.code { font-family: "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace; }
+.serif { font-family: Lyon-Text, Georgia, ui-serif, serif; }
+.mono { font-family: iawriter-mono, Nitti, Menlo, Courier, monospace; }
+.pdf .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK JP'; }
+.pdf:lang(zh-CN) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK SC'; }
+.pdf:lang(zh-TW) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK TC'; }
+.pdf:lang(ko-KR) .sans { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol", 'Twemoji', 'Noto Color Emoji', 'Noto Sans CJK KR'; }
+.pdf .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .code { font-family: Source Code Pro, "SFMono-Regular", Menlo, Consolas, "PT Mono", "Liberation Mono", Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.pdf .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK JP'; }
+.pdf:lang(zh-CN) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK SC'; }
+.pdf:lang(zh-TW) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK TC'; }
+.pdf:lang(ko-KR) .serif { font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, 'Twemoji', 'Noto Color Emoji', 'Noto Serif CJK KR'; }
+.pdf .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK JP'; }
+.pdf:lang(zh-CN) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK SC'; }
+.pdf:lang(zh-TW) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK TC'; }
+.pdf:lang(ko-KR) .mono { font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace, 'Twemoji', 'Noto Color Emoji', 'Noto Sans Mono CJK KR'; }
+.highlight-default {
+	color: rgba(55, 53, 47, 1);
+}
+.highlight-gray {
+	color: rgba(120, 119, 116, 1);
+	fill: rgba(120, 119, 116, 1);
+}
+.highlight-brown {
+	color: rgba(159, 107, 83, 1);
+	fill: rgba(159, 107, 83, 1);
+}
+.highlight-orange {
+	color: rgba(217, 115, 13, 1);
+	fill: rgba(217, 115, 13, 1);
+}
+.highlight-yellow {
+	color: rgba(203, 145, 47, 1);
+	fill: rgba(203, 145, 47, 1);
+}
+.highlight-teal {
+	color: rgba(68, 131, 97, 1);
+	fill: rgba(68, 131, 97, 1);
+}
+.highlight-blue {
+	color: rgba(51, 126, 169, 1);
+	fill: rgba(51, 126, 169, 1);
+}
+.highlight-purple {
+	color: rgba(144, 101, 176, 1);
+	fill: rgba(144, 101, 176, 1);
+}
+.highlight-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.highlight-red {
+	color: rgba(212, 76, 71, 1);
+	fill: rgba(212, 76, 71, 1);
+}
+.highlight-gray_background {
+	background: rgba(241, 241, 239, 1);
+}
+.highlight-brown_background {
+	background: rgba(244, 238, 238, 1);
+}
+.highlight-orange_background {
+	background: rgba(251, 236, 221, 1);
+}
+.highlight-yellow_background {
+	background: rgba(251, 243, 219, 1);
+}
+.highlight-teal_background {
+	background: rgba(237, 243, 236, 1);
+}
+.highlight-blue_background {
+	background: rgba(231, 243, 248, 1);
+}
+.highlight-purple_background {
+	background: rgba(244, 240, 247, 0.8);
+}
+.highlight-pink_background {
+	background: rgba(249, 238, 243, 0.8);
+}
+.highlight-red_background {
+	background: rgba(253, 235, 236, 1);
+}
+.block-color-default {
+	color: inherit;
+	fill: inherit;
+}
+.block-color-gray {
+	color: rgba(120, 119, 116, 1);
+	fill: rgba(120, 119, 116, 1);
+}
+.block-color-brown {
+	color: rgba(159, 107, 83, 1);
+	fill: rgba(159, 107, 83, 1);
+}
+.block-color-orange {
+	color: rgba(217, 115, 13, 1);
+	fill: rgba(217, 115, 13, 1);
+}
+.block-color-yellow {
+	color: rgba(203, 145, 47, 1);
+	fill: rgba(203, 145, 47, 1);
+}
+.block-color-teal {
+	color: rgba(68, 131, 97, 1);
+	fill: rgba(68, 131, 97, 1);
+}
+.block-color-blue {
+	color: rgba(51, 126, 169, 1);
+	fill: rgba(51, 126, 169, 1);
+}
+.block-color-purple {
+	color: rgba(144, 101, 176, 1);
+	fill: rgba(144, 101, 176, 1);
+}
+.block-color-pink {
+	color: rgba(193, 76, 138, 1);
+	fill: rgba(193, 76, 138, 1);
+}
+.block-color-red {
+	color: rgba(212, 76, 71, 1);
+	fill: rgba(212, 76, 71, 1);
+}
+.block-color-gray_background {
+	background: rgba(241, 241, 239, 1);
+}
+.block-color-brown_background {
+	background: rgba(244, 238, 238, 1);
+}
+.block-color-orange_background {
+	background: rgba(251, 236, 221, 1);
+}
+.block-color-yellow_background {
+	background: rgba(251, 243, 219, 1);
+}
+.block-color-teal_background {
+	background: rgba(237, 243, 236, 1);
+}
+.block-color-blue_background {
+	background: rgba(231, 243, 248, 1);
+}
+.block-color-purple_background {
+	background: rgba(244, 240, 247, 0.8);
+}
+.block-color-pink_background {
+	background: rgba(249, 238, 243, 0.8);
+}
+.block-color-red_background {
+	background: rgba(253, 235, 236, 1);
+}
+.select-value-color-uiBlue { background-color: rgba(35, 131, 226, .07); }
+.select-value-color-pink { background-color: rgba(245, 224, 233, 1); }
+.select-value-color-purple { background-color: rgba(232, 222, 238, 1); }
+.select-value-color-green { background-color: rgba(219, 237, 219, 1); }
+.select-value-color-gray { background-color: rgba(227, 226, 224, 1); }
+.select-value-color-transparentGray { background-color: rgba(227, 226, 224, 0); }
+.select-value-color-translucentGray { background-color: rgba(0, 0, 0, 0.06); }
+.select-value-color-orange { background-color: rgba(250, 222, 201, 1); }
+.select-value-color-brown { background-color: rgba(238, 224, 218, 1); }
+.select-value-color-red { background-color: rgba(255, 226, 221, 1); }
+.select-value-color-yellow { background-color: rgba(253, 236, 200, 1); }
+.select-value-color-blue { background-color: rgba(211, 229, 239, 1); }
+.select-value-color-pageGlass { background-color: undefined; }
+.select-value-color-washGlass { background-color: undefined; }
+
+.checkbox {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	width: 16;
+	height: 16;
+	background-size: 16px;
+	margin-left: 2px;
+	margin-right: 5px;
+}
+
+.checkbox-on {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+
+.checkbox-off {
+	background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E");
+}
+	
+</style></head><body><article id="0ab25abe-0dda-4f4f-9278-615be305515f" class="page sans"><header><h1 class="page-title">ワンフロアハイツ　プロトタイプ</h1><p class="page-description"></p></header><div class="page-body"><p id="2e77f148-27bb-4fda-a8c2-9ab9c94840e9" class="">
+</p><figure id="fec7e876-1219-40aa-bb67-990fc040a51a" class="image"><a href="img/Untitled.png"><img style="width:500px" src="img/Untitled.png"/></a></figure><p id="22f9f23b-1f76-4030-8495-3a2952af994c" class="">
+</p><p id="5b1358cc-61ef-48fc-9d82-c54539d0737b" class="block-color-gray_background">↓　ブラウザでプレイする　↓</p><figure id="28bc4410-5ab4-4845-aea4-8df18379b8a2"><a href="https://irebachan.github.io/page/onefloor/index.html" class="bookmark source"><div class="bookmark-info"><div class="bookmark-text"><div class="bookmark-title">ワンフロアハイツ</div></div><div class="bookmark-href"><img src="https://irebachan.github.io/page/onefloor/icon/icon.png" class="icon bookmark-icon"/>https://irebachan.github.io/page/onefloor/index.html</div></div></a></figure><p id="b1c67275-9258-45a4-87a1-f63d0bbbaea6" class="">
+</p><p id="55b06603-2d4c-45e5-9618-2087295ad030" class="">ver1.00</p><p id="9fa30c68-f633-4dff-adb0-93e50aaedbe2" class="">(C)2020 CARTON MAN</p><p id="a461f9a6-58ee-430d-8939-3976638190e7" class="">
+</p><nav id="74a29a97-05b6-4d42-952f-17e32f8ea29a" class="block-color-gray table_of_contents"><div class="table_of_contents-item table_of_contents-indent-0"><a class="table_of_contents-link" href="#4f46ca45-fbb9-41e0-bb19-4edd00842979">■このゲームについて</a></div><div class="table_of_contents-item table_of_contents-indent-0"><a class="table_of_contents-link" href="#89973b0c-ce0e-4f20-8e70-ebbe716fba8f">■起動方法</a></div><div class="table_of_contents-item table_of_contents-indent-1"><a class="table_of_contents-link" href="#23b533eb-53d0-408a-bdc3-318a3be3f17a">ダウンロード版</a></div><div class="table_of_contents-item table_of_contents-indent-1"><a class="table_of_contents-link" href="#1be761b6-942f-4984-934a-4d98e28ad435">ブラウザ版</a></div><div class="table_of_contents-item table_of_contents-indent-0"><a class="table_of_contents-link" href="#044ac421-838d-448f-b054-1fd05c92008c">■基本操作(デフォルト)</a></div><div class="table_of_contents-item table_of_contents-indent-1"><a class="table_of_contents-link" href="#20a5387b-cab4-4aa1-bec1-7dac6ba409e2">キーボード</a></div><div class="table_of_contents-item table_of_contents-indent-0"><a class="table_of_contents-link" href="#f0f560e6-dd29-4847-8e42-f4abc9116af5">■Q&amp;A</a></div><div class="table_of_contents-item table_of_contents-indent-1"><a class="table_of_contents-link" href="#33b2ee87-b902-4920-b1b1-41a86c11b982">Q1:閉じ込められました！</a></div><div class="table_of_contents-item table_of_contents-indent-1"><a class="table_of_contents-link" href="#41bf317a-3ff7-4248-878f-078da24a8213">Q2:メッセージをスキップしたいです。</a></div><div class="table_of_contents-item table_of_contents-indent-0"><a class="table_of_contents-link" href="#8a196586-71e8-4636-9370-1e4ecdcb3143">■製作ツール</a></div><div class="table_of_contents-item table_of_contents-indent-0"><a class="table_of_contents-link" href="#949f030e-0f38-4dcb-ba8b-d419843c6946">■制作者</a></div><div class="table_of_contents-item table_of_contents-indent-0"><a class="table_of_contents-link" href="#71e69218-fa2d-45bc-af89-da2b19aacc12">■注意事項</a></div><div class="table_of_contents-item table_of_contents-indent-0"><a class="table_of_contents-link" href="#8d619352-6598-4050-9606-34c253467b27">■更新履歴</a></div><div class="table_of_contents-item table_of_contents-indent-0"><a class="table_of_contents-link" href="#ccaf931a-e91e-4f87-a251-7b6f0070ac74">■使用素材（敬称略）</a></div></nav><p id="81fcf297-6995-47ac-ad5c-0226b38ed61c" class="">
+</p><h2 id="4f46ca45-fbb9-41e0-bb19-4edd00842979" class="">■このゲームについて</h2><p id="59bdc21e-727c-487d-8a9a-dd3ed7c7f1ab" class="">自身の祖母が大家を務めるマンションに招待されたあなたは、<br/>一日かけてマンションの中を探検することにしました。<br/>気になるオブジェクトを突っついて、反応を確かめてみましょう！<br/></p><p id="9066c226-9c13-4085-856b-6a45c95fdd1b" class="">本作はプロトタイプ版です。<br/>ストーリーやゲーム性はなく、マップ内の散歩だけが可能です。<br/></p><p id="8d33e88d-b111-4d0c-a5d2-d9ccf4e928d9" class="">
+</p><h2 id="89973b0c-ce0e-4f20-8e70-ebbe716fba8f" class="">■起動方法</h2><h3 id="23b533eb-53d0-408a-bdc3-318a3be3f17a" class="">ダウンロード版</h3><p id="271a3603-5335-440e-9a2e-cb62e259579e" class="">「Game.exe」を実行してください。</p><h3 id="1be761b6-942f-4984-934a-4d98e28ad435" class="">ブラウザ版</h3><figure id="7762d2e7-9b9f-4d01-b838-9969669287e7"><a href="https://irebachan.github.io/page/onefloor/index.html" class="bookmark source"><div class="bookmark-info"><div class="bookmark-text"><div class="bookmark-title">ワンフロアハイツ</div></div><div class="bookmark-href"><img src="https://irebachan.github.io/page/onefloor/icon/icon.png" class="icon bookmark-icon"/>https://irebachan.github.io/page/onefloor/index.html</div></div></a></figure><p id="9c3cc68e-8232-44c5-8d08-0e8381bf5476" class="">上記のリンクを開いてください。</p><p id="9ca2b31f-880b-433f-a486-39d43925d02a" class="">
+</p><h2 id="044ac421-838d-448f-b054-1fd05c92008c" class="">■基本操作(デフォルト)</h2><h3 id="20a5387b-cab4-4aa1-bec1-7dac6ba409e2" class="">キーボード</h3><p id="495cbb20-6188-451b-97d8-7ecbfc479a5d" class="">Z：決定<br/>X：キャンセル、メニュー起動<br/>shift：ダッシュ、メッセージスキップ<br/>方向キー：選択カーソル移動<br/></p><p id="4bfc9c6a-8227-4edf-b2c6-0c204b1c01df" class="">
+</p><h2 id="f0f560e6-dd29-4847-8e42-f4abc9116af5" class="">■Q&amp;A</h2><h3 id="33b2ee87-b902-4920-b1b1-41a86c11b982" class="">Q1:閉じ込められました！</h3><p id="ac83a895-28ba-49d4-9d2d-6edc4f8810a4" class="">　　時間が経過すると住人が移動して道が空くことがあります。<br/>　　メニューから「休憩」コマンドを使用して時間を飛ばすことができます。<br/></p><h3 id="41bf317a-3ff7-4248-878f-078da24a8213" class="">Q2:メッセージをスキップしたいです。</h3><p id="ca08afea-0a7b-4d4e-a2b1-a68a8c9c1777" class="">　　メッセージウィンドウの「skip」をクリックしてください。<br/>　　パソコンからプレイしている場合、shiftキーでスキップを開始します。<br/>　　他に、ctlキーでオート文字送りを開始します。<br/></p><p id="84e34fa3-5a1b-4f58-a5f9-fc07c63dcfe1" class="">
+</p><h2 id="8a196586-71e8-4636-9370-1e4ecdcb3143" class="">■製作ツール</h2><p id="c3439822-45ca-4908-9c38-a388dc3355a3" class="">RPGツクール MZ</p><p id="941b551d-565c-465e-9606-fa9a0ef10e88" class="">
+</p><h2 id="949f030e-0f38-4dcb-ba8b-d419843c6946" class="">■制作者</h2><p id="69a41fda-ef36-4e0c-8121-43894fc90b88" class="">CARTON MAN<br/>mail    <br/><a href="mailto::stone_3e@hotmail.com">:stone_3e@hotmail.com</a></p><p id="dc528f05-9279-4331-986b-01909497f586" class="">
+</p><h2 id="71e69218-fa2d-45bc-af89-da2b19aacc12" class="">■注意事項</h2><p id="452554c2-ddc7-4c2e-87f7-10dc9ca3c06b" class="">・本作が原因で何らかの損害や障害等が発生したとしても、<br/>　制作者は一切責任を負わないものとします。<br/></p><p id="ddf4997a-9fe9-43ea-bc02-7ddc0878df06" class="">・本作の無断転載・無断商用利用は禁止です。</p><p id="5442d723-b434-41a6-8b1a-dc60cf803b94" class="">・プレイ動画のアップロードや二次創作物の公開等は<br/>　良識の範囲内でご自由に行っていただいて構いません。<br/>　ご連絡は不要です。<br/></p><p id="b0e2dc22-ab51-4b89-914c-75d08e0fea38" class="">
+</p><h2 id="8d619352-6598-4050-9606-34c253467b27" class="">■更新履歴</h2><p id="b63461b7-1445-4a76-804e-04cb81ca2a3c" class="">2020/09/27　Ver1.00</p><p id="777518e4-c8ad-4ed4-af3c-5b8cc5c344df" class="">
+</p><h2 id="ccaf931a-e91e-4f87-a251-7b6f0070ac74" class="">■使用素材（敬称略）</h2><p id="bd97c99f-33d2-4ed6-ae7c-49a68b42aa5d" class="">この作品の制作には、下記の素材を使用させていただきました。</p><p id="52db667e-47f7-4988-977b-ff7990a4f536" class="">
+</p><p id="56a849ab-dcab-42df-addf-bcc5572d3a37" class="">■グラフィック</p><p id="a04ae03b-466e-4785-94db-96d27db08221" class="">Bg-patterns　<br/><br/><a href="http://bg-patterns.com/">http://bg-patterns.com/</a></p><p id="0d895fe4-4994-4e1c-92e5-a0a87a247c94" class="">いらすとや<br/><br/><a href="https://www.irasutoya.com/">https://www.irasutoya.com</a></p><p id="295057dd-41b7-4504-94fc-f62c8b261e9f" class="">RPGツクール MZ<br/><br/><a href="https://tkool.jp/mv/">https://tkool.jp/mv/</a></p><p id="e988c6f0-6128-4bb6-9c35-9eac53300bf8" class="">
+</p><p id="df12cdcd-ec93-4b67-8333-52bf53961cd7" class="">■サウンド</p><p id="a6182278-fff2-4ede-aaac-7330839c4474" class="">株式会社 VSQ<br/><br/><a href="https://vsq.co.jp/">https://vsq.co.jp/</a></p><p id="2f7db76f-2679-4046-bdfc-4414747b62a1" class="">OtoLogic<br/><br/><a href="https://otologic.jp/">https://otologic.jp</a></p><p id="a4b26404-2989-4a97-a910-23f5a00a745b" class="">龍崎一<br/><br/><a href="https://www.losstime-life.com/">https://www.losstime-life.com/</a></p><p id="9a9eccc0-47f6-4eaa-a132-4698b340b871" class="">Keido Honda<br/><br/><a href="https://dova-s.jp/_contents/author/profile141.html">https://dova-s.jp/_contents/author/profile141.html</a></p><p id="6a619cdb-8421-4fc7-836b-ae9f3d1dd71c" class="">RPGツクール MZ<br/><br/><a href="https://tkool.jp/mv/">https://tkool.jp/mv/</a></p><p id="18d807b7-b1d7-40c5-9427-3649ed9da2d9" class="">
+</p><p id="91877608-06a6-4d8b-a4d4-ab19bb42e86b" class="">■プラグイン</p><p id="636893bb-d94e-4101-829a-1835e6fdbb89" class="">トリアコンタン<br/><br/><a href="http://triacontane.blogspot.jp/">http://triacontane.blogspot.jp/</a></p><p id="763f81fd-13f7-4942-b2d5-d1d46369be0e" class="">蒼竜<br/><br/><a href="http://dragonflare.blue/dcave/">http://dragonflare.blue/dcave/</a></p><p id="c47641ff-57da-43ca-a4a5-7b92a3bc2dd4" class="">神無月サスケ<br/><br/><a href="http://www.moonwhistle.org/">http://www.moonwhistle.org</a></p><p id="2001bfad-f373-4bc4-8231-97031ca9974d" class="">Ruたん<br/><br/><a href="https://torigoya-plugin.rutan.dev/">https://torigoya-plugin.rutan.dev</a></p><p id="f7996615-9ecd-4a4c-8716-d7214920e8ac" class="">kiki<br/><br/><a href="http://sctibacromn.hatenablog.com/">http://sctibacromn.hatenablog.com/</a></p><p id="dc416e9e-315d-48e5-892e-899e989e5ec8" class="">マンカインド<br/><br/><a href="http://mankind-games.blogspot.com/">http://mankind-games.blogspot.com</a></p><p id="51d9a882-83aa-45b7-a505-d4819e465a46" class="">くらむぼん<br/><br/><a href="https://krmbn0576.github.io/rpgmakermv/homepage.html">https://krmbn0576.github.io/rpgmakermv/homepage.html</a></p><p id="91bcccd3-78eb-4c95-8507-773679364536" class="">DarkPlasma<br/><br/><a href="https://github.com/elleonard/RPGtkoolMZ-Plugins">https://github.com/elleonard/RPGtkoolMZ-Plugins</a></p><p id="00150d8b-ca55-44b8-b941-edfe8af20f55" class="">RPGツクール MZ<br/><br/><a href="https://tkool.jp/mv/">https://tkool.jp/mv/</a></p></div></article><span class="sans" style="font-size:14px;padding-top:2em"></span></body></html>
