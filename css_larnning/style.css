@@ -1,0 +1,37 @@
+html {
+    font-size: 62.5%;
+    font-size: 100%;
+}
+/* font-sizeは16pxの62.5%の10px */
+
+/*
+なんもついてないのはhtmlのタグ
+.はクラス　htmlではclass ="title big" みたいに区切って複数もてる
+cssで .title big{}みたいに書くと両方に属しているものだけに適応される
+　#はid idは一つ　複数もてない
+*{} みたいなのはユニバーサルセレクター　全体に適応
+基本はクラスを使う
+*/
+
+.title{
+    background-color: rgb(104, 228, 174);
+}
+
+.title:hover{
+    background-color: rgb(228, 174, 104);
+}
+
+
+
+.big{
+    font-size: 2rem;
+}
+
+/*
+ [href *= "yahoo"] みたいに書くとhrefにyahooを含むやつだけに適応
+ 部分文字列一致　みたいな　色々種類がある　
+*/
+a[href] {
+    color: rgb(111, 127, 21);
+}
+

@@ -1,0 +1,271 @@
+body {
+    display: flex;
+    background: #000;
+    color: #fff;
+    font-family: sans-serif;
+    height: 100vh;
+    margin: 0;
+}
+
+/* 左側のノベルビューア */
+.novel-viewer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 2em;
+    border-right: 2px solid #fff;
+    color: #fff;
+    height: calc(100vh - 4em);
+    position: relative;
+}
+
+/* レイアウトを完全に2等分 */
+.novel-content {
+    height: 50%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    /* 下寄せ */
+    margin-bottom: 1em;
+    overflow: hidden;
+}
+
+/* 固定ボタンエリア */
+.button-area {
+    height: 50%;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid #444;
+    padding-top: 1em;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* テキスト表示エリア */
+.text-container {
+    height: 180px;
+    min-height: 180px;
+    max-height: 180px;
+    overflow-y: auto;
+    margin-bottom: 1em;
+    padding-right: 0.5em;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #444;
+    background: #222;
+    box-sizing: border-box;
+    cursor: pointer;
+    position: relative;
+}
+
+.text-container:hover {
+    background: #2a2a2a;
+}
+
+.name {
+    font-weight: bold;
+    color: #9cf;
+    margin-bottom: .5em;
+}
+
+.text {
+    margin-bottom: 1em;
+    white-space: pre-wrap;
+    text-align: left;
+}
+
+/* 選択肢 */
+.choices {
+    width: 100%;
+    margin-bottom: 0.5em;
+    overflow-y: auto;
+    max-height: calc(50% - 1em);
+}
+
+.choices button {
+    display: block;
+    margin: .3em 0;
+    font-size: 1em;
+    width: 100%;
+    padding: 0.5em;
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    cursor: pointer;
+}
+
+.choices button:hover {
+    background: #555;
+}
+
+#next,
+#restart {
+    font-size: 1.2em;
+    width: 100%;
+    margin-bottom: 0.3em;
+    padding: 0.5em;
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    cursor: pointer;
+}
+
+#next:hover,
+#restart:hover {
+    background: #555;
+}
+
+/* ラベルジャンプ機能 */
+.label-jump {
+    width: 100%;
+    display: flex;
+    margin-top: 0.5em;
+}
+
+#labelInput {
+    flex: 1;
+    padding: 0.5em;
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+}
+
+#jumpButton {
+    padding: 0.5em 1em;
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    cursor: pointer;
+}
+
+#jumpButton:hover {
+    background: #555;
+}
+
+/* 右側: シナリオテキストボックス (編集可) */
+.scenario-box {
+    flex: 1;
+    padding: 2em;
+    background: #222;
+    display: flex;
+    flex-direction: column;
+}
+
+#scriptText {
+    width: 100%;
+    flex: 1;
+    color: #fff;
+    background: #333;
+    border: 1px solid #444;
+    padding: 1em;
+    font-family: monospace;
+    font-size: 1.1em;
+    white-space: pre-wrap;
+    resize: none;
+    overflow: auto;
+    margin-bottom: 1em;
+}
+
+/* ファイル操作コントロール */
+.file-controls {
+    display: flex;
+    gap: 1em;
+}
+
+.file-controls button {
+    flex: 1;
+    padding: 0.7em;
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+.file-controls button:hover {
+    background: #555;
+}
+
+/* スクロールバーのスタイル */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #222;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
+/* テキストコンテナの位置を確保するためのスペーサー */
+.choices:empty {
+    min-height: 0.5em;
+}
+
+/* ヘルプモーダル */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    overflow: auto;
+}
+
+.modal-content {
+    background-color: #333;
+    margin: 5% auto;
+    padding: 2em;
+    border: 1px solid #555;
+    width: 80%;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: #fff;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.help-content {
+    font-size: 1em;
+    line-height: 1.5;
+}
+
+.help-content h3 {
+    margin-top: 1.5em;
+    color: #9cf;
+    border-bottom: 1px solid #555;
+    padding-bottom: 0.3em;
+}
+
+.help-content pre {
+    background-color: #222;
+    padding: 1em;
+    border-radius: 4px;
+    border-left: 4px solid #9cf;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: #fff;
+    text-decoration: none;
+}

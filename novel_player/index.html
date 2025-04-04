@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ノベル試作プレイヤー</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- 左側: ノベルビューア -->
+    <div class="novel-viewer">
+        <!-- 上部: 物語コンテンツエリア -->
+        <div class="novel-content">
+            <!-- 選択肢エリア（上に移動） -->
+            <div class="choices" id="choices"></div>
+
+            <!-- スクロール可能なテキストエリア（下に移動） -->
+            <div class="text-container">
+                <div class="name" id="name"></div>
+                <div class="text" id="text"></div>
+            </div>
+        </div>
+
+        <!-- 下部: 固定ボタンエリア -->
+        <div class="button-area">
+            <button id="next">▶ 次へ</button>
+            <button id="restart">🔄 最初に戻る</button>
+
+            <!-- ラベルジャンプ機能 -->
+            <div class="label-jump">
+                <input type="text" id="labelInput" placeholder="ジャンプ先ラベル">
+                <button id="jumpButton">移動</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右側: シナリオ表示 (編集可能テキストボックス) -->
+    <div class="scenario-box">
+        <textarea id="scriptText"></textarea>
+        <div class="file-controls">
+            <button id="saveButton">📥 保存</button>
+            <button id="loadButton">📤 読み込み</button>
+            <button id="helpButton">❓ ヘルプ</button>
+            <input type="file" id="fileInput" accept=".txt" style="display:none">
+        </div>
+    </div>
+
+    <!-- ヘルプモーダル -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>シナリオ記法ヘルプ</h2>
+            <div class="help-content">
+                <h3>基本書式</h3>
+                <pre>
+#キャラ名
+セリフ内容（複数行可能）
+                </pre>
+
+                <h3>選択肢</h3>
+                <pre>
+*choice
+- 選択肢テキスト1 => ジャンプ先ラベル1
+- 選択肢テキスト2 => ジャンプ先ラベル2
+                </pre>
+
+                <h3>ラベル定義</h3>
+                <pre>
+@ラベル名
+                </pre>
+
+                <h3>ラベルへのジャンプ</h3>
+                <pre>
+@goto ラベル名
+                </pre>
+
+                <h3>シナリオ終了</h3>
+                <pre>
+@end
+                </pre>
+
+                <h3>サンプル</h3>
+                <pre>
+#ユウ
+こんにちは。どこに行きたい？
+
+*choice
+- 公園へ => park
+- 海へ => sea
+
+@park
+#ユウ
+公園に着きました。
+
+@goto ending
+
+@sea
+#ユウ
+海に着きました。
+
+@goto ending
+
+@ending
+#システム
+シナリオ終了
+
+@end
+                </pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

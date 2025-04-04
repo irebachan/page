@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ノベル試作プレイヤー</title>
+    <style>
+        body {
+            display: flex;
+            background: #000;
+            color: #fff;
+            font-family: sans-serif;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* 左側のノベルビューア */
+        .novel-viewer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 2em;
+            border-right: 2px solid #fff;
+            color: #fff;
+        }
+
+        .name {
+            font-weight: bold;
+            color: #9cf;
+            margin-bottom: .5em;
+        }
+
+        .text {
+            margin-bottom: 2em;
+            white-space: pre-wrap;
+            text-align: left;
+        }
+
+        .choices button {
+            display: block;
+            margin: .5em 0;
+            font-size: 1em;
+            width: 100%;
+        }
+
+        #next,
+        #restart {
+            font-size: 1.2em;
+            width: 100%;
+        }
+
+        /* 右側: シナリオテキストボックス (編集可) */
+        .scenario-box {
+            flex: 1;
+            padding: 2em;
+            background: #222;
+        }
+
+        #scriptText {
+            width: 100%;
+            height: 100%;
+            color: #fff;
+            background: #333;
+            border: 1px solid #444;
+            padding: 1em;
+            font-family: monospace;
+            font-size: 1.1em;
+            white-space: pre-wrap;
+            resize: none;
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 左側: ノベルビューア -->
+    <div class="novel-viewer">
+        <div class="name" id="name"></div>
+        <div class="text" id="text"></div>
+        <div class="choices" id="choices"></div>
+        <button id="next">▶ 次へ</button>
+        <button id="restart" style="display: none;">🔄 最初に戻る</button>
+    </div>
+
+    <!-- 右側: シナリオ表示 (編集可能テキストボックス) -->
+    <div class="scenario-box">
+        <textarea id="scriptText" oninput="updateScript()"></textarea>
+    </div>
+
+    <script>
+        // シナリオの解析関数
+        function parseScript(rawScript) {
+            const lines = rawScript.trim().split("\n");
+            let script = [];
+            let labels = {};
+            let i = 0;
+
+            while (i < lines.length) {
+                let line = lines[i].trim();
+                if (line === "") { i++; continue; }
+
+                if (line.startsWith("@label")) {
+                    const labelName = line.split(" ")[1];
+                    labels[labelName] = script.length;
+                    i++;
+                } else if (line === "*choice") {
+                    i++;
+                    let choices = [];
+                    while (i < lines.length && lines[i].startsWith("-")) {
+                        let [text, target] = lines[i].slice(1).split("=>").map(s => s.trim());
+                        choices.push({ text, target });
+                        i++;
+                    }
+                    script.push({ type: "choice", choices });
+                } else if (line.startsWith("#")) {
+                    const name = line.slice(1);
+                    const text = lines[++i];
+                    script.push({ type: "line", name, text });
+                    i++;
+                } else if (line === "@end") {
+                    script.push({ type: "end" });
+                    i++;
+                } else {
+                    i++;
+                }
+            }
+            return { script, labels };
+        }
+
+        // 初期スクリプト
+        let rawScript = `
+#ユウ
+おはよう。今日はいい天気だね。
+
+*choice
+- 公園に行く => park
+- 図書館に行く => library
+
+@label park
+#ユウ
+公園は静かでいいなあ。
+
+#ミナ
+ほら、鳩が集まってるよ。
+
+@end
+
+@label library
+#ユウ
+本って落ち着くよね。
+
+#ミナ
+今日の新刊はなんだろう。
+
+@end
+`;
+
+        let { script, labels } = parseScript(rawScript);
+        let index = 0;
+
+        const nameBox = document.getElementById("name");
+        const textBox = document.getElementById("text");
+        const nextBtn = document.getElementById("next");
+        const choicesBox = document.getElementById("choices");
+        const scriptTextBox = document.getElementById("scriptText");
+        const restartBtn = document.getElementById("restart");
+
+        // 初期スクリプトをテキストエリアに表示
+        scriptTextBox.value = rawScript.trim();
+
+        // シナリオの表示
+        function showLine() {
+            const line = script[index];
+            if (!line) {
+                // 終了したら最初に戻る
+                restartBtn.style.display = "inline"; // 「最初に戻る」ボタンを表示
+                nextBtn.style.display = "none"; // 「次へ」ボタンを隠す
+                return;
+            }
+
+            if (line.type === "line") {
+                nameBox.textContent = line.name;
+                textBox.textContent = line.text;
+                nextBtn.style.display = "inline";
+                choicesBox.innerHTML = "";
+                restartBtn.style.display = "none"; // 終了前は「最初に戻る」ボタンを隠す
+                index++;
+            } else if (line.type === "choice") {
+                nextBtn.style.display = "none";
+                nameBox.textContent = "";
+                textBox.textContent = "";
+                choicesBox.innerHTML = "";
+                line.choices.forEach(choice => {
+                    const btn = document.createElement("button");
+                    btn.textContent = choice.text;
+                    btn.onclick = () => {
+                        index = labels[choice.target] ?? index;
+                        showLine();
+                    };
+                    choicesBox.appendChild(btn);
+                });
+            } else if (line.type === "end") {
+                nameBox.textContent = "";
+                textBox.textContent = "（終わり）";
+                nextBtn.style.display = "none";
+                choicesBox.innerHTML = "";
+                restartBtn.style.display = "inline"; // 終了後に最初に戻るボタン表示
+            }
+        }
+
+        // 次へボタンが押されたとき
+        nextBtn.addEventListener("click", showLine);
+
+        // 最初に戻るボタンが押されたとき
+        restartBtn.addEventListener("click", function () {
+            index = 0; // インデックスを0に戻す
+            showLine(); // 最初からシナリオを表示
+        });
+
+        // シナリオを更新 (テキストエリアでの入力による更新)
+        function updateScript() {
+            rawScript = scriptTextBox.value;
+            ({ script, labels } = parseScript(rawScript));  // 新しいスクリプトに基づいて解析
+            index = 0;  // スクリプトを再解析したら、シナリオは最初に戻す
+            showLine();
+        }
+
+        showLine();  // 初回表示
+    </script>
+</body>
+
+</html>
