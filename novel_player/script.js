@@ -81,6 +81,7 @@ class NovelPlayer {
         this.saveButton = document.getElementById("saveButton");
         this.loadButton = document.getElementById("loadButton");
         this.fileInput = document.getElementById("fileInput");
+        this.clearButton = document.getElementById("clearButton");
 
         // イベントリスナーの設定
         this.nextBtn.addEventListener("click", () => this.showLine());
@@ -90,6 +91,7 @@ class NovelPlayer {
         this.saveButton.addEventListener("click", () => this.saveScriptToFile());
         this.loadButton.addEventListener("click", () => this.fileInput.click());
         this.fileInput.addEventListener("change", (e) => this.loadScriptFromFile(e));
+        this.clearButton.addEventListener("click", () => this.clearScriptText());
         // テキストクリックで次へ進む機能
         this.textContainer.addEventListener("click", () => {
             if (this.nextBtn.style.display !== "none") {
@@ -371,6 +373,14 @@ class NovelPlayer {
             this.fileInput.value = '';
         };
         reader.readAsText(file);
+    }
+
+    clearScriptText() {
+        if (confirm('テキストエリアをクリアしますか？')) {
+            this.scriptTextBox.value = '';
+            this.updateScript();
+            this.restart();
+        }
     }
 }
 
