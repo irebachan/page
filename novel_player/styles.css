@@ -178,12 +178,19 @@ body {
     resize: none;
     overflow: auto;
     margin-bottom: 1em;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* ファイル操作コントロール */
 .file-controls {
     display: flex;
     gap: 1em;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+    background: #222;
+    padding-bottom: 0.5em;
+    z-index: 10;
 }
 
 .file-controls button {
@@ -289,19 +296,42 @@ body {
     body {
         flex-direction: column;
         overflow-y: auto;
+        position: relative;
+        height: 100%;
     }
 
     .novel-viewer,
     .scenario-box {
         height: auto;
         min-height: 50vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #scriptText {
+        height: calc(100% - 4em);
+        min-height: 200px;
+        max-height: calc(100% - 4em);
     }
 
     .file-controls {
         flex-wrap: wrap;
+        position: sticky;
+        bottom: 0;
     }
 
     .file-controls button {
         padding: 0.5em;
+        min-height: 44px;
+        /* タッチターゲットを大きくする */
+        flex: 1;
+    }
+
+    /* iOSの安全領域に対応 */
+    @supports (-webkit-touch-callout: none) {
+        .file-controls {
+            padding-bottom: env(safe-area-inset-bottom, 0.5em);
+        }
     }
 }
