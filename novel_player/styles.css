@@ -207,6 +207,67 @@ body {
     background: #555;
 }
 
+/* テキスト出力設定のスタイル */
+.export-controls {
+    margin-top: 1em;
+    padding: 1em;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+.export-controls h4 {
+    margin-top: 0;
+    margin-bottom: 0.5em;
+    color: #9cf;
+}
+
+.export-option {
+    margin-bottom: 0.5em;
+}
+
+.export-settings {
+    margin-top: 0;
+    margin-bottom: 1.5em;
+    padding: 1em;
+    background: #2a2a2a;
+    border-radius: 4px;
+    border-left: 4px solid #9cf;
+}
+
+.export-setting-item {
+    margin-bottom: 0.5em;
+    display: flex;
+    align-items: center;
+}
+
+.export-setting-item label {
+    flex: 1;
+    margin-right: 0.5em;
+}
+
+.export-setting-item input[type="text"] {
+    width: 150px;
+    padding: 0.3em;
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+}
+
+#exportButton {
+    width: 100%;
+    padding: 0.7em;
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+#exportButton:hover {
+    background: #555;
+}
+
 /* スクロールバーのスタイル */
 ::-webkit-scrollbar {
     width: 8px;
@@ -256,6 +317,7 @@ body {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
+/* ヘルプコンテンツ */
 .help-content {
     font-size: 1em;
     line-height: 1.5;
@@ -275,6 +337,72 @@ body {
     border-left: 4px solid #9cf;
     overflow-x: auto;
     white-space: pre-wrap;
+}
+
+/* 特殊テキスト出力設定モーダル */
+.export-content {
+    font-size: 1em;
+    line-height: 1.5;
+    margin-top: 1em;
+}
+
+.export-option {
+    margin-bottom: 1em;
+}
+
+.export-setting-item {
+    margin-bottom: 1em;
+    display: flex;
+    align-items: center;
+}
+
+.export-setting-item:last-child {
+    margin-bottom: 0;
+}
+
+.export-setting-item label {
+    flex: 1;
+    margin-right: 1em;
+}
+
+.export-setting-item input[type="text"] {
+    width: 150px;
+    padding: 0.5em;
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 3px;
+}
+
+.export-buttons {
+    display: flex;
+    gap: 0.5em;
+    margin-top: 1em;
+}
+
+#exportButton, 
+#copyFormattedButton {
+    flex: 1;
+    padding: 0.7em;
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+#exportButton:hover, 
+#copyFormattedButton:hover {
+    background: #555;
+}
+
+#copyFormattedButton {
+    background: #2c5e7e;
+}
+
+#copyFormattedButton:hover {
+    background: #326b8f;
 }
 
 .close {

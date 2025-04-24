@@ -47,6 +47,8 @@
             <button id="loadButton">📤 読み込み</button>
             <button id="clearButton">🗑️ クリア</button>
             <button id="helpButton">❓ ヘルプ</button>
+            <button id="exportSettingsButton">⚙️ 出力設定</button>
+            <button id="copyButton">📋 コピー</button>
             <input type="file" id="fileInput" accept=".txt" style="display:none">
         </div>
     </div>
@@ -85,6 +87,15 @@
 @end
                 </pre>
 
+                <h3>特殊テキスト出力</h3>
+                <p>「特殊形式で出力」ボタンを使用すると、ゲームエンジン用の特殊記号付きテキストを出力できます：</p>
+                <ul>
+                    <li>「。」の後に自動でクリック待ち記号を追加</li>
+                    <li>テキストブロック内の行末に改行記号を追加</li>
+                    <li>テキストブロックの最後に改ページ記号を追加</li>
+                </ul>
+                <p>記号は自由にカスタマイズ可能です。</p>
+
                 <h3>サンプル</h3>
                 <pre>
 #ユウ
@@ -116,6 +127,54 @@
         </div>
     </div>
 
+    <!-- 特殊テキスト出力設定モーダル -->
+    <div id="exportSettingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close export-close">&times;</span>
+            <h2>特殊テキスト出力設定</h2>
+            <div class="export-content">
+                <div class="export-settings">
+                    <div class="export-setting-item">
+                        <label for="pageBreakSymbol">改ページ記号:</label>
+                        <input type="text" id="pageBreakSymbol" value="[p]">
+                    </div>
+                    <div class="export-setting-item">
+                        <label for="lineBreakSymbol">改行記号:</label>
+                        <input type="text" id="lineBreakSymbol" value="[r]">
+                    </div>
+                    <div class="export-setting-item">
+                        <label for="clickWaitSymbol">クリック待ち記号:</label>
+                        <input type="text" id="clickWaitSymbol" value="[l]">
+                    </div>
+                    <div class="export-setting-item">
+                        <label for="labelSymbol">ラベル記号:</label>
+                        <input type="text" id="labelSymbol" value="*">
+                    </div>
+                    <div class="export-setting-item">
+                        <label for="jumpTag">ジャンプタグ:</label>
+                        <input type="text" id="jumpTag" value="[jump target=@]">
+                    </div>
+                    <div class="export-setting-item">
+                        <label>文字列置換:</label>
+                        <div id="replaceList" class="replace-list">
+                            <div class="replace-item">
+                                <input type="text" class="replace-from" placeholder="置換前">
+                                <input type="text" class="replace-to" placeholder="置換後">
+                                <button class="remove-replace">×</button>
+                            </div>
+                        </div>
+                        <button id="addReplace" class="add-replace">+ 置換を追加</button>
+                    </div>
+                </div>
+                <div class="export-buttons">
+                    <button id="exportButton">📝 特殊形式で出力</button>
+                    <button id="copyFormattedButton">📋 特殊テキストをコピー</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="export_settings.js"></script>
     <script src="script.js"></script>
 </body>
 

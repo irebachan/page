@@ -5,10 +5,16 @@ class ScriptParser {
         let script = [];
         let labels = {};
         let i = 0;
+        let currentName = ""; // 現在の名前を保持
 
         while (i < lines.length) {
             let line = lines[i].trim();
-            if (line === "") { i++; continue; }
+            
+            // 空行はスキップ
+            if (line === "") { 
+                i++; 
+                continue; 
+            }
 
             if (line.startsWith("@")) {
                 // @から始まる行を解析
@@ -24,26 +30,39 @@ class ScriptParser {
                     labels[labelName] = script.length;
                 }
                 i++;
-            } else if (line === "*choice") {
-                i++;
+            } else if (line.startsWith("-")) {
+                // 選択肢の処理
                 let choices = [];
-                while (i < lines.length && lines[i].startsWith("-")) {
-                    let [text, target] = lines[i].slice(1).split("=>").map(s => s.trim());
+                let description = ""; // 選択肢の説明文
+                
+                // 前の行が説明文として扱われる
+                if (i > 0 && !lines[i-1].trim().startsWith("@") && !lines[i-1].trim().startsWith("#")) {
+                    description = lines[i-1].trim();
+                }
+                
+                // 選択肢を収集
+                while (i < lines.length && lines[i].trim().startsWith("-")) {
+                    let [text, target] = lines[i].trim().slice(1).split("=>").map(s => s.trim());
                     choices.push({ text, target });
                     i++;
                 }
-                script.push({ type: "choice", choices });
+                
+                // 選択肢がある場合は追加
+                if (choices.length > 0) {
+                    script.push({ type: "choice", description, choices });
+                }
             } else if (line.startsWith("#")) {
-                const name = line.slice(1);
+                // 名前を更新
+                currentName = line.slice(1);
+                
                 // 複数行テキストのサポート
                 let textLines = [];
                 i++;
 
-                // 次の#または*choiceまでの全テキストを収集
+                // 次の空行または#または@までの全テキストを収集
                 while (i < lines.length) {
                     line = lines[i].trim();
-                    if (line === "" || line.startsWith("#") || line.startsWith("*") ||
-                        line.startsWith("@")) {
+                    if (line === "" || line.startsWith("#") || line.startsWith("@")) {
                         break;
                     }
                     textLines.push(line);
@@ -51,9 +70,28 @@ class ScriptParser {
                 }
 
                 const text = textLines.join("\n");
-                script.push({ type: "line", name, text });
+                script.push({ type: "line", name: currentName, text });
             } else {
+                // 通常のテキスト行（#で始まらない）
+                let textLines = [];
+                
+                // 現在の行を追加
+                textLines.push(line);
                 i++;
+                
+                // 次の空行または#または@までの全テキストを収集
+                while (i < lines.length) {
+                    line = lines[i].trim();
+                    if (line === "" || line.startsWith("#") || line.startsWith("@")) {
+                        break;
+                    }
+                    textLines.push(line);
+                    i++;
+                }
+
+                const text = textLines.join("\n");
+                // 前の名前を使用（なければ空の名前）
+                script.push({ type: "line", name: currentName, text });
             }
         }
         return { script, labels };
@@ -82,7 +120,8 @@ class NovelPlayer {
         this.loadButton = document.getElementById("loadButton");
         this.fileInput = document.getElementById("fileInput");
         this.clearButton = document.getElementById("clearButton");
-
+        this.copyButton = document.getElementById("copyButton");
+        
         // イベントリスナーの設定
         this.nextBtn.addEventListener("click", () => this.showLine());
         this.restartBtn.addEventListener("click", () => this.restart());
@@ -92,6 +131,8 @@ class NovelPlayer {
         this.loadButton.addEventListener("click", () => this.fileInput.click());
         this.fileInput.addEventListener("change", (e) => this.loadScriptFromFile(e));
         this.clearButton.addEventListener("click", () => this.clearScriptText());
+        this.copyButton.addEventListener("click", () => this.copyToClipboard());
+        
         // テキストクリックで次へ進む機能
         this.textContainer.addEventListener("click", () => {
             if (this.nextBtn.style.display !== "none") {
@@ -107,7 +148,9 @@ class NovelPlayer {
 散歩でもしようか。
 どこに行きたい？
 
-*choice
+@goto choice_park
+
+@choice_start
 - 公園に行く => park
 - 図書館に行く => library
 - カフェに行く => cafe
@@ -124,7 +167,7 @@ class NovelPlayer {
 ほら、鳩が集まってるよ。
 パンをあげてみようか？
 
-*choice
+@choice_park
 - パンをあげる => feed_birds
 - やめておく => dont_feed
 
@@ -151,7 +194,7 @@ class NovelPlayer {
 今日の新刊はなんだろう。
 ミステリー小説を探してみようか？
 
-*choice
+@choice_library
 - ミステリーを探す => mystery
 - 科学の本を探す => science
 
@@ -177,7 +220,7 @@ class NovelPlayer {
 コーヒーが美味しいよね。
 ケーキも食べてみる？
 
-*choice
+@choice_cafe
 - ケーキを注文する => cake
 - コーヒーだけにする => coffee_only
 
@@ -205,7 +248,7 @@ class NovelPlayer {
 示すためのものです。
 長いテキストでもスクロールできることを確認しましょう。
 
-*choice
+@choice_end
 - もう一度やり直す => start
 - 終了する => end
 
@@ -329,16 +372,30 @@ class NovelPlayer {
         }
     }
 
+    // テキストエリアの内容をクリップボードにコピー
+    copyToClipboard() {
+        // 新しいメソッドを呼び出す
+        this.copyOriginalText();
+    }
+
     // シナリオをテキストファイルとして保存
     saveScriptToFile() {
         const scriptContent = this.scriptTextBox.value;
         const blob = new Blob([scriptContent], { type: 'text/plain;charset=utf-8' });
+        this.saveFile(blob, 'scenario');
+        
+        // テキストエリアにフォーカスを戻す
+        setTimeout(() => this.scriptTextBox.focus(), 200);
+    }
+    
+    // ファイルを保存するヘルパーメソッド
+    saveFile(blob, filenamePrefix) {
         const url = URL.createObjectURL(blob);
-
+        
         // ダウンロードリンクを作成して自動クリック
         const a = document.createElement('a');
         a.href = url;
-
+        
         // 現在の日時を含むファイル名を生成
         const now = new Date();
         const dateStr = now.getFullYear() +
@@ -346,16 +403,69 @@ class NovelPlayer {
             ('0' + now.getDate()).slice(-2) +
             ('0' + now.getHours()).slice(-2) +
             ('0' + now.getMinutes()).slice(-2);
-
-        a.download = `scenario_${dateStr}.txt`;
+            
+        a.download = `${filenamePrefix}_${dateStr}.txt`;
         document.body.appendChild(a);
         a.click();
-
+        
         // クリーンアップ
         setTimeout(() => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }, 100);
+    }
+    
+    // 元のテキストをクリップボードにコピー
+    copyOriginalText() {
+        try {
+            // テキストを選択
+            this.scriptTextBox.select();
+            // クリップボードにコピー
+            document.execCommand('copy');
+            // 選択を解除
+            window.getSelection().removeAllRanges();
+            
+            // アラートの代わりに控えめな通知
+            this.showTemporaryNotification("コピーしました");
+            
+            // テキストエリアにフォーカスを戻す
+            setTimeout(() => this.scriptTextBox.focus(), 200);
+        } catch (err) {
+            console.error('クリップボードへのコピーに失敗しました:', err);
+        }
+    }
+    
+    // 一時的な通知を表示する（数秒後に自動的に消える）
+    showTemporaryNotification(message) {
+        // すでに通知があれば削除
+        const existingNotification = document.getElementById('temp-notification');
+        if (existingNotification) {
+            document.body.removeChild(existingNotification);
+        }
+        
+        // 新しい通知を作成
+        const notification = document.createElement('div');
+        notification.id = 'temp-notification';
+        notification.textContent = message;
+        notification.style.position = 'fixed';
+        notification.style.bottom = '20px';
+        notification.style.right = '20px';
+        notification.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        notification.style.color = 'white';
+        notification.style.padding = '10px 15px';
+        notification.style.borderRadius = '4px';
+        notification.style.zIndex = '2000';
+        notification.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        
+        // 通知を追加
+        document.body.appendChild(notification);
+        
+        // 2秒後に通知を削除
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 2000);
     }
 
     // ファイルからシナリオを読み込み
@@ -371,6 +481,9 @@ class NovelPlayer {
 
             // ファイル選択をリセット（同じファイルを再選択できるように）
             this.fileInput.value = '';
+            
+            // テキストエリアにフォーカスを戻す
+            setTimeout(() => this.scriptTextBox.focus(), 200);
         };
         reader.readAsText(file);
     }
@@ -380,6 +493,9 @@ class NovelPlayer {
             this.scriptTextBox.value = '';
             this.updateScript();
             this.restart();
+            
+            // テキストエリアにフォーカスを戻す
+            setTimeout(() => this.scriptTextBox.focus(), 200);
         }
     }
 }
@@ -387,26 +503,45 @@ class NovelPlayer {
 // アプリケーション開始
 document.addEventListener('DOMContentLoaded', () => {
     const novelPlayer = new NovelPlayer();
+    const exportSettings = new ExportSettings();
 
     // ヘルプモーダル制御
-    const modal = document.getElementById("helpModal");
+    const helpModal = document.getElementById("helpModal");
     const helpBtn = document.getElementById("helpButton");
     const closeBtn = document.querySelector(".close");
 
+    // 出力設定モーダル制御
+    const exportSettingsModal = document.getElementById("exportSettingsModal");
+    const exportSettingsBtn = document.getElementById("exportSettingsButton");
+    const exportCloseBtn = document.querySelector(".export-close");
+
     // ヘルプボタンクリックでモーダルを表示
     helpBtn.addEventListener("click", () => {
-        modal.style.display = "block";
+        helpModal.style.display = "block";
     });
 
-    // 閉じるボタンでモーダルを非表示
+    // 出力設定ボタンクリックでモーダルを表示
+    exportSettingsBtn.addEventListener("click", () => {
+        exportSettingsModal.style.display = "block";
+    });
+
+    // 閉じるボタンでモーダルを非表示（ヘルプモーダル）
     closeBtn.addEventListener("click", () => {
-        modal.style.display = "none";
+        helpModal.style.display = "none";
+    });
+
+    // 閉じるボタンでモーダルを非表示（出力設定モーダル）
+    exportCloseBtn.addEventListener("click", () => {
+        exportSettingsModal.style.display = "none";
     });
 
     // モーダル外クリックでも閉じる
     window.addEventListener("click", (event) => {
-        if (event.target === modal) {
-            modal.style.display = "none";
+        if (event.target === helpModal) {
+            helpModal.style.display = "none";
+        }
+        if (event.target === exportSettingsModal) {
+            exportSettingsModal.style.display = "none";
         }
     });
 }); 
