@@ -1,0 +1,24 @@
+{
+    "programs": {
+        "text_editor": {
+            "name": "web小説用テキストエディタ",
+            "path": "test/text_editor.py",
+            "description": "web小説用に変換するテキストエディタ"
+        },
+        "metadata_editor": {
+            "name": "メタデータエディタ",
+            "path": "test/MetadataEditorApp.py",
+            "description": "mp3のメタデータ編集アプリケーション"
+        },
+        "file_watcher": {
+            "name": "ファイル監視アプリ",
+            "path": "file_watcher/file_watcher.py",
+            "description": "ファイル監視アプリ"
+        },
+        "text_converter": {
+            "name": "ADV用テキスト変換アプリ",
+            "path": "test/text_converter.py",
+            "description": "txtをティラノなどのADV用に変換するテキスト変換アプリ"
+        }
+    }
+} 

@@ -175,31 +175,38 @@ class FileWatcherApp:
             self.update_button_state()
 
     def save_config(self):
-        config = {
-            "source_dir": self.source_entry.get(),
-            "target_dir": self.target_entry.get(),
-            "extensions": self.extensions_entry.get(),
-            "overwrite": self.overwrite_var.get()
-        }
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=4)
+        try:
+            config = {
+                "source_dir": self.source_entry.get(),
+                "target_dir": self.target_entry.get(),
+                "extensions": self.extensions_entry.get(),
+                "overwrite": self.overwrite_var.get()
+            }
+            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=4)
+        except Exception as e:
+            print(f"設定の保存に失敗しました: {e}")
 
     def load_config(self):
         try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                config = json.load(f)
-                self.source_entry.delete(0, tk.END)  # 既存の値をクリア
-                self.source_entry.insert(0, config.get("source_dir", ""))
-                
-                self.target_entry.delete(0, tk.END)  # 既存の値をクリア
-                self.target_entry.insert(0, config.get("target_dir", ""))
-                
-                self.extensions_entry.delete(0, tk.END)  # 既存の値をクリア
-                self.extensions_entry.insert(0, config.get("extensions", ".txt,.pdf,.doc,.docx"))
-                
-                self.overwrite_var.set(config.get("overwrite", False))
-        except FileNotFoundError:
-            pass
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+                    self.source_entry.delete(0, tk.END)
+                    self.source_entry.insert(0, config.get("source_dir", ""))
+                    
+                    self.target_entry.delete(0, tk.END)
+                    self.target_entry.insert(0, config.get("target_dir", ""))
+                    
+                    self.extensions_entry.delete(0, tk.END)
+                    self.extensions_entry.insert(0, config.get("extensions", ".txt,.pdf,.doc,.docx"))
+                    
+                    self.overwrite_var.set(config.get("overwrite", False))
+        except Exception as e:
+            print(f"設定の読み込みに失敗しました: {e}")
+            # デフォルト値を設定
+            self.extensions_entry.delete(0, tk.END)
+            self.extensions_entry.insert(0, ".txt,.pdf,.doc,.docx")
 
 if __name__ == "__main__":
     root = tk.Tk()

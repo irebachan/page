@@ -127,12 +127,7 @@ class MetadataEditorApp:
                     except ID3Error:
                         pass
                 
-                # 既存のタグをクリア
-                for tag in ['TIT2', 'TPE1', 'TALB', 'TCMP']:
-                    if tag in audio.tags:
-                        del audio.tags[tag]
-                
-                # 新しいタグを設定
+                # 編集されたフィールドのみ更新
                 if title:
                     audio.tags["TIT2"] = TIT2(encoding=Encoding.UTF8, text=title)
                 if artist:
@@ -140,9 +135,11 @@ class MetadataEditorApp:
                 if album:
                     audio.tags["TALB"] = TALB(encoding=Encoding.UTF8, text=album)
                 
-                # コンピレーション設定を保存
+                # コンピレーション設定の更新
                 if is_compilation:
                     audio.tags["TCMP"] = TCMP(encoding=Encoding.UTF8, text="1")
+                elif "TCMP" in audio.tags:
+                    del audio.tags["TCMP"]
 
                 if os.path.isfile(cover_path):
                     with open(cover_path, "rb") as img:
@@ -161,9 +158,13 @@ class MetadataEditorApp:
                         print(f"サムネイル設定中にエラーが発生しました: {e}")
 
             elif self.file_path.lower().endswith((".flac", ".ogg", ".opus", ".m4a")):
-                audio["title"] = title
-                audio["artist"] = artist
-                audio["album"] = album
+                # 編集されたフィールドのみ更新
+                if title:
+                    audio["title"] = title
+                if artist:
+                    audio["artist"] = artist
+                if album:
+                    audio["album"] = album
 
                 if cover_path and os.path.isfile(cover_path):
                     with open(cover_path, "rb") as f:

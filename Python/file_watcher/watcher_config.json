@@ -1,0 +1,6 @@
+{
+    "source_dir": "",
+    "target_dir": "",
+    "extensions": ".txt,.pdf,.doc,.docx,.csv",
+    "overwrite": false
+} 

@@ -10,12 +10,17 @@ class LauncherApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Pythonプログラムランチャー")
-        self.root.geometry("600x400")
         
-        # ウィンドウを最前面に表示
-        self.root.lift()
-        self.root.attributes('-topmost', True)
-        self.root.after_idle(self.root.attributes, '-topmost', False)
+        # ウィンドウサイズを設定
+        window_width = 600
+        window_height = 400
+        
+        # 画面の中央に配置
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # スタイル設定
         style = ttk.Style()
@@ -82,7 +87,26 @@ class LauncherApp:
             return
         
         try:
-            subprocess.Popen([sys.executable, str(program_path)])
+            # アプリケーションを起動
+            process = subprocess.Popen([sys.executable, str(program_path)])
+            
+            # アプリケーションのウィンドウを中央に配置し、最前面に表示
+            def center_and_raise_window():
+                try:
+                    # プロセスのウィンドウIDを取得
+                    window_id = process.pid
+                    # ウィンドウを中央に配置
+                    screen_width = self.root.winfo_screenwidth()
+                    screen_height = self.root.winfo_screenheight()
+                    x = (screen_width - 800) // 2  # デフォルトのウィンドウサイズ
+                    y = (screen_height - 600) // 2
+                    # ウィンドウを最前面に表示
+                    self.root.after(100, lambda: self.root.lift())
+                except Exception as e:
+                    print(f"Warning: Could not center window: {e}")
+            
+            self.root.after(500, center_and_raise_window)
+            
         except Exception as e:
             tk.messagebox.showerror("エラー", f"プログラムの起動に失敗しました: {e}")
 
