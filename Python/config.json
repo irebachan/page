@@ -13,12 +13,17 @@
         "file_watcher": {
             "name": "ファイル監視アプリ",
             "path": "file_watcher/file_watcher.py",
-            "description": "ファイル監視アプリ"
+            "description": "監視フォルダから別のフォルダへファイルを移動するツール"
         },
         "text_converter": {
             "name": "ADV用テキスト変換アプリ",
             "path": "test/text_converter.py",
             "description": "txtをティラノなどのADV用に変換するテキスト変換アプリ"
+        },
+        "numbers_watcher": {
+            "name": "Numbers監視アプリ",
+            "path": "numbers_watcher/numbers_watcher.py",
+            "description": "Numbersファイルの変更を監視し自動でcsvにエクスポートするツール"
         }
     }
 } 
