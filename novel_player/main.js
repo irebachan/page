@@ -13,6 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportSettingsBtn = document.getElementById("exportSettingsButton");
     const exportCloseBtn = document.querySelector(".export-close");
 
+    // このツールについてモーダル制御
+    const aboutModal = document.getElementById("aboutModal");
+    const aboutBtn = document.getElementById("aboutButton");
+    const aboutCloseBtn = document.querySelector(".about-close");
+
     // ヘルプボタンクリックでモーダルを表示
     helpBtn.addEventListener("click", () => {
         helpModal.style.display = "block";
@@ -21,6 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 出力設定ボタンクリックでモーダルを表示
     exportSettingsBtn.addEventListener("click", () => {
         exportSettingsModal.style.display = "block";
+    });
+
+    // このツールについてボタンクリックでモーダルを表示
+    aboutBtn.addEventListener("click", () => {
+        aboutModal.style.display = "block";
     });
 
     // 閉じるボタンでモーダルを非表示（ヘルプモーダル）
@@ -33,6 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
         exportSettingsModal.style.display = "none";
     });
 
+    // 閉じるボタンでモーダルを非表示（このツールについて）
+    aboutCloseBtn.addEventListener("click", () => {
+        aboutModal.style.display = "none";
+    });
+
     // モーダル外クリックでも閉じる
     window.addEventListener("click", (event) => {
         if (event.target === helpModal) {
@@ -40,6 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (event.target === exportSettingsModal) {
             exportSettingsModal.style.display = "none";
+        }
+        if (event.target === aboutModal) {
+            aboutModal.style.display = "none";
         }
     });
 });

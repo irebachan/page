@@ -25,7 +25,8 @@ class NovelPlayer {
         // イベントリスナーの設定
         this.nextBtn.addEventListener("click", () => this.showLine());
         this.restartBtn.addEventListener("click", () => this.restart());
-        this.scriptTextBox.addEventListener("input", () => this.updateScript());
+        this.updateScriptDebounced = this.debounce(() => this.updateScript(), 300);
+        this.scriptTextBox.addEventListener("input", () => this.updateScriptDebounced());
         this.jumpButton.addEventListener("click", () => this.jumpToLabel());
         this.saveButton.addEventListener("click", () => this.saveScriptToFile());
         this.loadButton.addEventListener("click", () => this.fileInput.click());
@@ -42,7 +43,7 @@ class NovelPlayer {
 
         // 初期スクリプト
         this.defaultScript = `
-@start
+@morning
 
 // この行はプレビューに表示されず、エクスポート後もコメントとして残ります
 
@@ -155,6 +156,14 @@ class NovelPlayer {
 
         // 初期化
         this.init();
+    }
+
+    debounce(fn, ms) {
+        let timer = null;
+        return () => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(fn, ms);
+        };
     }
 
     init() {
@@ -285,34 +294,8 @@ class NovelPlayer {
     saveScriptToFile() {
         const scriptContent = this.scriptTextBox.value;
         const blob = new Blob([scriptContent], { type: 'text/plain;charset=utf-8' });
-        this.saveFile(blob, 'scenario');
-
-        // テキストエリアにフォーカスを戻す
+        if (typeof saveFileBlob === "function") saveFileBlob(blob, "scenario", "txt");
         setTimeout(() => this.scriptTextBox.focus(), 200);
-    }
-
-    // ファイルを保存するヘルパーメソッド
-    saveFile(blob, filenamePrefix) {
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-
-        const now = new Date();
-        const dateStr = now.getFullYear() +
-            ('0' + (now.getMonth() + 1)).slice(-2) +
-            ('0' + now.getDate()).slice(-2) +
-            ('0' + now.getHours()).slice(-2) +
-            ('0' + now.getMinutes()).slice(-2);
-
-        a.download = `${filenamePrefix}_${dateStr}.txt`;
-        document.body.appendChild(a);
-        a.click();
-
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 100);
     }
 
     // 元のテキストをクリップボードにコピー
@@ -322,41 +305,12 @@ class NovelPlayer {
             document.execCommand('copy');
             window.getSelection().removeAllRanges();
 
-            this.showTemporaryNotification("コピーしました");
+            if (typeof showTemporaryNotification === "function") showTemporaryNotification("コピーしました");
 
             setTimeout(() => this.scriptTextBox.focus(), 200);
         } catch (err) {
             console.error('クリップボードへのコピーに失敗しました:', err);
         }
-    }
-
-    // 一時的な通知を表示する（数秒後に自動的に消える）
-    showTemporaryNotification(message) {
-        const existingNotification = document.getElementById('temp-notification');
-        if (existingNotification) {
-            document.body.removeChild(existingNotification);
-        }
-
-        const notification = document.createElement('div');
-        notification.id = 'temp-notification';
-        notification.textContent = message;
-        notification.style.position = 'fixed';
-        notification.style.bottom = '20px';
-        notification.style.right = '20px';
-        notification.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        notification.style.color = 'white';
-        notification.style.padding = '10px 15px';
-        notification.style.borderRadius = '4px';
-        notification.style.zIndex = '2000';
-        notification.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 2000);
     }
 
     // ファイルからシナリオを読み込み

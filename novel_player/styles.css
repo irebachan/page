@@ -317,17 +317,24 @@ body {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
-/* ヘルプコンテンツ */
-.help-content {
+/* ヘルプ・このツールについてコンテンツ */
+.help-content,
+.about-content {
     font-size: 1em;
     line-height: 1.5;
 }
 
-.help-content h3 {
+.help-content h3,
+.about-content h3 {
     margin-top: 1.5em;
     color: #9cf;
     border-bottom: 1px solid #555;
     padding-bottom: 0.3em;
+}
+
+.about-content ul, .about-content ol {
+    margin: 0.5em 0;
+    padding-left: 1.5em;
 }
 
 .help-content pre {

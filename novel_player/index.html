@@ -47,6 +47,7 @@
             <button id="loadButton">📤 読み込み</button>
             <button id="clearButton">🗑️ クリア</button>
             <button id="helpButton">❓ ヘルプ</button>
+            <button id="aboutButton">ℹ️ このツールについて</button>
             <button id="exportSettingsButton">⚙️ 出力設定</button>
             <button id="copyButton">📋 コピー</button>
             <input type="file" id="fileInput" accept=".txt" style="display:none">
@@ -130,6 +131,31 @@
         </div>
     </div>
 
+    <!-- このツールについてモーダル -->
+    <div id="aboutModal" class="modal">
+        <div class="modal-content">
+            <span class="close about-close">&times;</span>
+            <h2>このツールについて</h2>
+            <div class="about-content">
+                <p><strong>ノベル試作プレイヤー</strong>は、シナリオを編集しながら左側でプレビュー再生できるツールです。共有はテキストのやりとりで行うことを想定しています。</p>
+                <h3>できること</h3>
+                <ul>
+                    <li><strong>シナリオの編集とプレビュー</strong>: 右のテキストエリアでシナリオを書くと、左のビューアで即時プレビューできます。</li>
+                    <li><strong>保存・読み込み・コピー</strong>: シナリオをテキストファイルとして保存したり、読み込んだり、クリップボードにコピーしたりできます。</li>
+                    <li><strong>特殊形式での出力</strong>: 「出力設定」からティラノスクリプトや Ren'Py 用の記号付きテキストに変換して出力できます。記号はカスタマイズ可能です。</li>
+                </ul>
+                <h3>使い方のイメージ</h3>
+                <ol>
+                    <li>シナリオを書く（または読み込む）</li>
+                    <li>左側でプレビューしながら編集する</li>
+                    <li>完成したら「保存」でテキストファイルにするか、「特殊形式で出力」でゲームエンジン用に変換する</li>
+                    <li>共有するときは、テキストファイルやコピーしたテキストを渡す</li>
+                </ol>
+                <p>記法の詳細は「ヘルプ」を参照してください。</p>
+            </div>
+        </div>
+    </div>
+
     <!-- 特殊テキスト出力設定モーダル -->
     <div id="exportSettingsModal" class="modal">
         <div class="modal-content">
@@ -195,6 +221,7 @@
                             <label for="renpyDialogueStyle">セリフ書式:</label>
                             <select id="renpyDialogueStyle">
                                 <option value="name_quote">キャラ名 "台詞"</option>
+                                <option value="name_quote_both">"キャラ名" "台詞"</option>
                                 <option value="quote_only">"台詞" のみ</option>
                             </select>
                         </div>
@@ -219,8 +246,13 @@
         </div>
     </div>
 
-    <script src="export_settings.js"></script>
+    <script src="novel_player_utils.js"></script>
+    <script src="export_helpers.js"></script>
+    <script src="export_format_custom.js"></script>
+    <script src="export_render_tyrano.js"></script>
+    <script src="export_render_renpy.js"></script>
     <script src="script-parser.js"></script>
+    <script src="export_settings.js"></script>
     <script src="novel-player.js"></script>
     <script src="main.js"></script>
 </body>
