@@ -21,7 +21,8 @@ function renderTyrano(settings, script, labels) {
             } else {
                 outputLines.push("#");
             }
-            const formatted = formatLineBlock(settings, item.name || "", item.text || "", pageBreak, lineBreak, clickWait);
+            const oneLinePerPage = settings.outputUnit && settings.outputUnit.value === "line";
+            const formatted = formatLineBlock(settings, item.name || "", item.text || "", pageBreak, lineBreak, clickWait, oneLinePerPage);
             outputLines.push(...formatted);
         } else if (item.type === "choice") {
             const tpl = (settings.choiceLineTemplate && settings.choiceLineTemplate.value.trim()) || "[link target=@LABEL]@TEXT[endlink][r]";

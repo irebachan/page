@@ -23,6 +23,7 @@ class ExportSettings {
         this.labelBelowTag = document.getElementById("labelBelowTag");
         this.exportExtension = document.getElementById("exportExtension");
         this.useClickWait = document.getElementById("useClickWait");
+        this.outputUnit = document.getElementById("outputUnit");
 
         this.exportSettingsButton.addEventListener("click", () => this.showModal());
         this.exportButton.addEventListener("click", () => this.exportScript());

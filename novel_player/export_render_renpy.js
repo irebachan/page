@@ -11,18 +11,31 @@ function renderRenpy(settings, script, labels) {
             outputLines.push("");
         } else if (item.type === "line") {
             const name = item.name && item.name.trim() !== "" ? item.name : "";
-            const lines = (item.text || "").split("\n");
-            lines.forEach(oneLine => {
-                const text = oneLine.replace(/"/g, '\\"');
+            const oneLinePerSay = settings.outputUnit && settings.outputUnit.value === "line";
+            if (oneLinePerSay) {
+                const lines = (item.text || "").split("\n");
+                lines.forEach(oneLine => {
+                    const text = oneLine.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+                    if (style === "name_quote" && name) {
+                        outputLines.push('    ' + name + ' "' + text + '"');
+                    } else if (style === "name_quote_both" && name) {
+                        const nameEsc = name.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+                        outputLines.push('    "' + nameEsc + '" "' + text + '"');
+                    } else {
+                        outputLines.push('    "' + text + '"');
+                    }
+                });
+            } else {
+                const blockText = (item.text || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
                 if (style === "name_quote" && name) {
-                    outputLines.push('    ' + name + ' "' + text + '"');
+                    outputLines.push('    ' + name + ' "' + blockText + '"');
                 } else if (style === "name_quote_both" && name) {
-                    const nameEsc = name.replace(/"/g, '\\"');
-                    outputLines.push('    "' + nameEsc + '" "' + text + '"');
+                    const nameEsc = name.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+                    outputLines.push('    "' + nameEsc + '" "' + blockText + '"');
                 } else {
-                    outputLines.push('    "' + text + '"');
+                    outputLines.push('    "' + blockText + '"');
                 }
-            });
+            }
         } else if (item.type === "choice") {
             outputLines.push("    menu:");
             item.choices.forEach(({ text, target }) => {

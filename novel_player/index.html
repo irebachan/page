@@ -175,6 +175,13 @@
                         <label for="exportExtension">出力拡張子:</label>
                         <input type="text" id="exportExtension" value="ks" placeholder="例: txt, ks, rpy" style="width: 5em;">
                     </div>
+                    <div class="export-setting-item">
+                        <label for="outputUnit">セリフの単位:</label>
+                        <select id="outputUnit">
+                            <option value="block">ブロックごと（1ブロック＝1回のページ送り）</option>
+                            <option value="line">1行1セリフ（1行＝1回のページ送り）</option>
+                        </select>
+                    </div>
                     <div id="formatOptionsTyrano" class="format-options">
                         <div class="export-setting-item">
                             <label for="pageBreakSymbol">改ページ記号:</label>

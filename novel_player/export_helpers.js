@@ -25,7 +25,7 @@ function splitByPunctuation(settings, text) {
     return result;
 }
 
-function formatLineBlock(settings, name, text, pageBreak, lineBreak, clickWait) {
+function formatLineBlock(settings, name, text, pageBreak, lineBreak, clickWait, oneLinePerPage) {
     const outputLines = [];
     const block = text ? text.split("\n") : [];
     if (block.length === 0) {
@@ -51,10 +51,14 @@ function formatLineBlock(settings, name, text, pageBreak, lineBreak, clickWait) 
                 }
             }
         });
-        if (!isLastValidLine) {
-            if (lineBreak) processedLine += lineBreak;
-        } else {
+        if (oneLinePerPage) {
             if (pageBreak) processedLine += pageBreak;
+        } else {
+            if (!isLastValidLine) {
+                if (lineBreak) processedLine += lineBreak;
+            } else {
+                if (pageBreak) processedLine += pageBreak;
+            }
         }
         outputLines.push(processedLine);
     });
