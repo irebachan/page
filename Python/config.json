@@ -1,5 +1,10 @@
 {
     "programs": {
+        "novel2rmmz": {
+            "name": "novel2rmmz",
+            "path": "novel2rmmz/novel2rmmz_gui.py",
+            "description": "VN用テキストをRMMZ用に変換するツール"
+        },
         "text_editor": {
             "name": "web小説用テキストエディタ",
             "path": "test/text_editor.py",

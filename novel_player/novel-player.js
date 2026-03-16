@@ -147,7 +147,7 @@ class NovelPlayer {
 楽しい一日が過ごせました。
 
 @choice_end
-- もう一度やり直す => start
+- もう一度やり直す => morning
 - 終了する => end
 
 @end
