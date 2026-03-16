@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtWidgets import (
     QApplication,
     QComboBox,
+    QDialog,
     QFileDialog,
     QGridLayout,
     QGroupBox,
@@ -78,6 +79,7 @@ class MainWindow(QMainWindow):
         self._config_path = Path(__file__).with_name("novel2rmmz_config.json")
         # 設定オブジェクト（global + projects）
         self._config: dict = {"global": {}, "projects": {}}
+        self._help_dialog: QDialog | None = None
         self._build_ui()
         self._load_config()
 
@@ -105,7 +107,7 @@ class MainWindow(QMainWindow):
         proj_layout.addWidget(help_btn)
 
         # メッセージウィンドウ設定
-        msg_group = QGroupBox("メッセージウィンドウ設定（一括）")
+        msg_group = QGroupBox("メッセージウィンドウ設定・メッセージ単位")
         msg_layout = QGridLayout(msg_group)
 
         self.position_combo = QComboBox()
@@ -132,19 +134,27 @@ class MainWindow(QMainWindow):
         msg_layout.addWidget(self.position_combo, 0, 1)
         msg_layout.addWidget(QLabel("背景"), 1, 0)
         msg_layout.addWidget(self.background_combo, 1, 1)
+        self.message_unit_combo = QComboBox()
+        self.message_unit_combo.addItem("行ごと", "line")
+        self.message_unit_combo.addItem("ブロック（連続行まとめ）", "block")
+
         msg_layout.addWidget(QLabel("折り返し目安: 顔あり列"), 2, 0)
         msg_layout.addWidget(self.col_face_spin, 2, 1)
         msg_layout.addWidget(QLabel("折り返し目安: 顔なし列"), 3, 0)
         msg_layout.addWidget(self.col_plain_spin, 3, 1)
+        msg_layout.addWidget(QLabel("メッセージ単位"), 4, 0)
+        msg_layout.addWidget(self.message_unit_combo, 4, 1)
 
         # 顔グラ設定
-        face_group = QGroupBox("顔グラ設定（1行: 名前, ファイル名, インデックス）")
+        face_group = QGroupBox("顔グラ設定（1行: 名前, [表情ラベル], ファイル名, インデックス）")
         face_layout = QVBoxLayout(face_group)
         self.face_text = QPlainTextEdit()
         self.face_text.setPlaceholderText(
             "# 例:\n"
-            "ヒロイン, Male4_Face-Set, 0\n"
-            "主人公, Fem1_Face-Set, 0\n"
+            "# デフォルト表情\n"
+            "ヒロイン, default, Actor1, 0\n"
+            "# 表情ラベル付き\n"
+            "ヒロイン, smile,   Actor1, 1\n"
         )
         face_layout.addWidget(self.face_text)
 
@@ -290,21 +300,32 @@ class MainWindow(QMainWindow):
         """顔グラ設定テキストを NAME_FACE_CONFIG に反映する."""
         import novel2rmmz
 
-        cfg: dict[str, tuple[str, int]] = {}
+        cfg: dict[str, dict[str, tuple[str, int]]] = {}
         text = self.face_text.toPlainText()
         for raw in text.splitlines():
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
             parts = [p.strip() for p in line.split(",")]
-            if len(parts) < 3:
+            # 形式:
+            #  - 名前, ファイル名, インデックス          -> 表情ラベル 'default'
+            #  - 名前, 表情ラベル, ファイル名, インデックス
+            if len(parts) == 3:
+                name, face_name, index_str = parts[0], parts[1], parts[2]
+                expr = "default"
+            elif len(parts) >= 4:
+                name, expr, face_name, index_str = parts[0], parts[1], parts[2], parts[3]
+            else:
                 continue
-            name, face_name, index_str = parts[0], parts[1], parts[2]
+
             try:
                 idx = int(index_str)
             except ValueError:
                 continue
-            cfg[name] = (face_name, idx)
+
+            expr_key = expr or "default"
+            face_map = cfg.setdefault(name, {})
+            face_map[expr_key] = (face_name, idx)
 
         novel2rmmz.NAME_FACE_CONFIG.clear()
         novel2rmmz.NAME_FACE_CONFIG.update(cfg)
@@ -408,6 +429,12 @@ class MainWindow(QMainWindow):
         if isinstance(g.get("col_plain"), int):
             self.col_plain_spin.setValue(int(g["col_plain"]))
 
+        unit = g.get("message_unit")
+        if isinstance(unit, str):
+            idx = self.message_unit_combo.findData(unit)
+            if idx != -1:
+                self.message_unit_combo.setCurrentIndex(idx)
+
         # プロジェクトが既に入力されていれば、その設定をさらに上書き
         proj = self.project_edit.text().strip()
         if proj:
@@ -423,6 +450,7 @@ class MainWindow(QMainWindow):
             "background": int(self.background_combo.currentData()),
             "col_face": int(self.col_face_spin.value()),
             "col_plain": int(self.col_plain_spin.value()),
+            "message_unit": str(self.message_unit_combo.currentData()),
         }
 
         # 現在のプロジェクトにひもづく設定を更新
@@ -455,36 +483,73 @@ class MainWindow(QMainWindow):
             pass
 
     def show_help(self) -> None:
-        """記法と使い方のヘルプをモーダルで表示."""
-        text = (
-            "【ノベル記法の基本】\n"
+        """記法と使い方のヘルプを、コピーしやすい専用ダイアログで表示."""
+        # すでに開いている場合はそれを前面に出す
+        if self._help_dialog is not None and self._help_dialog.isVisible():
+            self._help_dialog.raise_()
+            self._help_dialog.activateWindow()
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("novel2rmmz ヘルプ")
+        dialog.resize(700, 600)
+        layout = QVBoxLayout(dialog)
+
+        # 見出し
+        layout.addWidget(QLabel("タグ記法と使い方（テキストはコピーできます）"))
+
+        help_edit = QPlainTextEdit()
+        help_edit.setReadOnly(True)
+        help_edit.setPlainText(
+            "【タグ一覧（コピペ用サンプル）】\n"
             "\n"
-            "・ラベル定義\n"
-            "  @start\n"
-            "  @kitchen\n"
+            "@start\n"
+            "@kitchen\n"
+            "@goto start\n"
+            "@window middle, dark\n"
+            "@window reset\n"
+            "@w1 top, transparent\n"
             "\n"
-            "・ラベルジャンプ\n"
-            "  @goto start\n"
+            "@bgm main_theme\n"
+            "@bgm main_theme, 80\n"
             "\n"
-            "・名前の指定（以降の行に適用）\n"
-            "  #ヒロイン\n"
-            "  ここにセリフを書く\n"
+            "@se door_open\n"
+            "@se door_open, 70\n"
             "\n"
-            "・選択肢\n"
-            "  説明文（任意）\n"
-            "  - 逃げる => escape\n"
-            "  - 戦う   => fight\n"
+            "#ヒロイン\n"
+            "#ヒロイン@smile\n"
+            "ここにセリフを書く\n"
             "\n"
-            "・空行は無視\n"
-            "・// で始まる行は「注釈」イベントコマンドとして出力\n"
+            "- 逃げる => escape\n"
+            "- 戦う   => fight\n"
+            "\n"
+            "// ここは注釈（ツクールの注釈コマンドになる）\n"
+            "\n"
+            "【説明】\n"
+            "・@start, @kitchen など: ラベル定義\n"
+            "・@goto ラベル名      : ラベルジャンプ\n"
+            "・@bgm name[, volume] : BGM の演奏（volume 省略時は 90）\n"
+            "・@se  name[, volume] : SE の演奏（volume 省略時は 90）\n"
+            "・@window pos[, bg]   : ウィンドウ位置・背景の一括設定\n"
+            "    pos: top / middle / bottom\n"
+            "    bg : normal / dark / transparent\n"
+            "  例) @window middle, dark\n"
+            "      @window reset   # GUIで選んだデフォルトに戻す\n"
+            "・@w1 pos[, bg]       : 次の1メッセージだけ、位置・背景を一時変更\n"
+            "・#名前               : 以降のセリフの話者名\n"
+            "・#名前@表情          : 話者＋表情ラベル（face 設定と組み合わせて使う）\n"
+            "・- テキスト => label : 選択肢とジャンプ先ラベル\n"
+            "・// 行               : ツクール上の注釈コマンド\n"
             "\n"
             "【顔グラ設定】\n"
             "左の「顔グラ設定」ボックスに 1 行ずつ、\n"
             "  名前, 顔グラファイル名, インデックス\n"
+            "または\n"
+            "  名前, 表情ラベル, 顔グラファイル名, インデックス\n"
             "の形式で書きます。\n"
             "例:\n"
-            "  ヒロイン, Male4_Face-Set, 0\n"
-            "  主人公, Fem1_Face-Set, 0\n"
+            "  ヒロイン, Actor1, 0              # default 表情\n"
+            "  ヒロイン, smile, Actor1, 1       # smile 表情\n"
             "\n"
             "【メッセージウィンドウ設定】\n"
             "・位置: 上 / 中 / 下\n"
@@ -493,17 +558,30 @@ class MainWindow(QMainWindow):
             "【折り返し目安のガイドライン】\n"
             "・顔あり列: 顔グラ＋名前がある時の 1 行の目安文字数\n"
             "・顔なし列: 顔グラなしの時の 1 行の目安文字数\n"
-            "テキストエディタ上に縦線 2 本として表示されます。\n"
+            "  → テキストエディタ上に縦線 2 本として表示されます。\n"
             "\n"
             "【書き込みの流れ】\n"
             "1. RMMZ プロジェクトフォルダを指定\n"
-            "2. 必要なら顔グラ設定とウィンドウ設定を調整\n"
+            "2. 必要なら顔グラ設定とウィンドウ設定・ガイド列を調整\n"
             "3. 右側にノベルテキストを書くか、テキストを読み込む\n"
             "4. マップ or コモンイベントの ID を指定して\n"
             "   「マップに書き込む」または「コモンイベントに書き込む」を押す\n"
         )
+        layout.addWidget(help_edit)
 
-        QMessageBox.information(self, "novel2rmmz ヘルプ", text)
+        close_btn = QPushButton("閉じる")
+        close_btn.clicked.connect(dialog.close)
+        layout.addWidget(close_btn, alignment=Qt.AlignRight)
+
+        # 参照を保持して非モーダル表示
+        self._help_dialog = dialog
+        dialog.setAttribute(Qt.WA_DeleteOnClose, True)
+
+        def _clear_ref() -> None:
+            self._help_dialog = None
+
+        dialog.destroyed.connect(_clear_ref)
+        dialog.show()
 
     def load_text_file(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -562,6 +640,11 @@ class MainWindow(QMainWindow):
 
             # 顔グラ設定を適用
             self.apply_face_config()
+
+            # メッセージ単位設定を適用
+            unit = self.message_unit_combo.currentData()
+            if isinstance(unit, str) and unit in ("line", "block"):
+                novel2rmmz.MESSAGE_UNIT = unit
 
             nodes = parse_novel_script(script_text)
             commands = ir_to_rmmz_commands(nodes)
