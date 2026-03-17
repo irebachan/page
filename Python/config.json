@@ -5,6 +5,11 @@
             "path": "novel2rmmz/novel2rmmz_gui.py",
             "description": "VN用テキストをRMMZ用に変換するツール"
         },
+        "rmmz2novel": {
+            "name": "rmmz2novel",
+            "path": "rmmz2novel/rmmz2novel_gui.py",
+            "description": "RMMZのイベントをノベル記法に戻すツール"
+        },
         "text_editor": {
             "name": "web小説用テキストエディタ",
             "path": "test/text_editor.py",
