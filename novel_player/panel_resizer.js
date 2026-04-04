@@ -91,8 +91,8 @@
             const now = pointerFromEvent(e);
             const delta = now - startMain;
             const deltaPct = (delta / containerSize) * 100;
-            /* 積み: 下にドラッグ＝上パネル縮小。横: 右にドラッグ＝左パネル拡大 */
-            const next = isStacked() ? startPct - deltaPct : startPct + deltaPct;
+            /* 第1パネル比率: 横＝右へ／縦＝下へドラッグで増える（境界が進行方向へ動くイメージ） */
+            const next = startPct + deltaPct;
             setPct(next);
         }
 
@@ -124,8 +124,8 @@
             const step = e.shiftKey ? 5 : 2;
             let p = getPct();
             if (isStacked()) {
-                if (e.key === "ArrowUp" || e.key === "ArrowLeft") p += step;
-                if (e.key === "ArrowDown" || e.key === "ArrowRight") p -= step;
+                if (e.key === "ArrowDown" || e.key === "ArrowRight") p += step;
+                if (e.key === "ArrowUp" || e.key === "ArrowLeft") p -= step;
             } else {
                 if (e.key === "ArrowLeft" || e.key === "ArrowUp") p -= step;
                 if (e.key === "ArrowRight" || e.key === "ArrowDown") p += step;
