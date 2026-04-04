@@ -14,6 +14,29 @@
 <body>
     <!-- 左側: ノベルビューア -->
     <div class="novel-viewer">
+        <div class="novel-menu-float">
+            <button type="button" id="novelMenuButton" class="menu-toggle menu-toggle--float" aria-expanded="false"
+                aria-controls="novelMenuPanel" aria-haspopup="true" aria-label="プレビュー・その他の操作メニュー">
+                <span class="menu-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+            </button>
+        </div>
+        <div id="novelMenuPanel" class="menu-drawer menu-drawer--novel" aria-hidden="true">
+            <div class="menu-drawer-backdrop" data-menu-close="novel" tabindex="-1"></div>
+            <div class="menu-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="novelMenuTitle">
+                <div class="menu-drawer-header">
+                    <span id="novelMenuTitle" class="menu-drawer-title">プレビュー操作</span>
+                    <button type="button" class="menu-drawer-close" data-menu-close="novel"
+                        aria-label="メニューを閉じる">&times;</button>
+                </div>
+                <div class="menu-drawer-body">
+                    <button type="button" id="restart">🔄 最初に戻る</button>
+                    <div class="label-jump">
+                        <input type="text" id="labelInput" placeholder="ジャンプ先ラベル" autocomplete="off">
+                        <button type="button" id="jumpButton">移動</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- 上部: 物語コンテンツエリア -->
         <div class="novel-content">
             <!-- 選択肢エリア（上に移動） -->
@@ -26,32 +49,45 @@
             </div>
         </div>
 
-        <!-- 下部: 固定ボタンエリア -->
+        <!-- 下部: 固定ボタンエリア（次へは常に表示） -->
         <div class="button-area">
-            <button id="next">▶ 次へ</button>
-            <button id="restart">🔄 最初に戻る</button>
-
-            <!-- ラベルジャンプ機能 -->
-            <div class="label-jump">
-                <input type="text" id="labelInput" placeholder="ジャンプ先ラベル">
-                <button id="jumpButton">移動</button>
-            </div>
+            <button type="button" id="next">▶ 次へ</button>
         </div>
     </div>
 
+    <div class="panel-splitter" id="panelSplitter" role="separator" aria-label="プレビューとシナリオの領域の大きさを調整" tabindex="0" title="ドラッグでサイズ調整（ダブルクリックで初期値）"></div>
+
     <!-- 右側: シナリオ表示 (編集可能テキストボックス) -->
     <div class="scenario-box">
-        <textarea id="scriptText"></textarea>
-        <div class="file-controls">
-            <button id="saveButton">📥 保存</button>
-            <button id="loadButton">📤 読み込み</button>
-            <button id="clearButton">🗑️ クリア</button>
-            <button id="helpButton">❓ ヘルプ</button>
-            <button id="aboutButton">ℹ️ このツールについて</button>
-            <button id="exportSettingsButton">⚙️ 出力設定</button>
-            <button id="copyButton">📋 コピー</button>
-            <input type="file" id="fileInput" accept=".txt" style="display:none">
+        <div class="scenario-menu-float">
+            <button type="button" id="scenarioMenuButton" class="menu-toggle menu-toggle--float" aria-expanded="false"
+                aria-controls="scenarioMenuPanel" aria-haspopup="true" aria-label="シナリオメニュー">
+                <span class="menu-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+            </button>
         </div>
+        <div class="scenario-editor-wrap">
+            <textarea id="scriptText"></textarea>
+        </div>
+        <div id="scenarioMenuPanel" class="menu-drawer menu-drawer--scenario" aria-hidden="true">
+            <div class="menu-drawer-backdrop" data-menu-close="scenario" tabindex="-1"></div>
+            <div class="menu-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="scenarioMenuTitle">
+                <div class="menu-drawer-header">
+                    <span id="scenarioMenuTitle" class="menu-drawer-title">操作</span>
+                    <button type="button" class="menu-drawer-close" data-menu-close="scenario"
+                        aria-label="メニューを閉じる">&times;</button>
+                </div>
+                <div class="menu-drawer-body menu-drawer-body--stack">
+                    <button type="button" id="saveButton">📥 保存</button>
+                    <button type="button" id="loadButton">📤 読み込み</button>
+                    <button type="button" id="clearButton">🗑️ クリア</button>
+                    <button type="button" id="helpButton">❓ ヘルプ</button>
+                    <button type="button" id="aboutButton">ℹ️ このツールについて</button>
+                    <button type="button" id="exportSettingsButton">⚙️ 出力設定</button>
+                    <button type="button" id="copyButton">📋 コピー</button>
+                </div>
+            </div>
+        </div>
+        <input type="file" id="fileInput" accept=".txt" style="display:none">
     </div>
 
     <!-- ヘルプモーダル -->
@@ -254,6 +290,7 @@
     </div>
 
     <script src="novel_player_utils.js"></script>
+    <script src="panel_resizer.js"></script>
     <script src="export_helpers.js"></script>
     <script src="export_format_custom.js"></script>
     <script src="export_render_tyrano.js"></script>

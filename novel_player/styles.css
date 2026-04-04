@@ -1,4 +1,10 @@
 body {
+    --panel-split-pct: 50;
+    /* フロートメニュー・スクロールバー・隙間（左右パネルで同じ縦線に揃える） */
+    --menu-float-size: 44px;
+    --menu-float-edge: 0.35em;
+    --scrollbar-reserve: 15px;
+    --menu-scroll-gap: 5px;
     display: flex;
     flex-direction: row;
     background: #000;
@@ -14,19 +20,278 @@ body {
     -webkit-text-size-adjust: 100%;
 }
 
+/* プレビュー | シナリオ の境界（ドラッグで幅／高さを調整） */
+.panel-splitter {
+    flex: 0 0 10px;
+    width: 10px;
+    min-width: 10px;
+    align-self: stretch;
+    background: #2a2a2a;
+    border: solid #555;
+    border-width: 0 1px;
+    cursor: col-resize;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+    z-index: 6;
+    box-sizing: border-box;
+}
+
+.panel-splitter:hover,
+.panel-splitter:focus {
+    background: #3a4a5a;
+    outline: none;
+}
+
+.panel-splitter:focus-visible {
+    outline: 2px solid #9cf;
+    outline-offset: -2px;
+}
+
+.panel-splitter::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 28px;
+    border-radius: 2px;
+    background: #666;
+    pointer-events: none;
+}
+
+body.is-panel-dragging {
+    cursor: col-resize;
+}
+
+body.is-panel-dragging * {
+    cursor: col-resize !important;
+}
+
 /* 左側のノベルビューア */
 .novel-viewer {
-    flex: 1;
+    flex: 0 0 calc(var(--panel-split-pct, 50) * 1%);
+    min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     padding: 1em;
-    border-right: 2px solid #fff;
+    border-right: none;
     color: #fff;
     height: 100svh;
     max-height: 100svh;
     position: relative;
     overflow: hidden;
     box-sizing: border-box;
+}
+
+/* フロート：タイトル行は置かず、角にだけメニューボタン */
+.novel-menu-float,
+.scenario-menu-float {
+    position: absolute;
+    top: max(var(--menu-float-edge), env(safe-area-inset-top, 0px));
+    right: max(var(--menu-float-edge), env(safe-area-inset-right, 0px));
+    z-index: 12;
+    margin: 0;
+    pointer-events: none;
+}
+
+.novel-menu-float .menu-toggle,
+.scenario-menu-float .menu-toggle {
+    pointer-events: auto;
+}
+
+/* 三本線ボタン（幅は --menu-float-size と右パディング計算を一致） */
+.menu-toggle {
+    flex: 0 0 auto;
+    width: var(--menu-float-size);
+    height: var(--menu-float-size);
+    padding: 0;
+    border: 1px solid #666;
+    background: #333;
+    color: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.menu-toggle:hover {
+    background: #3d3d3d;
+}
+
+.menu-toggle:focus-visible {
+    outline: 2px solid #9cf;
+    outline-offset: 2px;
+}
+
+.menu-toggle-bars {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 22px;
+    height: 16px;
+}
+
+.menu-toggle-bars span {
+    display: block;
+    height: 2px;
+    background: #fff;
+    border-radius: 1px;
+}
+
+.menu-toggle--float {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+    background: rgba(40, 40, 40, 0.92);
+    border-color: #555;
+}
+
+.menu-toggle--float:hover {
+    background: rgba(55, 55, 55, 0.95);
+}
+
+body.menu-drawer-open {
+    overflow: hidden;
+}
+
+/* スライドインメニュー（共通） */
+.menu-drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.menu-drawer.is-open {
+    pointer-events: auto;
+    visibility: visible;
+}
+
+.menu-drawer-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.menu-drawer.is-open .menu-drawer-backdrop {
+    opacity: 1;
+}
+
+.menu-drawer-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: min(340px, 92vw);
+    height: 100%;
+    max-height: 100dvh;
+    background: #252525;
+    border-left: 1px solid #555;
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35);
+    transform: translateX(100%);
+    transition: transform 0.22s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.menu-drawer.is-open .menu-drawer-panel {
+    transform: translateX(0);
+}
+
+.menu-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    padding: 0.85em 1em;
+    border-bottom: 1px solid #444;
+    background: #2a2a2a;
+}
+
+.menu-drawer-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #eee;
+}
+
+.menu-drawer-close {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #ccc;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.menu-drawer-close:hover {
+    color: #fff;
+    background: #444;
+}
+
+.menu-drawer-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.75em 1em max(1em, env(safe-area-inset-bottom, 0px));
+    -webkit-overflow-scrolling: touch;
+}
+
+.menu-drawer-body--stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45em;
+}
+
+.menu-drawer-body--stack button {
+    width: 100%;
+    text-align: left;
+    padding: 0.65em 0.85em;
+    font-size: 1em;
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.menu-drawer-body--stack button:hover {
+    background: #555;
+}
+
+.menu-drawer--novel .menu-drawer-body #restart {
+    width: 100%;
+    margin-bottom: 0.25em;
+    font-size: 1.05em;
+    padding: 0.65em 0.85em;
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.menu-drawer--novel .menu-drawer-body #restart:hover {
+    background: #555;
+}
+
+.menu-drawer--novel .label-jump {
+    margin-top: 0.5em;
+}
+
+.menu-drawer--novel #labelInput {
+    font-size: 1em;
 }
 
 /* レイアウトを完全に2等分 */
@@ -38,6 +303,11 @@ body {
     /* 下寄せ */
     margin-bottom: 1em;
     overflow: hidden;
+    /* フロート＋スクロールバー分（親パネルの左右パディングで safe を吸収） */
+    padding-right: calc(
+        var(--menu-float-size) + var(--scrollbar-reserve) + var(--menu-scroll-gap)
+    );
+    box-sizing: border-box;
 }
 
 /* 固定ボタンエリア */
@@ -59,6 +329,7 @@ body {
     overflow-y: auto;
     margin-bottom: 1em;
     padding-right: 0.5em;
+    scrollbar-gutter: stable;
     display: flex;
     flex-direction: column;
     border: 1px solid #444;
@@ -108,11 +379,10 @@ body {
     background: #555;
 }
 
-#next,
-#restart {
+#next {
     font-size: 1.2em;
     width: 100%;
-    margin-bottom: 0.3em;
+    margin-bottom: 0;
     padding: 0.5em;
     background: #444;
     color: #fff;
@@ -120,8 +390,7 @@ body {
     cursor: pointer;
 }
 
-#next:hover,
-#restart:hover {
+#next:hover {
     background: #555;
 }
 
@@ -154,7 +423,10 @@ body {
 
 /* 右側: シナリオテキストボックス (編集可) */
 .scenario-box {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    position: relative;
     padding: 1em;
     background: #222;
     display: flex;
@@ -165,9 +437,21 @@ body {
     box-sizing: border-box;
 }
 
+/* テキストエリアを狭め、右にスクロールバー＋フロート分を確保（被り解消） */
+.scenario-editor-wrap {
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    padding-right: calc(var(--menu-float-size) + var(--scrollbar-reserve) + var(--menu-scroll-gap));
+}
+
 #scriptText {
     width: 100%;
     flex: 1;
+    min-height: 0;
     color: #fff;
     background: #333;
     border: 1px solid #444;
@@ -177,34 +461,10 @@ body {
     white-space: pre-wrap;
     resize: none;
     overflow: auto;
-    margin-bottom: 1em;
+    margin-bottom: 0;
     -webkit-overflow-scrolling: touch;
-}
-
-/* ファイル操作コントロール */
-.file-controls {
-    display: flex;
-    gap: 1em;
-    position: sticky;
-    bottom: 0;
-    width: 100%;
-    background: #222;
-    padding-bottom: 0.5em;
-    z-index: 10;
-}
-
-.file-controls button {
-    flex: 1;
-    padding: 0.7em;
-    background: #444;
-    color: #fff;
-    border: 1px solid #666;
-    cursor: pointer;
-    font-size: 1em;
-}
-
-.file-controls button:hover {
-    background: #555;
+    box-sizing: border-box;
+    scrollbar-gutter: stable;
 }
 
 /* テキスト出力設定のスタイル */
@@ -442,11 +702,17 @@ body {
     text-decoration: none;
 }
 
-/* モバイル対応 */
+/* モバイル対応（読みエリア優先・ボタン帯は最小限） */
 @media (max-width: 768px) {
     body {
+        --menu-float-size: 38px;
+        /* 被らないギリギリでエリアを広く（モバイル用に詰める） */
+        --scrollbar-reserve: 11px;
+        --menu-scroll-gap: 2px;
+        --menu-float-edge: 0.3em;
         flex-direction: column;
         height: 100svh;
+        height: 100dvh;
         position: fixed;
         top: 0;
         left: 0;
@@ -454,39 +720,120 @@ body {
         bottom: 0;
     }
 
+    /* プレビュー／シナリオで左右パディングを同じにし、メニュー右端の縦線を揃える */
     .novel-viewer,
     .scenario-box {
-        height: 50svh;
-        min-height: 50svh;
-        max-height: 50svh;
-        overflow-y: auto;
+        padding-left: max(0.5em, env(safe-area-inset-left, 0px));
+        padding-right: max(0.5em, env(safe-area-inset-right, 0px));
+    }
+
+    .novel-viewer {
+        flex: 0 0 calc(var(--panel-split-pct, 50) * 1%);
+        min-height: 0;
+        max-height: none;
+        height: auto;
+        padding-top: max(0.5em, env(safe-area-inset-top, 0px));
+        padding-bottom: 0.5em;
+        overflow: hidden;
+    }
+
+    .scenario-box {
+        flex: 1 1 0;
+        min-height: 0;
+        max-height: none;
+        height: auto;
+        padding-top: 0.5em;
+        padding-bottom: max(0.5em, env(safe-area-inset-bottom, 0px));
+        overflow: hidden;
+    }
+
+    /* safe はパネル padding に含めたので、フロートは同じオフセットだけ（上下パネルで一致） */
+    .novel-menu-float,
+    .scenario-menu-float {
+        top: var(--menu-float-edge);
+        right: var(--menu-float-edge);
+    }
+
+    .panel-splitter {
+        width: 100%;
+        min-width: 0;
+        height: 12px;
+        min-height: 12px;
+        flex: 0 0 12px;
+        cursor: row-resize;
+        border-width: 1px 0;
+        align-self: stretch;
+    }
+
+    .panel-splitter::after {
+        width: 36px;
+        height: 4px;
+        border-radius: 3px;
+    }
+
+    body.is-panel-dragging {
+        cursor: row-resize;
+    }
+
+    body.is-panel-dragging * {
+        cursor: row-resize !important;
+    }
+
+    /* 本文を縦いっぱい、下はボタンだけ細く */
+    .novel-content {
+        height: auto;
+        flex: 1 1 0;
+        min-height: 0;
+        margin-bottom: 0.35em;
+        justify-content: flex-start;
+    }
+
+    .button-area {
+        height: auto;
+        flex: 0 0 auto;
+        min-height: 0;
+        padding-top: 0.35em;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        align-items: stretch;
+        border-top: 1px solid #444;
+    }
+
+    #next {
+        width: 100%;
+        margin-bottom: 0;
+        padding: 0.45em 0.5em;
+        font-size: 0.95rem;
+        min-height: 44px;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .text-container {
+        height: auto !important;
+        min-height: 96px;
+        max-height: none !important;
+        flex: 1 1 auto;
+        margin-bottom: 0.35em;
+    }
+
+    .choices {
+        max-height: min(32vh, 220px);
+        flex-shrink: 0;
+    }
+
+    .choices button {
+        padding: 0.45em 0.5em;
+        min-height: 40px;
     }
 
     #scriptText {
-        height: calc(100% - 60px);
-        min-height: 150px;
+        flex: 1 1 auto;
+        min-height: 0;
+        height: auto;
+        margin-bottom: 0;
         overflow-y: auto;
-    }
-
-    .file-controls {
-        flex-wrap: wrap;
-        position: sticky;
-        bottom: 0;
-        height: 60px;
-        padding: 8px;
-        box-sizing: border-box;
-    }
-
-    .file-controls button {
-        padding: 0.5em;
-        min-height: 44px;
-        flex: 1;
-    }
-
-    /* iOSの安全領域に対応 */
-    @supports (-webkit-touch-callout: none) {
-        .file-controls {
-            padding-bottom: calc(env(safe-area-inset-bottom, 0) + 8px);
-        }
+        font-size: 0.95rem;
     }
 }
