@@ -86,18 +86,24 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.key === "Escape") closeAllMenus();
     });
 
-    helpBtn.addEventListener("click", () => {
-        closeScenarioMenu();
-        helpModal.style.display = "block";
-    });
+    if (helpBtn && helpModal) {
+        helpBtn.addEventListener("click", () => {
+            closeScenarioMenu();
+            helpModal.style.display = "block";
+        });
+    }
 
     /* 出力設定の表示は ExportSettings が担当。メニューを閉じるだけ */
-    exportSettingsBtn.addEventListener("click", () => closeScenarioMenu());
+    if (exportSettingsBtn) {
+        exportSettingsBtn.addEventListener("click", () => closeScenarioMenu());
+    }
 
-    aboutBtn.addEventListener("click", () => {
-        closeScenarioMenu();
-        aboutModal.style.display = "block";
-    });
+    if (aboutBtn && aboutModal) {
+        aboutBtn.addEventListener("click", () => {
+            closeScenarioMenu();
+            aboutModal.style.display = "block";
+        });
+    }
 
     const saveBtn = document.getElementById("saveButton");
     const loadBtn = document.getElementById("loadButton");
@@ -115,26 +121,32 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.addEventListener("click", () => closeNovelMenu());
     });
 
-    closeBtn.addEventListener("click", () => {
-        helpModal.style.display = "none";
-    });
+    if (closeBtn && helpModal) {
+        closeBtn.addEventListener("click", () => {
+            helpModal.style.display = "none";
+        });
+    }
 
-    exportCloseBtn.addEventListener("click", () => {
-        exportSettingsModal.style.display = "none";
-    });
+    if (exportCloseBtn && exportSettingsModal) {
+        exportCloseBtn.addEventListener("click", () => {
+            exportSettingsModal.style.display = "none";
+        });
+    }
 
-    aboutCloseBtn.addEventListener("click", () => {
-        aboutModal.style.display = "none";
-    });
+    if (aboutCloseBtn && aboutModal) {
+        aboutCloseBtn.addEventListener("click", () => {
+            aboutModal.style.display = "none";
+        });
+    }
 
     window.addEventListener("click", (event) => {
-        if (event.target === helpModal) {
+        if (helpModal && event.target === helpModal) {
             helpModal.style.display = "none";
         }
-        if (event.target === exportSettingsModal) {
+        if (exportSettingsModal && event.target === exportSettingsModal) {
             exportSettingsModal.style.display = "none";
         }
-        if (event.target === aboutModal) {
+        if (aboutModal && event.target === aboutModal) {
             aboutModal.style.display = "none";
         }
     });

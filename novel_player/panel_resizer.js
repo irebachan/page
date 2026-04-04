@@ -136,10 +136,16 @@
             }
         });
 
-        MQ.addEventListener("change", function () {
+        function onMqChange() {
             const sp = document.getElementById("panelSplitter");
             if (sp) sp.setAttribute("aria-orientation", isStacked() ? "horizontal" : "vertical");
-        });
+        }
+        /* Safari 13 以前は addEventListener が無く addListener のみ */
+        if (typeof MQ.addEventListener === "function") {
+            MQ.addEventListener("change", onMqChange);
+        } else if (typeof MQ.addListener === "function") {
+            MQ.addListener(onMqChange);
+        }
 
         window.addEventListener("resize", function () {
             /* レイアウト切替後も同じ比率を維持（setPct は既に保存値を body に反映済み） */

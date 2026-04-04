@@ -120,6 +120,15 @@ body.is-panel-dragging * {
     -webkit-tap-highlight-color: transparent;
 }
 
+/* SVG 三本線（span+2px は環境によって潰れるため常に表示できる形に） */
+.menu-toggle__icon {
+    display: block;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
 .menu-toggle:hover {
     background: #3d3d3d;
 }
@@ -127,21 +136,6 @@ body.is-panel-dragging * {
 .menu-toggle:focus-visible {
     outline: 2px solid #9cf;
     outline-offset: 2px;
-}
-
-.menu-toggle-bars {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    width: 22px;
-    height: 16px;
-}
-
-.menu-toggle-bars span {
-    display: block;
-    height: 2px;
-    background: #fff;
-    border-radius: 1px;
 }
 
 .menu-toggle--float {
