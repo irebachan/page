@@ -3,6 +3,31 @@
 
 <head>
     <meta charset="UTF-8">
+    <!--
+      GitHub Pages 等で .../novel_player と .../novel_player/ が両方あり得る。
+      末尾スラッシュ無しだと相対パス styles.css が一つ上の階へ解決され CSS が 404 になり、
+      ドロワー・モーダルが非表示にならず「素の HTML」に見える。
+    -->
+    <script>
+        (function () {
+            var path = location.pathname;
+            if (!path.endsWith("/")) {
+                if (/\.html?$/i.test(path)) {
+                    path = path.replace(/[^/]+$/, "");
+                } else {
+                    path = path + "/";
+                }
+            }
+            var b = document.createElement("base");
+            b.href = path;
+            var cs = document.querySelector("meta[charset]");
+            if (cs && cs.parentNode === document.head) {
+                document.head.insertBefore(b, cs.nextSibling);
+            } else {
+                document.head.insertBefore(b, document.head.firstChild);
+            }
+        })();
+    </script>
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="apple-mobile-web-app-capable" content="yes">
