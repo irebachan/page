@@ -855,3 +855,45 @@ body.menu-drawer-open {
         font-size: 0.95rem;
     }
 }
+
+/*
+ * 幅は広いが縦が狭いビューポート（携帯横持ちなど）。
+ * max-width:768px では拾えず、50% + 固定180px がはみ出してテキスト枠の上が欠ける。
+ * プレビュー内だけ縦フレックスで配分し直す（body の横並びは維持）。
+ */
+@media (max-height: 560px) {
+    .novel-content {
+        height: auto;
+        flex: 1 1 0;
+        min-height: 0;
+        margin-bottom: 0.35em;
+        justify-content: flex-start;
+    }
+
+    .button-area {
+        height: auto;
+        flex: 0 0 auto;
+        min-height: 0;
+        padding-top: 0.35em;
+        padding-bottom: max(0.25em, env(safe-area-inset-bottom, 0px));
+    }
+
+    .text-container {
+        height: auto !important;
+        min-height: 64px;
+        max-height: none !important;
+        flex: 1 1 auto;
+        margin-bottom: 0.35em;
+    }
+
+    .choices {
+        max-height: min(28vh, 160px);
+        flex-shrink: 0;
+    }
+
+    #next {
+        padding: 0.4em 0.5em;
+        min-height: 40px;
+        font-size: 0.95rem;
+    }
+}
