@@ -21,6 +21,9 @@ class NovelPlayer {
         this.fileInput = document.getElementById("fileInput");
         this.clearButton = document.getElementById("clearButton");
         this.copyButton = document.getElementById("copyButton");
+        this.previewUnit = document.getElementById("previewUnit");
+        /** プレビューが「1行ずつ」のとき、現在の script[index] 内の何行目を表示済みか */
+        this.lineUnitIndex = 0;
 
         // イベントリスナーの設定
         this.nextBtn.addEventListener("click", () => this.showLine());
@@ -33,6 +36,13 @@ class NovelPlayer {
         this.fileInput.addEventListener("change", (e) => this.loadScriptFromFile(e));
         this.clearButton.addEventListener("click", () => this.clearScriptText());
         this.copyButton.addEventListener("click", () => this.copyToClipboard());
+
+        if (this.previewUnit) {
+            this.previewUnit.addEventListener("change", () => {
+                this.lineUnitIndex = 0;
+                this.restart();
+            });
+        }
 
         // テキストクリックで次へ進む機能
         this.textContainer.addEventListener("click", () => {
@@ -181,7 +191,12 @@ class NovelPlayer {
         this.script = parseResult.script;
         this.labels = parseResult.labels;
         this.index = 0;
+        this.lineUnitIndex = 0;
         this.showLine();
+    }
+
+    isPreviewLineUnit() {
+        return this.previewUnit && this.previewUnit.value === "line";
     }
 
     showLine() {
@@ -196,6 +211,11 @@ class NovelPlayer {
         }
 
         if (line.type === "line") {
+            const rawText = line.text != null ? line.text : "";
+            const parts = rawText.split("\n");
+            const useLineUnit = this.isPreviewLineUnit() && parts.length > 1;
+            const displayText = useLineUnit ? parts[this.lineUnitIndex] : rawText;
+
             // 名前が空の場合は名前ボックスを表示しない
             if (line.name.trim() === "") {
                 this.nameBox.style.display = "none";
@@ -205,12 +225,23 @@ class NovelPlayer {
                 this.nameBox.textContent = line.name;
             }
 
-            this.textBox.textContent = line.text;
+            this.textBox.textContent = displayText;
             this.nextBtn.style.display = "block";
             this.choicesBox.innerHTML = ""; // 選択肢をクリア
             // テキスト表示後にコンテナを上部にスクロール
             this.scrollTextContainerToTop();
-            this.index++;
+
+            if (useLineUnit) {
+                if (this.lineUnitIndex < parts.length - 1) {
+                    this.lineUnitIndex++;
+                } else {
+                    this.lineUnitIndex = 0;
+                    this.index++;
+                }
+            } else {
+                this.lineUnitIndex = 0;
+                this.index++;
+            }
         } else if (line.type === "choice") {
             this.nextBtn.style.display = "none";
             this.choicesBox.innerHTML = ""; // 選択肢をクリア
@@ -222,10 +253,12 @@ class NovelPlayer {
                 btn.onclick = () => {
                     // 選択肢クリック時の処理を修正
                     if (this.labels.hasOwnProperty(choice.target)) {
+                        this.lineUnitIndex = 0;
                         this.index = this.labels[choice.target];
                         this.showLine(); // 選択肢選択後に次のテキストを表示
                     } else {
                         console.error(`ラベル "${choice.target}" が見つかりません`);
+                        this.lineUnitIndex = 0;
                         this.index++; // 選択肢の次に進む
                         this.showLine();
                     }
@@ -238,10 +271,12 @@ class NovelPlayer {
         } else if (line.type === "goto") {
             // gotoタイプの場合は指定されたラベルに移動
             if (this.labels.hasOwnProperty(line.target)) {
+                this.lineUnitIndex = 0;
                 this.index = this.labels[line.target];
                 this.showLine();
             } else {
                 console.error(`ラベル "${line.target}" が見つかりません`);
+                this.lineUnitIndex = 0;
                 this.index++;
                 this.showLine();
             }
@@ -270,6 +305,7 @@ class NovelPlayer {
 
     restart() {
         this.index = 0;
+        this.lineUnitIndex = 0;
         this.showLine();
     }
 
@@ -277,6 +313,7 @@ class NovelPlayer {
     jumpToLabel() {
         const labelName = this.labelInput.value.trim();
         if (labelName && this.labels.hasOwnProperty(labelName)) {
+            this.lineUnitIndex = 0;
             this.index = this.labels[labelName];
             this.showLine();
             this.labelInput.value = ""; // 入力フィールドをクリア

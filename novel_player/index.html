@@ -56,6 +56,13 @@
                         aria-label="メニューを閉じる">&times;</button>
                 </div>
                 <div class="menu-drawer-body">
+                    <div class="preview-unit-row">
+                        <label for="previewUnit">プレビュー・セリフの単位:</label>
+                        <select id="previewUnit">
+                            <option value="block">ブロックごと（#〜次の区切りまで一画面）</option>
+                            <option value="line">1行ずつ（「次へ」で1行進む）</option>
+                        </select>
+                    </div>
                     <button type="button" id="restart">🔄 最初に戻る</button>
                     <div class="label-jump">
                         <input type="text" id="labelInput" placeholder="ジャンプ先ラベル" autocomplete="off">

@@ -280,6 +280,30 @@ body.menu-drawer-open {
     background: #555;
 }
 
+.menu-drawer--novel .preview-unit-row {
+    margin-bottom: 0.65em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35em;
+}
+
+.menu-drawer--novel .preview-unit-row label {
+    font-size: 0.9em;
+    color: #ccc;
+}
+
+.menu-drawer--novel .preview-unit-row select {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    font-size: 1em;
+    padding: 0.45em 0.5em;
+    background: #333;
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 6px;
+}
+
 .menu-drawer--novel .label-jump {
     margin-top: 0.5em;
 }
