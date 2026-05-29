@@ -115,8 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     const restartBtn = document.getElementById("restart");
-    const jumpBtn = document.getElementById("jumpButton");
-    [restartBtn, jumpBtn].forEach((btn) => {
+    [restartBtn].forEach((btn) => {
         if (!btn) return;
         btn.addEventListener("click", () => closeNovelMenu());
     });

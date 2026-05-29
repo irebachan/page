@@ -4,6 +4,7 @@ class NovelPlayer {
         this.parser = new ScriptParser();
         this.script = [];
         this.labels = {};
+        this.labelSourceLines = {};
         this.index = 0;
 
         // DOM要素
@@ -11,26 +12,36 @@ class NovelPlayer {
         this.textBox = document.getElementById("text");
         this.textContainer = document.querySelector(".text-container");
         this.nextBtn = document.getElementById("next");
+        this.prevBtn = document.getElementById("prev");
+        this.previewHistory = [];
         this.choicesBox = document.getElementById("choices");
         this.scriptTextBox = document.getElementById("scriptText");
         this.restartBtn = document.getElementById("restart");
-        this.labelInput = document.getElementById("labelInput");
-        this.jumpButton = document.getElementById("jumpButton");
+        this.labelList = document.getElementById("labelList");
         this.saveButton = document.getElementById("saveButton");
         this.loadButton = document.getElementById("loadButton");
         this.fileInput = document.getElementById("fileInput");
         this.clearButton = document.getElementById("clearButton");
         this.copyButton = document.getElementById("copyButton");
         this.previewUnit = document.getElementById("previewUnit");
-        /** プレビューが「1行ずつ」のとき、現在の script[index] 内の何行目を表示済みか */
+        this.syncEditorOnLabelJump = document.getElementById("syncEditorOnLabelJump");
+        this.SYNC_EDITOR_LABEL_KEY = "novelPlayer.syncEditorOnLabelJump";
+        /** プレビューが「1行ずつ」のとき、次に進むときの script[index] 内の行オフセット */
         this.lineUnitIndex = 0;
+        /** 画面上に表示している script の位置（編集後も維持） */
+        this.viewIndex = 0;
+        this.viewLineUnit = 0;
+        /** ラベルジャンプで最後に移動したラベル（「移動」で再テスト用） */
+        this.lastJumpLabel = "";
 
         // イベントリスナーの設定
         this.nextBtn.addEventListener("click", () => this.showLine());
+        if (this.prevBtn) {
+            this.prevBtn.addEventListener("click", () => this.showPrev());
+        }
         this.restartBtn.addEventListener("click", () => this.restart());
         this.updateScriptDebounced = this.debounce(() => this.updateScript(), 300);
         this.scriptTextBox.addEventListener("input", () => this.updateScriptDebounced());
-        this.jumpButton.addEventListener("click", () => this.jumpToLabel());
         this.saveButton.addEventListener("click", () => this.saveScriptToFile());
         this.loadButton.addEventListener("click", () => this.fileInput.click());
         this.fileInput.addEventListener("change", (e) => this.loadScriptFromFile(e));
@@ -44,10 +55,23 @@ class NovelPlayer {
             });
         }
 
+        this.initSyncEditorOnLabelJump();
+
         // テキストクリックで次へ進む機能
         this.textContainer.addEventListener("click", () => {
             if (this.nextBtn.style.display !== "none") {
                 this.showLine();
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.target === this.scriptTextBox || e.defaultPrevented) return;
+            if (e.key === "ArrowRight" && this.nextBtn.style.display !== "none") {
+                e.preventDefault();
+                this.showLine();
+            } else if (e.key === "ArrowLeft" && this.previewHistory.length > 0) {
+                e.preventDefault();
+                this.showPrev();
             }
         });
 
@@ -168,6 +192,24 @@ class NovelPlayer {
         this.init();
     }
 
+    initSyncEditorOnLabelJump() {
+        if (!this.syncEditorOnLabelJump) return;
+        const stored = localStorage.getItem(this.SYNC_EDITOR_LABEL_KEY);
+        if (stored !== null) {
+            this.syncEditorOnLabelJump.checked = stored === "1";
+        }
+        this.syncEditorOnLabelJump.addEventListener("change", () => {
+            localStorage.setItem(
+                this.SYNC_EDITOR_LABEL_KEY,
+                this.syncEditorOnLabelJump.checked ? "1" : "0"
+            );
+        });
+    }
+
+    isSyncEditorOnLabelJumpEnabled() {
+        return !this.syncEditorOnLabelJump || this.syncEditorOnLabelJump.checked;
+    }
+
     debounce(fn, ms) {
         let timer = null;
         return () => {
@@ -186,37 +228,306 @@ class NovelPlayer {
     }
 
     updateScript() {
+        const anchor = this.capturePreviewAnchor();
+
         const rawScript = this.scriptTextBox.value;
         const parseResult = this.parser.parse(rawScript);
         this.script = parseResult.script;
         this.labels = parseResult.labels;
-        this.index = 0;
-        this.lineUnitIndex = 0;
-        this.showLine();
+        this.labelSourceLines = parseResult.labelSourceLines || {};
+        this.refreshLabelList();
+
+        const resolved = this.resolvePreviewAnchorAfterParse(anchor);
+        this.viewIndex = resolved.viewIndex;
+        this.viewLineUnit = resolved.viewLineUnit;
+        this.renderCurrentView();
+    }
+
+    capturePreviewAnchor() {
+        const vi = this.viewIndex;
+        const line = this.script[vi];
+        return {
+            label: this.script.length ? this.getLabelForIndex(vi) : null,
+            viewIndex: vi,
+            viewLineUnit: this.viewLineUnit || 0,
+            sourceLine: line?.sourceLine,
+            itemType: line?.type,
+            speaker: line?.type === "line" ? line.name : null,
+            textHead:
+                line?.type === "line"
+                    ? (line.text || "").split("\n")[0].trim().slice(0, 80)
+                    : null,
+            choiceKey:
+                line?.type === "choice"
+                    ? line.choices.map((c) => c.text).join("|")
+                    : null,
+            editorSourceLine:
+                document.activeElement === this.scriptTextBox
+                    ? this.getEditorSourceLine()
+                    : null,
+        };
+    }
+
+    resolvePreviewAnchorAfterParse(anchor) {
+        if (anchor.editorSourceLine !== null) {
+            const byCursor = this.findPreviewIndexForSourceLine(anchor.editorSourceLine);
+            if (byCursor) return byCursor;
+        }
+        if (anchor.label && this.labels.hasOwnProperty(anchor.label)) {
+            const inLabel = this.findPositionWithinLabel(anchor.label, anchor);
+            if (inLabel) return inLabel;
+        }
+        if (anchor.itemType === "line" && anchor.speaker !== null) {
+            const byLine = this.findLineByContent(anchor.speaker, anchor.textHead, anchor);
+            if (byLine) return byLine;
+        }
+        if (anchor.itemType === "choice" && anchor.choiceKey) {
+            const byChoice = this.findChoiceByKey(anchor.choiceKey);
+            if (byChoice) return byChoice;
+        }
+        if (anchor.sourceLine != null) {
+            const bySource = this.findPreviewIndexForSourceLine(anchor.sourceLine);
+            if (bySource) return bySource;
+        }
+        return {
+            viewIndex: this.clampScriptIndex(anchor.viewIndex),
+            viewLineUnit: anchor.viewLineUnit || 0,
+        };
+    }
+
+    getNextLabelPosition(afterIndex) {
+        let min = this.script.length;
+        for (const pos of Object.values(this.labels)) {
+            if (pos > afterIndex && pos < min) min = pos;
+        }
+        return min;
+    }
+
+    lineContentMatches(line, anchor) {
+        if (anchor.speaker !== null && line.name !== anchor.speaker) return false;
+        if (!anchor.textHead) return true;
+        const head = (line.text || "").split("\n")[0].trim();
+        if (head === anchor.textHead) return true;
+        if (head.startsWith(anchor.textHead) || anchor.textHead.startsWith(head)) {
+            return true;
+        }
+        const minLen = Math.min(head.length, anchor.textHead.length, 16);
+        return minLen >= 4 && head.slice(0, minLen) === anchor.textHead.slice(0, minLen);
+    }
+
+    resolveLineUnitForAnchor(lineItem, anchor) {
+        const parts = (lineItem.text || "").split("\n");
+        if (!this.isPreviewLineUnit() || parts.length <= 1) return 0;
+        if (anchor.editorSourceLine != null) {
+            return this.getLineUnitForSourceLine(lineItem, anchor.editorSourceLine);
+        }
+        return Math.min(anchor.viewLineUnit || 0, parts.length - 1);
+    }
+
+    findPositionWithinLabel(labelName, anchor) {
+        const start = this.labels[labelName];
+        const end = this.getNextLabelPosition(start);
+        for (let i = start; i < end; i++) {
+            const line = this.script[i];
+            if (line.type === "line" && this.lineContentMatches(line, anchor)) {
+                return {
+                    viewIndex: i,
+                    viewLineUnit: this.resolveLineUnitForAnchor(line, anchor),
+                };
+            }
+            if (
+                line.type === "choice" &&
+                anchor.itemType === "choice" &&
+                line.choices.map((c) => c.text).join("|") === anchor.choiceKey
+            ) {
+                return { viewIndex: i, viewLineUnit: 0 };
+            }
+        }
+        return { viewIndex: start, viewLineUnit: 0 };
+    }
+
+    findLineByContent(speaker, textHead, anchor) {
+        for (let i = 0; i < this.script.length; i++) {
+            const line = this.script[i];
+            if (line.type !== "line" || line.name !== speaker) continue;
+            if (textHead && !this.lineContentMatches(line, anchor)) continue;
+            return {
+                viewIndex: i,
+                viewLineUnit: this.resolveLineUnitForAnchor(line, anchor),
+            };
+        }
+        return null;
+    }
+
+    findChoiceByKey(choiceKey) {
+        for (let i = 0; i < this.script.length; i++) {
+            const line = this.script[i];
+            if (
+                line.type === "choice" &&
+                line.choices.map((c) => c.text).join("|") === choiceKey
+            ) {
+                return { viewIndex: i, viewLineUnit: 0 };
+            }
+        }
+        return null;
+    }
+
+    getLineUnitForSourceLine(lineItem, targetSourceLine) {
+        const rawLines = this.scriptTextBox.value.split("\n");
+        const start = lineItem.sourceLine;
+        if (start === undefined) return 0;
+        if (targetSourceLine <= start) return 0;
+
+        const parts = (lineItem.text || "").split("\n");
+        let unit = 0;
+        let i = start + 1;
+        while (i < rawLines.length) {
+            const t = rawLines[i].trim();
+            if (t === "" || t.startsWith("#") || t.startsWith("@") || t.startsWith("//")) {
+                break;
+            }
+            if (i === targetSourceLine) return unit;
+            unit++;
+            if (unit >= parts.length) return parts.length - 1;
+            i++;
+        }
+        if (targetSourceLine === start) return 0;
+        return Math.min(Math.max(0, targetSourceLine - start - 1), parts.length - 1);
+    }
+
+    pushPreviewHistory(state) {
+        const top = this.previewHistory[this.previewHistory.length - 1];
+        if (
+            top &&
+            top.viewIndex === state.viewIndex &&
+            top.viewLineUnit === state.viewLineUnit
+        ) {
+            return;
+        }
+        this.previewHistory.push({
+            viewIndex: state.viewIndex,
+            viewLineUnit: state.viewLineUnit,
+        });
+        if (this.previewHistory.length > 150) this.previewHistory.shift();
+        this.updatePrevButton();
+    }
+
+    updatePrevButton() {
+        if (this.prevBtn) {
+            this.prevBtn.disabled = this.previewHistory.length === 0;
+        }
+    }
+
+    showPrev() {
+        const state = this.previewHistory.pop();
+        if (!state) return;
+        this.viewIndex = state.viewIndex;
+        this.viewLineUnit = state.viewLineUnit;
+        this.renderCurrentView();
+        this.updatePrevButton();
+    }
+
+    getEditorSourceLine() {
+        const text = this.scriptTextBox.value;
+        const pos = this.scriptTextBox.selectionStart;
+        return text.substring(0, pos).split("\n").length - 1;
+    }
+
+    findPreviewIndexForSourceLine(targetLine) {
+        const lines = this.scriptTextBox.value.split("\n");
+        const trimmed = (lines[targetLine] || "").trim();
+        if (
+            trimmed.startsWith("@") &&
+            !trimmed.startsWith("@goto") &&
+            trimmed !== "@end"
+        ) {
+            const name = trimmed.substring(1);
+            if (this.labels.hasOwnProperty(name)) {
+                return { viewIndex: this.labels[name], viewLineUnit: 0 };
+            }
+        }
+        let best = 0;
+        let bestLine = -1;
+        for (let i = 0; i < this.script.length; i++) {
+            const sl = this.script[i].sourceLine;
+            if (sl !== undefined && sl <= targetLine && sl >= bestLine) {
+                bestLine = sl;
+                best = i;
+            }
+        }
+        const line = this.script[best];
+        const viewLineUnit =
+            line?.type === "line"
+                ? this.getLineUnitForSourceLine(line, targetLine)
+                : 0;
+        return { viewIndex: best, viewLineUnit };
+    }
+
+    getLabelForIndex(idx) {
+        let best = null;
+        let bestPos = -1;
+        for (const [name, pos] of Object.entries(this.labels)) {
+            if (pos <= idx && pos > bestPos) {
+                bestPos = pos;
+                best = name;
+            }
+        }
+        return best;
+    }
+
+    clampScriptIndex(idx) {
+        if (!this.script.length) return 0;
+        return Math.max(0, Math.min(idx, this.script.length - 1));
+    }
+
+    refreshLabelList() {
+        if (!this.labelList) return;
+        const names = Object.keys(this.labels);
+        const current = this.script.length
+            ? this.getLabelForIndex(this.viewIndex)
+            : null;
+
+        this.labelList.innerHTML = "";
+        if (names.length === 0) {
+            const empty = document.createElement("span");
+            empty.className = "label-list-empty";
+            empty.textContent = "（ラベルなし）";
+            this.labelList.appendChild(empty);
+            return;
+        }
+
+        names.forEach((name) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "label-chip";
+            if (name === current) btn.classList.add("is-current");
+            btn.textContent = name;
+            btn.title = `@${name} へ移動`;
+            btn.setAttribute("role", "listitem");
+            btn.addEventListener("click", () => this.jumpToLabelByName(name));
+            this.labelList.appendChild(btn);
+        });
+
+        const currentBtn = this.labelList.querySelector(".label-chip.is-current");
+        if (currentBtn) {
+            currentBtn.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }
     }
 
     isPreviewLineUnit() {
         return this.previewUnit && this.previewUnit.value === "line";
     }
 
-    showLine() {
-        const line = this.script[this.index];
-        if (!line) {
-            // 終了した場合
-            this.nameBox.textContent = "";
-            this.textBox.textContent = "（終わり）";
-            this.nextBtn.style.display = "none";
-            this.choicesBox.innerHTML = "";
-            return;
-        }
+    paintAt(index, lineUnitIndex) {
+        const line = this.script[index];
+        if (!line) return false;
 
         if (line.type === "line") {
             const rawText = line.text != null ? line.text : "";
             const parts = rawText.split("\n");
             const useLineUnit = this.isPreviewLineUnit() && parts.length > 1;
-            const displayText = useLineUnit ? parts[this.lineUnitIndex] : rawText;
+            const displayText = useLineUnit ? parts[lineUnitIndex] : rawText;
 
-            // 名前が空の場合は名前ボックスを表示しない
             if (line.name.trim() === "") {
                 this.nameBox.style.display = "none";
                 this.nameBox.textContent = "";
@@ -227,71 +538,174 @@ class NovelPlayer {
 
             this.textBox.textContent = displayText;
             this.nextBtn.style.display = "block";
-            this.choicesBox.innerHTML = ""; // 選択肢をクリア
-            // テキスト表示後にコンテナを上部にスクロール
+            this.choicesBox.innerHTML = "";
             this.scrollTextContainerToTop();
+            return true;
+        }
 
-            if (useLineUnit) {
-                if (this.lineUnitIndex < parts.length - 1) {
-                    this.lineUnitIndex++;
-                } else {
-                    this.lineUnitIndex = 0;
-                    this.index++;
-                }
-            } else {
-                this.lineUnitIndex = 0;
-                this.index++;
-            }
-        } else if (line.type === "choice") {
+        if (line.type === "choice") {
             this.nextBtn.style.display = "none";
-            this.choicesBox.innerHTML = ""; // 選択肢をクリア
+            this.choicesBox.innerHTML = "";
+            this.nameBox.style.display = "none";
+            this.nameBox.textContent = "";
+            this.textBox.textContent = line.description || "";
 
-            // 選択肢をテキストエリアの上に表示
-            line.choices.forEach(choice => {
+            line.choices.forEach((choice) => {
                 const btn = document.createElement("button");
                 btn.textContent = choice.text;
                 btn.onclick = () => {
-                    // 選択肢クリック時の処理を修正
+                    this.pushPreviewHistory({
+                        viewIndex: this.viewIndex,
+                        viewLineUnit: this.viewLineUnit,
+                    });
                     if (this.labels.hasOwnProperty(choice.target)) {
-                        this.lineUnitIndex = 0;
-                        this.index = this.labels[choice.target];
-                        this.showLine(); // 選択肢選択後に次のテキストを表示
+                        this.viewIndex = this.labels[choice.target];
+                        this.viewLineUnit = 0;
+                        this.renderCurrentView();
                     } else {
                         console.error(`ラベル "${choice.target}" が見つかりません`);
-                        this.lineUnitIndex = 0;
-                        this.index++; // 選択肢の次に進む
-                        this.showLine();
+                        this.viewIndex = index + 1;
+                        this.viewLineUnit = 0;
+                        this.renderCurrentView();
                     }
                 };
                 this.choicesBox.appendChild(btn);
             });
-
-            // 選択肢表示時にテキストエリアを上部にスクロール
             this.scrollTextContainerToTop();
-        } else if (line.type === "goto") {
-            // gotoタイプの場合は指定されたラベルに移動
-            if (this.labels.hasOwnProperty(line.target)) {
-                this.lineUnitIndex = 0;
-                this.index = this.labels[line.target];
-                this.showLine();
-            } else {
-                console.error(`ラベル "${line.target}" が見つかりません`);
-                this.lineUnitIndex = 0;
-                this.index++;
-                this.showLine();
-            }
-        } else if (line.type === "end") {
+            return true;
+        }
+
+        if (line.type === "end") {
             this.nameBox.textContent = "";
             this.textBox.textContent = "（終わり）";
             this.nextBtn.style.display = "none";
-            this.choicesBox.innerHTML = ""; // 選択肢をクリア
+            this.choicesBox.innerHTML = "";
+            return true;
+        }
+
+        return false;
+    }
+
+    syncPlaybackIndexAfterView(viewIndex, viewLineUnit) {
+        const line = this.script[viewIndex];
+        if (!line) return;
+
+        if (line.type === "line") {
+            const parts = (line.text != null ? line.text : "").split("\n");
+            const useLineUnit = this.isPreviewLineUnit() && parts.length > 1;
+            if (useLineUnit && viewLineUnit < parts.length - 1) {
+                this.index = viewIndex;
+                this.lineUnitIndex = viewLineUnit + 1;
+            } else {
+                this.index = viewIndex + 1;
+                this.lineUnitIndex = 0;
+            }
+        } else if (line.type === "choice") {
+            this.index = viewIndex;
+            this.lineUnitIndex = 0;
+        } else if (line.type === "end") {
+            this.index = viewIndex + 1;
+            this.lineUnitIndex = 0;
+        }
+        this.viewIndex = viewIndex;
+        this.viewLineUnit = viewLineUnit;
+    }
+
+    showEndState() {
+        this.nameBox.textContent = "";
+        this.textBox.textContent = "（終わり）";
+        this.nextBtn.style.display = "none";
+        this.choicesBox.innerHTML = "";
+    }
+
+    renderCurrentView() {
+        if (!this.script.length) {
+            this.showEndState();
+            return;
+        }
+
+        let idx = this.clampScriptIndex(this.viewIndex);
+        let lu = this.viewLineUnit || 0;
+
+        while (idx < this.script.length) {
+            const line = this.script[idx];
+            if (line.type === "goto") {
+                if (this.labels.hasOwnProperty(line.target)) {
+                    idx = this.labels[line.target];
+                    lu = 0;
+                    continue;
+                }
+                idx++;
+                continue;
+            }
+            if (line.type === "blank" || line.type === "comment") {
+                idx++;
+                continue;
+            }
+            if (line.type === "line") {
+                const parts = (line.text != null ? line.text : "").split("\n");
+                const useLineUnit = this.isPreviewLineUnit() && parts.length > 1;
+                if (useLineUnit && lu >= parts.length) {
+                    lu = parts.length - 1;
+                }
+                if (this.paintAt(idx, lu)) {
+                    this.syncPlaybackIndexAfterView(idx, lu);
+                    this.refreshLabelList();
+                    return;
+                }
+            }
+            if (line.type === "choice" || line.type === "end") {
+                if (this.paintAt(idx, 0)) {
+                    this.syncPlaybackIndexAfterView(idx, 0);
+                    this.refreshLabelList();
+                    return;
+                }
+            }
+            idx++;
+        }
+
+        this.showEndState();
+        this.refreshLabelList();
+    }
+
+    showLine() {
+        if (this.index >= this.script.length) {
+            this.showEndState();
+            return;
+        }
+
+        const line = this.script[this.index];
+        if (line.type === "goto") {
+            if (this.labels.hasOwnProperty(line.target)) {
+                this.index = this.labels[line.target];
+                this.lineUnitIndex = 0;
+                this.showLine();
+            } else {
+                console.error(`ラベル "${line.target}" が見つかりません`);
+                this.index++;
+                this.showLine();
+            }
+            return;
+        }
+        if (line.type === "blank" || line.type === "comment") {
             this.index++;
-        } else if (line.type === "blank") {
+            this.showLine();
+            return;
+        }
+
+        const lu =
+            line.type === "line" && this.isPreviewLineUnit()
+                ? this.lineUnitIndex
+                : 0;
+        if (this.paintAt(this.index, lu)) {
+            this.pushPreviewHistory({
+                viewIndex: this.viewIndex,
+                viewLineUnit: this.viewLineUnit,
+            });
+            this.syncPlaybackIndexAfterView(this.index, lu);
+        } else {
             this.index++;
-            this.showLine(); // 空行はスキップして次へ
-        } else if (line.type === "comment") {
-            this.index++;
-            this.showLine(); // コメントはプレビューに表示しない
+            this.showLine();
         }
     }
 
@@ -304,21 +718,58 @@ class NovelPlayer {
     }
 
     restart() {
+        this.previewHistory = [];
         this.index = 0;
         this.lineUnitIndex = 0;
-        this.showLine();
+        this.viewIndex = 0;
+        this.viewLineUnit = 0;
+        this.renderCurrentView();
+        this.updatePrevButton();
     }
 
-    // ラベルジャンプ機能
-    jumpToLabel() {
-        const labelName = this.labelInput.value.trim();
-        if (labelName && this.labels.hasOwnProperty(labelName)) {
-            this.lineUnitIndex = 0;
-            this.index = this.labels[labelName];
-            this.showLine();
-            this.labelInput.value = ""; // 入力フィールドをクリア
-        } else {
+    moveEditorToSourceLine(lineNum) {
+        const box = this.scriptTextBox;
+        if (!box || lineNum < 0) return;
+        const lines = box.value.split("\n");
+        if (lineNum >= lines.length) return;
+
+        let pos = 0;
+        for (let i = 0; i < lineNum; i++) {
+            pos += lines[i].length + 1;
+        }
+
+        box.focus();
+        box.setSelectionRange(pos, pos);
+
+        const style = getComputedStyle(box);
+        let lineHeight = parseFloat(style.lineHeight);
+        if (Number.isNaN(lineHeight) || lineHeight <= 0) {
+            lineHeight = (parseFloat(style.fontSize) || 16) * 1.25;
+        }
+        const paddingTop = parseFloat(style.paddingTop) || 0;
+        const targetTop = lineNum * lineHeight + paddingTop - box.clientHeight * 0.25;
+        box.scrollTop = Math.max(0, targetTop);
+    }
+
+    jumpToLabelByName(labelName) {
+        if (!labelName || !this.labels.hasOwnProperty(labelName)) {
             alert(`ラベル "${labelName}" が見つかりません`);
+            return;
+        }
+        this.pushPreviewHistory({
+            viewIndex: this.viewIndex,
+            viewLineUnit: this.viewLineUnit,
+        });
+        this.lastJumpLabel = labelName;
+        this.viewIndex = this.labels[labelName];
+        this.viewLineUnit = 0;
+        this.renderCurrentView();
+
+        if (
+            this.isSyncEditorOnLabelJumpEnabled() &&
+            this.labelSourceLines[labelName] !== undefined
+        ) {
+            this.moveEditorToSourceLine(this.labelSourceLines[labelName]);
         }
     }
 
@@ -371,8 +822,9 @@ class NovelPlayer {
     clearScriptText() {
         if (confirm('テキストエリアをクリアしますか？')) {
             this.scriptTextBox.value = '';
+            this.viewIndex = 0;
+            this.viewLineUnit = 0;
             this.updateScript();
-            this.restart();
 
             setTimeout(() => this.scriptTextBox.focus(), 200);
         }

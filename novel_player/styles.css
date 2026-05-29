@@ -292,6 +292,17 @@ body.menu-drawer-open {
     color: #ccc;
 }
 
+.menu-drawer--novel .preview-option-row label {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5em;
+    cursor: pointer;
+}
+
+.menu-drawer--novel .preview-option-row input {
+    flex-shrink: 0;
+}
+
 .menu-drawer--novel .preview-unit-row select {
     width: 100%;
     max-width: 100%;
@@ -302,14 +313,6 @@ body.menu-drawer-open {
     color: #fff;
     border: 1px solid #666;
     border-radius: 6px;
-}
-
-.menu-drawer--novel .label-jump {
-    margin-top: 0.5em;
-}
-
-.menu-drawer--novel #labelInput {
-    font-size: 1em;
 }
 
 /* レイアウトを完全に2等分 */
@@ -397,9 +400,15 @@ body.menu-drawer-open {
     background: #555;
 }
 
-#next {
-    font-size: 1.2em;
+.preview-nav {
+    display: flex;
+    gap: 0.5em;
     width: 100%;
+}
+
+.preview-nav button {
+    flex: 1;
+    font-size: 1.2em;
     margin-bottom: 0;
     padding: 0.5em;
     background: #444;
@@ -408,35 +417,68 @@ body.menu-drawer-open {
     cursor: pointer;
 }
 
-#next:hover {
+.preview-nav button:hover:not(:disabled) {
     background: #555;
 }
 
-/* ラベルジャンプ機能 */
-.label-jump {
-    width: 100%;
+.preview-nav button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+/* ラベル一覧（メニュー内・ワンクリックでジャンプ） */
+.menu-drawer--novel .label-quick {
+    margin-top: 0.75em;
+}
+
+.label-quick-title {
+    display: block;
+    font-size: 0.85em;
+    color: #aaa;
+    margin-bottom: 0.35em;
+}
+
+.label-quick {
+    min-height: 0;
+}
+
+.label-list {
     display: flex;
-    margin-top: 0.5em;
+    flex-wrap: wrap;
+    gap: 0.35em;
+    max-height: 5.5em;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.15em 0;
+    scrollbar-gutter: stable;
 }
 
-#labelInput {
-    flex: 1;
-    padding: 0.5em;
-    background: #333;
-    color: #fff;
+.label-list-empty {
+    color: #888;
+    font-size: 0.9em;
+}
+
+.label-chip {
+    flex: 0 0 auto;
+    padding: 0.25em 0.55em;
+    font-size: 0.85em;
+    background: #3a3a3a;
+    color: #ddd;
     border: 1px solid #555;
-}
-
-#jumpButton {
-    padding: 0.5em 1em;
-    background: #444;
-    color: #fff;
-    border: 1px solid #666;
+    border-radius: 4px;
     cursor: pointer;
+    line-height: 1.3;
 }
 
-#jumpButton:hover {
-    background: #555;
+.label-chip:hover {
+    background: #4a4a4a;
+    color: #fff;
+}
+
+.label-chip.is-current {
+    background: #2a4a6a;
+    border-color: #6af;
+    color: #cef;
 }
 
 /* 右側: シナリオテキストボックス (編集可) */
@@ -819,8 +861,8 @@ body.menu-drawer-open {
         border-top: 1px solid #444;
     }
 
-    #next {
-        width: 100%;
+    .preview-nav button {
+        width: auto;
         margin-bottom: 0;
         padding: 0.45em 0.5em;
         font-size: 0.95rem;
@@ -891,7 +933,7 @@ body.menu-drawer-open {
         flex-shrink: 0;
     }
 
-    #next {
+    .preview-nav button {
         padding: 0.4em 0.5em;
         min-height: 40px;
         font-size: 0.95rem;

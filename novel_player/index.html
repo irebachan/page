@@ -63,10 +63,16 @@
                             <option value="line">1行ずつ（「次へ」で1行進む）</option>
                         </select>
                     </div>
+                    <div class="preview-unit-row preview-option-row">
+                        <label>
+                            <input type="checkbox" id="syncEditorOnLabelJump" checked>
+                            ラベルジャンプでエディタも移動
+                        </label>
+                    </div>
                     <button type="button" id="restart">🔄 最初に戻る</button>
-                    <div class="label-jump">
-                        <input type="text" id="labelInput" placeholder="ジャンプ先ラベル" autocomplete="off">
-                        <button type="button" id="jumpButton">移動</button>
+                    <div class="label-quick" id="labelQuick" aria-label="ラベルへ移動">
+                        <span class="label-quick-title">ラベル</span>
+                        <div id="labelList" class="label-list" role="list"></div>
                     </div>
                 </div>
             </div>
@@ -85,7 +91,10 @@
 
         <!-- 下部: 固定ボタンエリア（次へは常に表示） -->
         <div class="button-area">
-            <button type="button" id="next">▶ 次へ</button>
+            <div class="preview-nav">
+                <button type="button" id="prev" disabled title="前の表示に戻る（Ren'Pyのロールバックに近い）">◀ 戻る</button>
+                <button type="button" id="next">▶ 次へ</button>
+            </div>
         </div>
     </div>
 
