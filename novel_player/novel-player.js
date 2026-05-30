@@ -227,8 +227,19 @@ class NovelPlayer {
         this.nextBtn.style.display = "block";
     }
 
-    updateScript() {
-        const anchor = this.capturePreviewAnchor();
+    resetPreviewState() {
+        this.previewHistory = [];
+        this.index = 0;
+        this.lineUnitIndex = 0;
+        this.viewIndex = 0;
+        this.viewLineUnit = 0;
+        this.lastJumpLabel = "";
+        this.updatePrevButton();
+    }
+
+    updateScript(options = {}) {
+        const preservePosition = options.preservePreviewPosition !== false;
+        const anchor = preservePosition ? this.capturePreviewAnchor() : null;
 
         const rawScript = this.scriptTextBox.value;
         const parseResult = this.parser.parse(rawScript);
@@ -237,7 +248,10 @@ class NovelPlayer {
         this.labelSourceLines = parseResult.labelSourceLines || {};
         this.refreshLabelList();
 
-        const resolved = this.resolvePreviewAnchorAfterParse(anchor);
+        const resolved =
+            preservePosition && anchor
+                ? this.resolvePreviewAnchorAfterParse(anchor)
+                : { viewIndex: 0, viewLineUnit: 0 };
         this.viewIndex = resolved.viewIndex;
         this.viewLineUnit = resolved.viewLineUnit;
         this.renderCurrentView();
@@ -810,7 +824,8 @@ class NovelPlayer {
         reader.onload = (e) => {
             const content = e.target.result;
             this.scriptTextBox.value = content;
-            this.updateScript();
+            this.resetPreviewState();
+            this.updateScript({ preservePreviewPosition: false });
 
             this.fileInput.value = '';
 
@@ -822,9 +837,8 @@ class NovelPlayer {
     clearScriptText() {
         if (confirm('テキストエリアをクリアしますか？')) {
             this.scriptTextBox.value = '';
-            this.viewIndex = 0;
-            this.viewLineUnit = 0;
-            this.updateScript();
+            this.resetPreviewState();
+            this.updateScript({ preservePreviewPosition: false });
 
             setTimeout(() => this.scriptTextBox.focus(), 200);
         }
