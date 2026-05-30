@@ -44,6 +44,10 @@ function renderTyrano(settings, script, labels) {
             } else {
                 outputLines.push("@goto " + item.target);
             }
+        } else if (item.type === "call") {
+            outputLines.push("@call " + item.target);
+        } else if (item.type === "return") {
+            outputLines.push("@return");
         } else if (item.type === "end") {
             outputLines.push(labelSym + "end");
         } else if (item.type === "comment") {

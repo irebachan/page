@@ -38,13 +38,19 @@ function renderRenpy(settings, script, labels) {
             }
         } else if (item.type === "choice") {
             outputLines.push("    menu:");
-            item.choices.forEach(({ text, target }) => {
+            item.choices.forEach(({ text, target, mode }) => {
                 const escaped = (text || "").replace(/"/g, '\\"');
                 outputLines.push('        "' + escaped + '":');
-                outputLines.push("            jump " + target);
+                outputLines.push(
+                    "            " + (mode === "call" ? "call " : "jump ") + target
+                );
             });
         } else if (item.type === "goto") {
             outputLines.push("    jump " + item.target);
+        } else if (item.type === "call") {
+            outputLines.push("    call " + item.target);
+        } else if (item.type === "return") {
+            outputLines.push("    return");
         } else if (item.type === "end") {
             outputLines.push("label end:");
             outputLines.push("    return");

@@ -33,6 +33,8 @@ class NovelPlayer {
         this.viewLineUnit = 0;
         /** ラベルジャンプで最後に移動したラベル（「移動」で再テスト用） */
         this.lastJumpLabel = "";
+        /** @call の戻り先 */
+        this.callStack = [];
 
         // イベントリスナーの設定
         this.nextBtn.addEventListener("click", () => this.showLine());
@@ -108,6 +110,15 @@ class NovelPlayer {
 @choice_park
 - パンをあげる => feed_birds
 - やめておく => dont_feed
+- ミナに話しかける => call mina_park_talk
+
+@mina_park_talk
+#ミナ
+昨日見た映画、すごくよかったんだ。
+
+#ユウ
+へえ、また教えて。
+@return
 
 @feed_birds
 #ユウ
@@ -135,6 +146,12 @@ class NovelPlayer {
 @choice_library
 - ミステリーを探す => mystery
 - 科学の本を探す => science
+- 司書さんに聞く => call ask_librarian
+
+@ask_librarian
+#司書
+新刊コーナーは奥です。
+@return
 
 @mystery
 #ユウ
@@ -234,6 +251,7 @@ class NovelPlayer {
         this.viewIndex = 0;
         this.viewLineUnit = 0;
         this.lastJumpLabel = "";
+        this.callStack = [];
         this.updatePrevButton();
     }
 
@@ -453,6 +471,8 @@ class NovelPlayer {
         if (
             trimmed.startsWith("@") &&
             !trimmed.startsWith("@goto") &&
+            !trimmed.startsWith("@call") &&
+            trimmed !== "@return" &&
             trimmed !== "@end"
         ) {
             const name = trimmed.substring(1);
@@ -532,6 +552,15 @@ class NovelPlayer {
         return this.previewUnit && this.previewUnit.value === "line";
     }
 
+    /** 呼び出し元の script 位置を積む（@return はここへ戻す。@return 行の次ではない） */
+    pushCallReturn(returnIndex, isFromChoice) {
+        this.callStack.push({
+            index: returnIndex,
+            lineUnitIndex: 0,
+            returnToChoice: isFromChoice,
+        });
+    }
+
     paintAt(index, lineUnitIndex) {
         const line = this.script[index];
         if (!line) return false;
@@ -573,6 +602,9 @@ class NovelPlayer {
                         viewLineUnit: this.viewLineUnit,
                     });
                     if (this.labels.hasOwnProperty(choice.target)) {
+                        if (choice.mode === "call") {
+                            this.pushCallReturn(index, true);
+                        }
                         this.viewIndex = this.labels[choice.target];
                         this.viewLineUnit = 0;
                         this.renderCurrentView();
@@ -643,12 +675,16 @@ class NovelPlayer {
 
         while (idx < this.script.length) {
             const line = this.script[idx];
-            if (line.type === "goto") {
+            if (line.type === "goto" || line.type === "call") {
                 if (this.labels.hasOwnProperty(line.target)) {
                     idx = this.labels[line.target];
                     lu = 0;
                     continue;
                 }
+                idx++;
+                continue;
+            }
+            if (line.type === "return") {
                 idx++;
                 continue;
             }
@@ -696,6 +732,38 @@ class NovelPlayer {
                 this.showLine();
             } else {
                 console.error(`ラベル "${line.target}" が見つかりません`);
+                this.index++;
+                this.showLine();
+            }
+            return;
+        }
+        if (line.type === "call") {
+            if (this.labels.hasOwnProperty(line.target)) {
+                this.pushCallReturn(this.index + 1, false);
+                this.index = this.labels[line.target];
+                this.lineUnitIndex = 0;
+                this.showLine();
+            } else {
+                console.error(`ラベル "${line.target}" が見つかりません`);
+                this.index++;
+                this.showLine();
+            }
+            return;
+        }
+        if (line.type === "return") {
+            const frame = this.callStack.pop();
+            if (frame) {
+                this.index = frame.index;
+                this.lineUnitIndex = frame.lineUnitIndex;
+                this.viewIndex = frame.index;
+                this.viewLineUnit = frame.lineUnitIndex;
+                if (frame.returnToChoice) {
+                    this.renderCurrentView();
+                } else {
+                    this.showLine();
+                }
+            } else {
+                console.warn("@return に対応する @call がありません");
                 this.index++;
                 this.showLine();
             }

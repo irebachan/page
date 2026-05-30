@@ -1,5 +1,17 @@
 // スクリプトパーサー - シナリオテキストを解析する
 class ScriptParser {
+    /** 選択肢の => 右側を解析（goto または call） */
+    parseChoiceTarget(raw) {
+        const t = (raw || "").trim();
+        if (t.startsWith("@call ")) {
+            return { mode: "call", target: t.slice(6).trim() };
+        }
+        if (t.startsWith("call ")) {
+            return { mode: "call", target: t.slice(5).trim() };
+        }
+        return { mode: "goto", target: t };
+    }
+
     parse(rawScript) {
         const lines = rawScript.trim().split("\n");
         let script = [];
@@ -29,9 +41,13 @@ class ScriptParser {
                 const sourceLine = i;
                 // @から始まる行を解析
                 if (line.startsWith("@goto")) {
-                    // @goto ラベル名 構文を解析
-                    const labelName = line.split(" ")[1];
+                    const labelName = line.split(/\s+/)[1];
                     script.push({ type: "goto", target: labelName, sourceLine });
+                } else if (line.startsWith("@call")) {
+                    const labelName = line.split(/\s+/)[1];
+                    script.push({ type: "call", target: labelName, sourceLine });
+                } else if (line === "@return") {
+                    script.push({ type: "return", sourceLine });
                 } else if (line === "@end") {
                     script.push({ type: "end", sourceLine });
                 } else {
@@ -54,8 +70,9 @@ class ScriptParser {
 
                 // 選択肢を収集
                 while (i < lines.length && lines[i].trim().startsWith("-")) {
-                    let [text, target] = lines[i].trim().slice(1).split("=>").map(s => s.trim());
-                    choices.push({ text, target });
+                    let [text, targetRaw] = lines[i].trim().slice(1).split("=>").map(s => s.trim());
+                    const { mode, target } = this.parseChoiceTarget(targetRaw);
+                    choices.push({ text, target, mode });
                     i++;
                 }
 
