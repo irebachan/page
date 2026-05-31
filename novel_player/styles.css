@@ -492,8 +492,23 @@ body.menu-drawer-open {
 }
 
 /* ラベル一覧（メニュー内・ワンクリックでジャンプ） */
+.menu-drawer--novel .menu-drawer-body {
+    display: flex;
+    flex-direction: column;
+}
+
 .menu-drawer--novel .label-quick {
+    flex: 1 1 auto;
     margin-top: 0.75em;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-drawer--novel .label-list {
+    flex: 1 1 auto;
+    min-height: 11em;
+    max-height: min(48vh, 20em);
 }
 
 .label-quick-title {
@@ -634,6 +649,7 @@ body.menu-drawer-open {
     overflow-x: hidden;
     padding: 0.15em 0;
     scrollbar-gutter: stable;
+    align-content: flex-start;
 }
 
 .label-list-empty {

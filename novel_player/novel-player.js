@@ -406,12 +406,26 @@ class NovelPlayer {
         this.previewStatusBar.textContent = "プレビュー";
     }
 
+    getEditorStatusMeta() {
+        const text = this.getScriptText();
+        const lines = text.split("\n");
+        const totalLines = lines.length;
+        const charCount = text.length;
+        return { totalLines, charCount };
+    }
+
+    formatEditorStatusBase(displayLine) {
+        const { totalLines, charCount } = this.getEditorStatusMeta();
+        return `${displayLine}/${totalLines}行 · ${charCount.toLocaleString("ja-JP")}字`;
+    }
+
     updateEditorStatusBar() {
         if (!this.editorStatusBar) return;
         const line = this.getEditorSourceLine();
         const displayLine = line + 1;
         const lines = this.getScriptText().split("\n");
         const trimmed = (lines[line] || "").trim();
+        const base = this.formatEditorStatusBase(displayLine);
         if (
             trimmed.startsWith("@") &&
             !trimmed.startsWith("@goto") &&
@@ -419,16 +433,16 @@ class NovelPlayer {
             trimmed !== "@return" &&
             trimmed !== "@end"
         ) {
-            this.editorStatusBar.textContent = `${displayLine}行 · ${trimmed}`;
+            this.editorStatusBar.textContent = `${base} · ${trimmed}`;
             return;
         }
         const pos = this.findPreviewIndexForSourceLine(line);
         const label = pos ? this.getLabelForIndex(pos.viewIndex) : null;
         if (label) {
-            this.editorStatusBar.textContent = `${displayLine}行 · @${label}`;
+            this.editorStatusBar.textContent = `${base} · @${label}`;
             return;
         }
-        this.editorStatusBar.textContent = `${displayLine}行`;
+        this.editorStatusBar.textContent = base;
     }
 
     getLabelFilterText() {
