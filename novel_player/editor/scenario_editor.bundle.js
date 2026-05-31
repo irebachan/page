@@ -23086,7 +23086,7 @@ var ScenarioEditorModule = (() => {
 
   // novel_player/editor/scenario_editor.mjs
   function createScenarioEditor(parent, options = {}) {
-    const { onChange, onPreviewShortcut } = options;
+    const { onChange, onPreviewShortcut, onCursorChange } = options;
     const previewKeymap = keymap.of([
       {
         key: "Mod-Enter",
@@ -23109,6 +23109,9 @@ var ScenarioEditorModule = (() => {
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChange?.();
+          }
+          if (update.selectionSet || update.docChanged) {
+            onCursorChange?.();
           }
         })
       ]

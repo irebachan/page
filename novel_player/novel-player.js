@@ -29,6 +29,8 @@ class NovelPlayer {
         this.labelFlowModalList = document.getElementById("labelFlowModalList");
         this.labelFlowModalFilter = document.getElementById("labelFlowModalFilter");
         this.novelMenuPanel = document.getElementById("novelMenuPanel");
+        this.previewStatusBar = document.getElementById("previewStatusBar");
+        this.editorStatusBar = document.getElementById("editorStatusBar");
         this.saveButton = document.getElementById("saveButton");
         this.loadButton = document.getElementById("loadButton");
         this.fileInput = document.getElementById("fileInput");
@@ -296,6 +298,7 @@ class NovelPlayer {
         this.scenarioEditor = window.ScenarioEditor.create(this.scriptEditorHost, {
             onChange: () => this.updateScriptDebounced(),
             onPreviewShortcut: () => this.previewFromEditorLine(),
+            onCursorChange: () => this.updateEditorStatusBar(),
         });
     }
 
@@ -356,6 +359,7 @@ class NovelPlayer {
         this.viewLineUnit = resolved.viewLineUnit;
         this.renderCurrentView();
         this.refreshReferenceErrors();
+        this.updateEditorStatusBar();
     }
 
     isNovelMenuOpen() {
@@ -371,6 +375,60 @@ class NovelPlayer {
     refreshLabelUI() {
         this.refreshLabelList();
         this.refreshLabelFlowIfOpen();
+        this.updatePreviewStatusBar();
+        this.updateEditorStatusBar();
+    }
+
+    updatePreviewStatusBar() {
+        if (!this.previewStatusBar) return;
+        if (!this.script.length) {
+            this.previewStatusBar.textContent = "—";
+            return;
+        }
+        const line = this.script[this.viewIndex];
+        if (line?.type === "end") {
+            this.previewStatusBar.textContent = "（終わり）";
+            return;
+        }
+        const label = this.getLabelForIndex(this.viewIndex);
+        if (label) {
+            this.previewStatusBar.textContent = `@${label}`;
+            return;
+        }
+        if (line?.type === "choice") {
+            this.previewStatusBar.textContent = "選択肢";
+            return;
+        }
+        if (line?.type === "line" && line.name) {
+            this.previewStatusBar.textContent = `#${line.name}`;
+            return;
+        }
+        this.previewStatusBar.textContent = "プレビュー";
+    }
+
+    updateEditorStatusBar() {
+        if (!this.editorStatusBar) return;
+        const line = this.getEditorSourceLine();
+        const displayLine = line + 1;
+        const lines = this.getScriptText().split("\n");
+        const trimmed = (lines[line] || "").trim();
+        if (
+            trimmed.startsWith("@") &&
+            !trimmed.startsWith("@goto") &&
+            !trimmed.startsWith("@call") &&
+            trimmed !== "@return" &&
+            trimmed !== "@end"
+        ) {
+            this.editorStatusBar.textContent = `${displayLine}行 · ${trimmed}`;
+            return;
+        }
+        const pos = this.findPreviewIndexForSourceLine(line);
+        const label = pos ? this.getLabelForIndex(pos.viewIndex) : null;
+        if (label) {
+            this.editorStatusBar.textContent = `${displayLine}行 · @${label}`;
+            return;
+        }
+        this.editorStatusBar.textContent = `${displayLine}行`;
     }
 
     getLabelFilterText() {

@@ -37,16 +37,18 @@
 </head>
 
 <body>
+    <nav class="app-menu-bar" aria-label="メニュー">
+        <span id="previewStatusBar" class="app-menu-bar__status" aria-live="polite"></span>
+        <div class="app-menu-bar__items">
+            <button type="button" id="novelMenuButton" class="menu-toggle menu-toggle--text menu-toggle--compact" aria-expanded="false"
+                aria-controls="novelMenuPanel" aria-haspopup="true">プレビュー操作</button>
+            <button type="button" id="scenarioMenuButton" class="menu-toggle menu-toggle--text menu-toggle--compact" aria-expanded="false"
+                aria-controls="scenarioMenuPanel" aria-haspopup="true">ファイル</button>
+        </div>
+    </nav>
+    <div class="app-main">
     <!-- 左側: ノベルビューア -->
     <div class="novel-viewer">
-        <div class="novel-menu-float">
-            <button type="button" id="novelMenuButton" class="menu-toggle menu-toggle--float" aria-expanded="false"
-                aria-controls="novelMenuPanel" aria-haspopup="true" aria-label="プレビュー・その他の操作メニュー">
-                <svg class="menu-toggle__icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path fill="currentColor" d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
-                </svg>
-            </button>
-        </div>
         <div id="novelMenuPanel" class="menu-drawer menu-drawer--novel" aria-hidden="true">
             <div class="menu-drawer-backdrop" data-menu-close="novel" tabindex="-1"></div>
             <div class="menu-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="novelMenuTitle">
@@ -108,22 +110,15 @@
 
     <!-- 右側: シナリオ表示 (編集可能テキストボックス) -->
     <div class="scenario-box">
-        <div class="scenario-menu-float">
-            <button type="button" id="scenarioMenuButton" class="menu-toggle menu-toggle--float" aria-expanded="false"
-                aria-controls="scenarioMenuPanel" aria-haspopup="true" aria-label="シナリオメニュー">
-                <svg class="menu-toggle__icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path fill="currentColor" d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
-                </svg>
-            </button>
-        </div>
         <div class="scenario-editor-wrap">
             <div id="scriptEditorHost" class="script-editor-host" aria-label="シナリオ編集"></div>
+            <span id="editorStatusBar" class="editor-panel-status" aria-live="polite"></span>
         </div>
         <div id="scenarioMenuPanel" class="menu-drawer menu-drawer--scenario" aria-hidden="true">
             <div class="menu-drawer-backdrop" data-menu-close="scenario" tabindex="-1"></div>
             <div class="menu-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="scenarioMenuTitle">
                 <div class="menu-drawer-header">
-                    <span id="scenarioMenuTitle" class="menu-drawer-title">操作</span>
+                    <span id="scenarioMenuTitle" class="menu-drawer-title">ファイル</span>
                     <button type="button" class="menu-drawer-close" data-menu-close="scenario"
                         aria-label="メニューを閉じる">&times;</button>
                 </div>
@@ -144,6 +139,7 @@
             </div>
         </div>
         <input type="file" id="fileInput" accept=".txt" style="display:none">
+    </div>
     </div>
 
     <!-- ラベルの流れモーダル -->

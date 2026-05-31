@@ -9,7 +9,7 @@ import { novelEditorTheme, novelSyntaxHighlighting } from "./novel_theme.mjs";
  * @param {{ onChange?: () => void, onPreviewShortcut?: () => void }} options
  */
 export function createScenarioEditor(parent, options = {}) {
-    const { onChange, onPreviewShortcut } = options;
+    const { onChange, onPreviewShortcut, onCursorChange } = options;
 
     const previewKeymap = keymap.of([
         {
@@ -34,6 +34,9 @@ export function createScenarioEditor(parent, options = {}) {
             EditorView.updateListener.of((update) => {
                 if (update.docChanged) {
                     onChange?.();
+                }
+                if (update.selectionSet || update.docChanged) {
+                    onCursorChange?.();
                 }
             }),
         ],

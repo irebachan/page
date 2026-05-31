@@ -1,12 +1,9 @@
 body {
     --panel-split-pct: 50;
-    /* フロートメニュー・スクロールバー・隙間（左右パネルで同じ縦線に揃える） */
-    --menu-float-size: 44px;
-    --menu-float-edge: 0.35em;
     --scrollbar-reserve: 15px;
     --menu-scroll-gap: 5px;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     background: #000;
     color: #fff;
     font-family: sans-serif;
@@ -18,6 +15,73 @@ body {
     position: fixed;
     -webkit-overflow-scrolling: touch;
     -webkit-text-size-adjust: 100%;
+}
+
+/* 上部メニューバー（横・縦共通） */
+.app-menu-bar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5em;
+    margin: 0;
+    min-height: 0;
+    padding:
+        max(0.2em, env(safe-area-inset-top, 0px))
+        max(0.65em, env(safe-area-inset-right, 0px))
+        0.25em
+        max(0.65em, env(safe-area-inset-left, 0px));
+    background: #1a1a1a;
+    border-bottom: 1px solid #333;
+    z-index: 20;
+}
+
+.app-menu-bar__items {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35em;
+    flex: 0 0 auto;
+}
+
+.app-menu-bar__status {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-right: auto;
+    font-size: 0.85rem;
+    line-height: 1.3;
+    color: #888;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+    pointer-events: none;
+}
+
+/* エディタ最下部に行位置（横・縦共通） */
+.editor-panel-status {
+    display: block;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0.12em 0.4em;
+    border-top: 1px solid #333;
+    background: #1a1a1a;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: #888;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-main {
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
 }
 
 /* プレビュー | シナリオ の境界（ドラッグで幅／高さを調整） */
@@ -80,34 +144,14 @@ body.is-panel-dragging * {
     padding: 1em;
     border-right: none;
     color: #fff;
-    height: 100svh;
-    max-height: 100svh;
     position: relative;
     overflow: hidden;
     box-sizing: border-box;
 }
 
-/* フロート：タイトル行は置かず、角にだけメニューボタン */
-.novel-menu-float,
-.scenario-menu-float {
-    position: absolute;
-    top: max(var(--menu-float-edge), env(safe-area-inset-top, 0px));
-    right: max(var(--menu-float-edge), env(safe-area-inset-right, 0px));
-    z-index: 12;
-    margin: 0;
-    pointer-events: none;
-}
-
-.novel-menu-float .menu-toggle,
-.scenario-menu-float .menu-toggle {
-    pointer-events: auto;
-}
-
-/* 三本線ボタン（幅は --menu-float-size と右パディング計算を一致） */
+/* 三本線ボタン / テキストボタン共通 */
 .menu-toggle {
     flex: 0 0 auto;
-    width: var(--menu-float-size);
-    height: var(--menu-float-size);
     padding: 0;
     border: 1px solid #666;
     background: #333;
@@ -117,35 +161,58 @@ body.is-panel-dragging * {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
+    font: inherit;
+    line-height: 1.2;
 }
 
-/* SVG 三本線（span+2px は環境によって潰れるため常に表示できる形に） */
-.menu-toggle__icon {
-    display: block;
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
-    pointer-events: none;
+.menu-toggle--text {
+    width: auto;
+    min-width: 0;
+    height: auto;
+    min-height: 2rem;
+    padding: 0.35em 0.75em;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.app-menu-bar .menu-toggle--compact {
+    min-height: 0;
+    padding: 0.15em 0.55em;
+    font-size: 0.85rem;
+    line-height: 1.3;
+    border-radius: 4px;
+    border-color: #555;
+    background: rgba(40, 40, 40, 0.85);
+    box-shadow: none;
+}
+
+.app-menu-bar .menu-toggle--compact[aria-expanded="true"] {
+    background: #3a3a3a;
+    border-color: #666;
+}
+
+.app-menu-bar .menu-toggle--compact:hover {
+    background: #454545;
+}
+
+.menu-toggle[aria-expanded="true"] {
+    background: #4a4a4a;
+    border-color: #888;
 }
 
 .menu-toggle:hover {
     background: #3d3d3d;
 }
 
+.menu-toggle[aria-expanded="true"]:hover {
+    background: #555;
+}
+
 .menu-toggle:focus-visible {
     outline: 2px solid #9cf;
     outline-offset: 2px;
-}
-
-.menu-toggle--float {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
-    background: rgba(40, 40, 40, 0.92);
-    border-color: #555;
-}
-
-.menu-toggle--float:hover {
-    background: rgba(55, 55, 55, 0.95);
 }
 
 body.menu-drawer-open {
@@ -326,10 +393,6 @@ body.menu-drawer-open {
     /* 下寄せ */
     margin-bottom: 1em;
     overflow: hidden;
-    /* フロート＋スクロールバー分（親パネルの左右パディングで safe を吸収） */
-    padding-right: calc(
-        var(--menu-float-size) + var(--scrollbar-reserve) + var(--menu-scroll-gap)
-    );
     box-sizing: border-box;
 }
 
@@ -752,13 +815,10 @@ body.menu-drawer-open {
     background: #222;
     display: flex;
     flex-direction: column;
-    height: 100svh;
-    max-height: 100svh;
     overflow: hidden;
     box-sizing: border-box;
 }
 
-/* テキストエリアを狭め、右にスクロールバー＋フロート分を確保（被り解消） */
 .scenario-editor-wrap {
     flex: 1 1 0;
     min-height: 0;
@@ -766,7 +826,6 @@ body.menu-drawer-open {
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    padding-right: calc(var(--menu-float-size) + var(--scrollbar-reserve) + var(--menu-scroll-gap));
 }
 
 .script-editor-host {
@@ -1025,26 +1084,50 @@ body.menu-drawer-open {
 /* モバイル対応（読みエリア優先・ボタン帯は最小限） */
 @media (max-width: 768px) {
     body {
-        --menu-float-size: 38px;
-        /* 被らないギリギリでエリアを広く（モバイル用に詰める） */
-        --scrollbar-reserve: 11px;
-        --menu-scroll-gap: 2px;
-        --menu-float-edge: 0.3em;
-        flex-direction: column;
         height: 100svh;
         height: 100dvh;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
     }
 
-    /* プレビュー／シナリオで左右パディングを同じにし、メニュー右端の縦線を揃える */
+    .app-main {
+        flex-direction: column;
+    }
+
+    .app-menu-bar {
+        justify-content: stretch;
+        gap: 0.25em;
+        padding:
+            max(0.15em, env(safe-area-inset-top, 0px))
+            max(0.45em, env(safe-area-inset-right, 0px))
+            0.2em
+            max(0.45em, env(safe-area-inset-left, 0px));
+    }
+
+    .app-menu-bar__items {
+        flex: 1 1 auto;
+        gap: 0.25em;
+        justify-content: stretch;
+    }
+
+    .app-menu-bar__items .menu-toggle--compact {
+        flex: 1 1 0;
+        justify-content: center;
+        padding: 0.12em 0.35em;
+        font-size: 0.8rem;
+    }
+
+    .app-menu-bar__status {
+        display: none;
+    }
+
+    .editor-panel-status {
+        padding-bottom: max(0.12em, env(safe-area-inset-bottom, 0px));
+    }
+
     .novel-viewer,
     .scenario-box {
         padding-left: max(0.5em, env(safe-area-inset-left, 0px));
         padding-right: max(0.5em, env(safe-area-inset-right, 0px));
+        padding-top: 0.25em;
     }
 
     .novel-viewer {
@@ -1052,7 +1135,6 @@ body.menu-drawer-open {
         min-height: 0;
         max-height: none;
         height: auto;
-        padding-top: max(0.5em, env(safe-area-inset-top, 0px));
         padding-bottom: 0.5em;
         overflow: hidden;
     }
@@ -1062,16 +1144,8 @@ body.menu-drawer-open {
         min-height: 0;
         max-height: none;
         height: auto;
-        padding-top: 0.5em;
-        padding-bottom: max(0.5em, env(safe-area-inset-bottom, 0px));
+        padding-bottom: 0;
         overflow: hidden;
-    }
-
-    /* safe はパネル padding に含めたので、フロートは同じオフセットだけ（上下パネルで一致） */
-    .novel-menu-float,
-    .scenario-menu-float {
-        top: var(--menu-float-edge);
-        right: var(--menu-float-edge);
     }
 
     .panel-splitter {
@@ -1106,6 +1180,7 @@ body.menu-drawer-open {
         min-height: 0;
         margin-bottom: 0.35em;
         justify-content: flex-start;
+        padding-right: 0;
     }
 
     .button-area {
@@ -1146,6 +1221,18 @@ body.menu-drawer-open {
     .choices button {
         padding: 0.45em 0.5em;
         min-height: 40px;
+    }
+
+    .script-editor-host .cm-gutters {
+        display: none !important;
+    }
+
+    .script-editor-host .cm-content {
+        padding: 0.45em 0.35em 0.45em 0.45em;
+    }
+
+    .script-editor-host .cm-editor {
+        font-size: 0.95rem;
     }
 
     #scriptText,

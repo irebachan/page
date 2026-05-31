@@ -24,12 +24,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const novelMenuButton = document.getElementById("novelMenuButton");
     const scenarioMenuPanel = document.getElementById("scenarioMenuPanel");
     const scenarioMenuButton = document.getElementById("scenarioMenuButton");
+    const novelMenuButtons = [novelMenuButton].filter(Boolean);
+    const scenarioMenuButtons = [scenarioMenuButton].filter(Boolean);
 
-    function setMenuOpen(panel, button, open) {
-        if (!panel || !button) return;
+    function setMenuOpen(panel, buttons, open) {
+        if (!panel || !buttons.length) return;
         panel.classList.toggle("is-open", open);
         panel.setAttribute("aria-hidden", open ? "false" : "true");
-        button.setAttribute("aria-expanded", open ? "true" : "false");
+        buttons.forEach((button) => {
+            button.setAttribute("aria-expanded", open ? "true" : "false");
+        });
         syncBodyMenuClass();
         if (open && panel === novelMenuPanel) {
             novelPlayer.refreshLabelList();
@@ -44,11 +48,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function closeNovelMenu() {
-        setMenuOpen(novelMenuPanel, novelMenuButton, false);
+        setMenuOpen(novelMenuPanel, novelMenuButtons, false);
     }
 
     function closeScenarioMenu() {
-        setMenuOpen(scenarioMenuPanel, scenarioMenuButton, false);
+        setMenuOpen(scenarioMenuPanel, scenarioMenuButtons, false);
     }
 
     function closeAllMenus() {
@@ -59,28 +63,26 @@ document.addEventListener("DOMContentLoaded", () => {
     function toggleNovelMenu() {
         const open = !(novelMenuPanel && novelMenuPanel.classList.contains("is-open"));
         if (open) closeScenarioMenu();
-        setMenuOpen(novelMenuPanel, novelMenuButton, open);
+        setMenuOpen(novelMenuPanel, novelMenuButtons, open);
     }
 
     function toggleScenarioMenu() {
         const open = !(scenarioMenuPanel && scenarioMenuPanel.classList.contains("is-open"));
         if (open) closeNovelMenu();
-        setMenuOpen(scenarioMenuPanel, scenarioMenuButton, open);
+        setMenuOpen(scenarioMenuPanel, scenarioMenuButtons, open);
     }
 
-    if (novelMenuButton && novelMenuPanel) {
-        novelMenuButton.addEventListener("click", (e) => {
-            e.stopPropagation();
-            toggleNovelMenu();
+    function bindMenuToggle(buttons, toggleFn) {
+        buttons.forEach((button) => {
+            button.addEventListener("click", (e) => {
+                e.stopPropagation();
+                toggleFn();
+            });
         });
     }
 
-    if (scenarioMenuButton && scenarioMenuPanel) {
-        scenarioMenuButton.addEventListener("click", (e) => {
-            e.stopPropagation();
-            toggleScenarioMenu();
-        });
-    }
+    bindMenuToggle(novelMenuButtons, toggleNovelMenu);
+    bindMenuToggle(scenarioMenuButtons, toggleScenarioMenu);
 
     document.querySelectorAll("[data-menu-close]").forEach((el) => {
         el.addEventListener("click", (e) => {
