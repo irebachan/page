@@ -69,11 +69,17 @@
                             ラベルジャンプでエディタも移動
                         </label>
                     </div>
+                    <button type="button" id="previewFromCursorButton"
+                        title="エディタのカーソル行からプレビュー（Ctrl+Enter / ⌘+Enter）">▶ この行からプレビュー</button>
                     <button type="button" id="restart">🔄 最初に戻る</button>
+                    <button type="button" id="prevChoice" disabled title="履歴上の直近の選択肢画面へ">↩ 直前の選択肢へ</button>
                     <div class="label-quick" id="labelQuick" aria-label="ラベルへ移動">
                         <span class="label-quick-title">ラベル</span>
+                        <input type="search" id="labelFilter" class="label-filter" placeholder="ラベル名で絞り込み"
+                            autocomplete="off" spellcheck="false" aria-label="ラベル名で絞り込み">
                         <div id="labelList" class="label-list" role="list"></div>
                     </div>
+                    <button type="button" id="labelFlowOpenButton" class="label-flow-open-btn">🗺️ ラベルの流れ</button>
                 </div>
             </div>
         </div>
@@ -129,10 +135,27 @@
                     <button type="button" id="aboutButton">ℹ️ このツールについて</button>
                     <button type="button" id="exportSettingsButton">⚙️ 出力設定</button>
                     <button type="button" id="copyButton">📋 コピー</button>
+                    <details class="script-diagnostics" id="scriptDiagnostics">
+                        <summary class="script-diagnostics-summary">参照エラー <span id="refErrorBadge"
+                                class="ref-error-badge">—</span></summary>
+                        <ul id="refErrorList" class="ref-error-list" aria-live="polite"></ul>
+                    </details>
                 </div>
             </div>
         </div>
         <input type="file" id="fileInput" accept=".txt" style="display:none">
+    </div>
+
+    <!-- ラベルの流れモーダル -->
+    <div id="labelFlowModal" class="modal">
+        <div class="modal-content modal-content--label-flow">
+            <span class="close label-flow-close">&times;</span>
+            <h2>ラベルの流れ</h2>
+            <p class="label-flow-modal-hint">ラベル名をクリックするとプレビューへ移動します</p>
+            <input type="search" id="labelFlowModalFilter" class="label-flow-modal-filter" placeholder="ラベル名で絞り込み"
+                autocomplete="off" spellcheck="false" aria-label="ラベル名で絞り込み">
+            <div id="labelFlowModalList" class="label-flow-list label-flow-list--modal" aria-live="polite"></div>
+        </div>
     </div>
 
     <!-- ヘルプモーダル -->
@@ -345,6 +368,7 @@
     <script src="export_render_tyrano.js"></script>
     <script src="export_render_renpy.js"></script>
     <script src="script-parser.js"></script>
+    <script src="script_diagnostics.js"></script>
     <script src="export_settings.js"></script>
     <script src="novel-player.js"></script>
     <script src="main.js"></script>

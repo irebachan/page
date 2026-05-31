@@ -264,7 +264,8 @@ body.menu-drawer-open {
     background: #555;
 }
 
-.menu-drawer--novel .menu-drawer-body #restart {
+.menu-drawer--novel .menu-drawer-body #restart,
+.menu-drawer--novel .menu-drawer-body #previewFromCursorButton {
     width: 100%;
     margin-bottom: 0.25em;
     font-size: 1.05em;
@@ -276,7 +277,8 @@ body.menu-drawer-open {
     cursor: pointer;
 }
 
-.menu-drawer--novel .menu-drawer-body #restart:hover {
+.menu-drawer--novel .menu-drawer-body #restart:hover,
+.menu-drawer--novel .menu-drawer-body #previewFromCursorButton:hover {
     background: #555;
 }
 
@@ -438,6 +440,124 @@ body.menu-drawer-open {
     margin-bottom: 0.35em;
 }
 
+.label-filter {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0.4em;
+    padding: 0.35em 0.5em;
+    font-size: 0.9em;
+    background: #333;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
+.label-filter::placeholder {
+    color: #888;
+}
+
+.menu-drawer--novel .menu-drawer-body #prevChoice {
+    width: 100%;
+    margin-bottom: 0.25em;
+    font-size: 1.05em;
+    padding: 0.65em 0.85em;
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.menu-drawer--novel .menu-drawer-body #prevChoice:hover:not(:disabled) {
+    background: #555;
+}
+
+.menu-drawer--novel .menu-drawer-body #prevChoice:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.menu-drawer--novel .label-flow-open-btn {
+    width: 100%;
+    margin-top: 0.75em;
+    font-size: 1.05em;
+    padding: 0.65em 0.85em;
+    background: #444;
+    color: #fff;
+    border: 1px solid #666;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.menu-drawer--novel .label-flow-open-btn:hover {
+    background: #555;
+}
+
+/* 参照エラー（シナリオメニュー内・折りたたみ） */
+.script-diagnostics {
+    margin-top: 0.5em;
+    padding-top: 0.5em;
+    border-top: 1px solid #444;
+}
+
+.script-diagnostics-summary {
+    cursor: pointer;
+    font-size: 0.95em;
+    color: #ccc;
+    user-select: none;
+}
+
+.script-diagnostics-summary:hover {
+    color: #eee;
+}
+
+.ref-error-badge {
+    font-size: 0.9em;
+    color: #888;
+}
+
+.ref-error-badge.has-errors {
+    color: #f88;
+    font-weight: 600;
+}
+
+.ref-error-list {
+    list-style: none;
+    margin: 0.5em 0 0;
+    padding: 0;
+    max-height: 8em;
+    overflow-y: auto;
+}
+
+.ref-error-list-empty {
+    color: #888;
+    font-size: 0.85em;
+    padding: 0.25em 0;
+}
+
+.ref-error-item {
+    margin: 0.25em 0;
+}
+
+.ref-error-item button {
+    width: 100%;
+    text-align: left;
+    padding: 0.4em 0.5em;
+    font-size: 0.82em;
+    line-height: 1.35;
+    background: #3a2a2a;
+    color: #faa;
+    border: 1px solid #644;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.ref-error-item button:hover {
+    background: #4a3333;
+    color: #fcc;
+}
+
 .label-quick {
     min-height: 0;
 }
@@ -479,6 +599,147 @@ body.menu-drawer-open {
     background: #2a4a6a;
     border-color: #6af;
     color: #cef;
+}
+
+/* ラベルの流れ（モーダル内） */
+.label-flow-modal-hint {
+    margin: 0 0 0.75em;
+    font-size: 0.9em;
+    color: #aaa;
+}
+
+.modal-content--label-flow {
+    display: flex;
+    flex-direction: column;
+    width: min(720px, 92vw);
+    max-width: none;
+    max-height: min(88vh, 100dvh - 2em);
+    margin: max(2vh, env(safe-area-inset-top, 0px)) auto 2vh;
+    padding: 1.25em 1.5em;
+    box-sizing: border-box;
+}
+
+.modal-content--label-flow h2 {
+    margin: 0 2em 0.35em 0;
+    font-size: 1.25rem;
+}
+
+.label-flow-modal-filter {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0.75em;
+    padding: 0.45em 0.55em;
+    font-size: 1em;
+    background: #2a2a2a;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
+.label-flow-modal-filter::placeholder {
+    color: #888;
+}
+
+.label-flow-list--modal {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    margin-top: 0;
+    overflow: visible;
+}
+
+.label-flow-list--modal .label-flow-item {
+    margin-bottom: 0.65em;
+    padding: 0.5em 0.65em;
+}
+
+.label-flow-list--modal .label-flow-line {
+    font-size: 0.88em;
+}
+
+.label-flow-empty {
+    margin: 0;
+    color: #888;
+    font-size: 0.85em;
+}
+
+.label-flow-item {
+    margin-bottom: 0.55em;
+    padding: 0.35em 0.45em;
+    background: #2e2e2e;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+.label-flow-item.is-current {
+    border-color: #6af;
+    background: #2a3540;
+}
+
+.label-flow-name {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.15em 0;
+    font-size: 0.88em;
+    font-family: monospace;
+    font-weight: 600;
+    color: #cef;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.label-flow-name:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.label-flow-body {
+    margin-top: 0.2em;
+}
+
+.label-flow-line {
+    font-size: 0.78em;
+    line-height: 1.4;
+    color: #bbb;
+    padding: 0.05em 0;
+    word-break: break-word;
+}
+
+.label-flow-out {
+    color: #bdc;
+}
+
+.label-flow-in {
+    color: #cba;
+}
+
+.label-flow-link {
+    display: inline;
+    padding: 0 0.1em;
+    margin: 0;
+    font: inherit;
+    font-family: monospace;
+    color: #8df;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed #6af;
+    cursor: pointer;
+    vertical-align: baseline;
+}
+
+.label-flow-link:hover:not(:disabled) {
+    color: #cef;
+    border-bottom-color: #cef;
+}
+
+.label-flow-link.is-missing {
+    color: #a88;
+    border-bottom-color: #866;
+    cursor: default;
+    opacity: 0.85;
 }
 
 /* 右側: シナリオテキストボックス (編集可) */

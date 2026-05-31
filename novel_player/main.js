@@ -1,6 +1,7 @@
 // アプリケーション開始
 document.addEventListener("DOMContentLoaded", () => {
     const novelPlayer = new NovelPlayer();
+    window.novelPlayer = novelPlayer;
     const exportSettings = new ExportSettings();
 
     const helpModal = document.getElementById("helpModal");
@@ -15,6 +16,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const aboutBtn = document.getElementById("aboutButton");
     const aboutCloseBtn = document.querySelector(".about-close");
 
+    const labelFlowModal = document.getElementById("labelFlowModal");
+    const labelFlowOpenBtn = document.getElementById("labelFlowOpenButton");
+    const labelFlowCloseBtn = document.querySelector(".label-flow-close");
+
     const novelMenuPanel = document.getElementById("novelMenuPanel");
     const novelMenuButton = document.getElementById("novelMenuButton");
     const scenarioMenuPanel = document.getElementById("scenarioMenuPanel");
@@ -26,6 +31,9 @@ document.addEventListener("DOMContentLoaded", () => {
         panel.setAttribute("aria-hidden", open ? "false" : "true");
         button.setAttribute("aria-expanded", open ? "true" : "false");
         syncBodyMenuClass();
+        if (open && panel === novelMenuPanel) {
+            novelPlayer.refreshLabelList();
+        }
     }
 
     function syncBodyMenuClass() {
@@ -83,7 +91,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeAllMenus();
+        if (e.key === "Escape") {
+            if (labelFlowModal && labelFlowModal.style.display === "block") {
+                labelFlowModal.style.display = "none";
+                return;
+            }
+            closeAllMenus();
+        }
     });
 
     if (helpBtn && helpModal) {
@@ -115,10 +129,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     const restartBtn = document.getElementById("restart");
-    [restartBtn].forEach((btn) => {
+    const prevChoiceBtn = document.getElementById("prevChoice");
+    const previewFromCursorBtn = document.getElementById("previewFromCursorButton");
+    [restartBtn, prevChoiceBtn, previewFromCursorBtn, labelFlowOpenBtn].forEach((btn) => {
         if (!btn) return;
         btn.addEventListener("click", () => closeNovelMenu());
     });
+
+    if (labelFlowOpenBtn && labelFlowModal) {
+        labelFlowOpenBtn.addEventListener("click", () => {
+            novelPlayer.openLabelFlowModal();
+        });
+    }
 
     if (closeBtn && helpModal) {
         closeBtn.addEventListener("click", () => {
@@ -138,6 +160,12 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    if (labelFlowCloseBtn && labelFlowModal) {
+        labelFlowCloseBtn.addEventListener("click", () => {
+            labelFlowModal.style.display = "none";
+        });
+    }
+
     window.addEventListener("click", (event) => {
         if (helpModal && event.target === helpModal) {
             helpModal.style.display = "none";
@@ -147,6 +175,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (aboutModal && event.target === aboutModal) {
             aboutModal.style.display = "none";
+        }
+        if (labelFlowModal && event.target === labelFlowModal) {
+            labelFlowModal.style.display = "none";
         }
     });
 });

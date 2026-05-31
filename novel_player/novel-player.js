@@ -17,7 +17,17 @@ class NovelPlayer {
         this.choicesBox = document.getElementById("choices");
         this.scriptTextBox = document.getElementById("scriptText");
         this.restartBtn = document.getElementById("restart");
+        this.prevChoiceBtn = document.getElementById("prevChoice");
         this.labelList = document.getElementById("labelList");
+        this.labelFilterInput = document.getElementById("labelFilter");
+        this.previewFromCursorBtn = document.getElementById("previewFromCursorButton");
+        this.scriptDiagnostics = document.getElementById("scriptDiagnostics");
+        this.refErrorBadge = document.getElementById("refErrorBadge");
+        this.refErrorList = document.getElementById("refErrorList");
+        this.labelFlowModal = document.getElementById("labelFlowModal");
+        this.labelFlowModalList = document.getElementById("labelFlowModalList");
+        this.labelFlowModalFilter = document.getElementById("labelFlowModalFilter");
+        this.novelMenuPanel = document.getElementById("novelMenuPanel");
         this.saveButton = document.getElementById("saveButton");
         this.loadButton = document.getElementById("loadButton");
         this.fileInput = document.getElementById("fileInput");
@@ -41,6 +51,9 @@ class NovelPlayer {
         if (this.prevBtn) {
             this.prevBtn.addEventListener("click", () => this.showPrev());
         }
+        if (this.prevChoiceBtn) {
+            this.prevChoiceBtn.addEventListener("click", () => this.jumpToLastChoice());
+        }
         this.restartBtn.addEventListener("click", () => this.restart());
         this.updateScriptDebounced = this.debounce(() => this.updateScript(), 300);
         this.scriptTextBox.addEventListener("input", () => this.updateScriptDebounced());
@@ -49,6 +62,33 @@ class NovelPlayer {
         this.fileInput.addEventListener("change", (e) => this.loadScriptFromFile(e));
         this.clearButton.addEventListener("click", () => this.clearScriptText());
         this.copyButton.addEventListener("click", () => this.copyToClipboard());
+
+        if (this.previewFromCursorBtn) {
+            this.previewFromCursorBtn.addEventListener("click", () => this.previewFromEditorLine());
+        }
+
+        if (this.labelFilterInput) {
+            this.labelFilterInput.addEventListener("input", () => this.refreshLabelList());
+        }
+
+        if (this.labelFlowModalFilter) {
+            this.labelFlowModalFilter.addEventListener("input", () => this.refreshLabelFlow());
+        }
+
+        if (this.scriptDiagnostics) {
+            this.scriptDiagnostics.addEventListener("toggle", () => {
+                if (this.scriptDiagnostics.open) {
+                    this.refreshReferenceErrors();
+                }
+            });
+        }
+
+        this.scriptTextBox.addEventListener("keydown", (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                e.preventDefault();
+                this.previewFromEditorLine();
+            }
+        });
 
         if (this.previewUnit) {
             this.previewUnit.addEventListener("change", () => {
@@ -227,6 +267,25 @@ class NovelPlayer {
         return !this.syncEditorOnLabelJump || this.syncEditorOnLabelJump.checked;
     }
 
+    /** コンソール確認用: novelPlayer.getPreviewDebugState() */
+    getPreviewDebugState() {
+        const line = this.script[this.viewIndex];
+        return {
+            viewIndex: this.viewIndex,
+            playbackIndex: this.index,
+            callStackDepth: this.callStack.length,
+            callStack: this.callStack.map((f) => ({
+                index: f.index,
+                returnToChoice: f.returnToChoice,
+                at: this.script[f.index]?.type,
+            })),
+            nearLabel: this.getLabelForIndex(this.viewIndex),
+            currentItem: line
+                ? { type: line.type, sourceLine: line.sourceLine }
+                : null,
+        };
+    }
+
     debounce(fn, ms) {
         let timer = null;
         return () => {
@@ -264,7 +323,7 @@ class NovelPlayer {
         this.script = parseResult.script;
         this.labels = parseResult.labels;
         this.labelSourceLines = parseResult.labelSourceLines || {};
-        this.refreshLabelList();
+        this.callStack = [];
 
         const resolved =
             preservePosition && anchor
@@ -273,6 +332,58 @@ class NovelPlayer {
         this.viewIndex = resolved.viewIndex;
         this.viewLineUnit = resolved.viewLineUnit;
         this.renderCurrentView();
+        this.refreshReferenceErrors();
+    }
+
+    isNovelMenuOpen() {
+        return (
+            this.novelMenuPanel && this.novelMenuPanel.classList.contains("is-open")
+        );
+    }
+
+    isScriptDiagnosticsOpen() {
+        return this.scriptDiagnostics && this.scriptDiagnostics.open;
+    }
+
+    refreshLabelUI() {
+        this.refreshLabelList();
+        this.refreshLabelFlowIfOpen();
+    }
+
+    getLabelFilterText() {
+        return (this.labelFilterInput?.value || "").trim().toLowerCase();
+    }
+
+    getLabelFlowFilterText() {
+        return (this.labelFlowModalFilter?.value || "").trim().toLowerCase();
+    }
+
+    isLabelFlowModalOpen() {
+        return this.labelFlowModal && this.labelFlowModal.style.display === "block";
+    }
+
+    openLabelFlowModal() {
+        if (!this.labelFlowModal) return;
+        if (this.labelFlowModalFilter && this.labelFilterInput) {
+            this.labelFlowModalFilter.value = this.labelFilterInput.value;
+        }
+        this.refreshLabelFlow();
+        this.labelFlowModal.style.display = "block";
+        if (this.labelFlowModalFilter) {
+            this.labelFlowModalFilter.focus();
+        }
+    }
+
+    closeLabelFlowModal() {
+        if (this.labelFlowModal) {
+            this.labelFlowModal.style.display = "none";
+        }
+    }
+
+    refreshLabelFlowIfOpen() {
+        if (this.isLabelFlowModalOpen()) {
+            this.refreshLabelFlow();
+        }
     }
 
     capturePreviewAnchor() {
@@ -448,6 +559,105 @@ class NovelPlayer {
         if (this.prevBtn) {
             this.prevBtn.disabled = this.previewHistory.length === 0;
         }
+        this.updateLastChoiceButton();
+    }
+
+    hasChoiceInHistory() {
+        for (let i = this.previewHistory.length - 1; i >= 0; i--) {
+            const item = this.script[this.previewHistory[i].viewIndex];
+            if (item && item.type === "choice") return true;
+        }
+        return false;
+    }
+
+    updateLastChoiceButton() {
+        if (this.prevChoiceBtn) {
+            this.prevChoiceBtn.disabled = !this.hasChoiceInHistory();
+        }
+    }
+
+    jumpToLastChoice() {
+        for (let i = this.previewHistory.length - 1; i >= 0; i--) {
+            const state = this.previewHistory[i];
+            const item = this.script[state.viewIndex];
+            if (item && item.type === "choice") {
+                this.previewHistory = this.previewHistory.slice(0, i);
+                this.callStack = [];
+                this.viewIndex = state.viewIndex;
+                this.viewLineUnit = state.viewLineUnit;
+                this.renderCurrentView();
+                this.updatePrevButton();
+                return;
+            }
+        }
+    }
+
+    previewFromEditorLine() {
+        const lineNum = this.getEditorSourceLine();
+        const pos = this.findPreviewIndexForSourceLine(lineNum);
+        if (!pos || !this.script.length) return;
+
+        this.pushPreviewHistory({
+            viewIndex: this.viewIndex,
+            viewLineUnit: this.viewLineUnit,
+        });
+        this.callStack = [];
+        this.viewIndex = pos.viewIndex;
+        this.viewLineUnit = pos.viewLineUnit;
+        this.renderCurrentView();
+    }
+
+    refreshReferenceErrors() {
+        if (typeof collectReferenceErrors !== "function") return;
+
+        const errors = collectReferenceErrors(this.script, this.labels);
+        this.updateReferenceErrorBadge(errors);
+        if (this.isScriptDiagnosticsOpen()) {
+            this.renderReferenceErrorList(errors);
+        }
+    }
+
+    updateReferenceErrorBadge(errors) {
+        if (!this.refErrorBadge) return;
+        if (errors.length === 0) {
+            this.refErrorBadge.textContent = "なし";
+            this.refErrorBadge.classList.remove("has-errors");
+        } else {
+            this.refErrorBadge.textContent = String(errors.length);
+            this.refErrorBadge.classList.add("has-errors");
+        }
+    }
+
+    renderReferenceErrorList(errors) {
+        if (!this.refErrorList) return;
+
+        this.refErrorList.innerHTML = "";
+
+        if (errors.length === 0) {
+            const empty = document.createElement("li");
+            empty.className = "ref-error-list-empty";
+            empty.textContent = "未定義ラベルへの参照はありません";
+            this.refErrorList.appendChild(empty);
+            return;
+        }
+
+        errors.forEach((err) => {
+            const li = document.createElement("li");
+            li.className = "ref-error-item";
+            const btn = document.createElement("button");
+            btn.type = "button";
+            const lineLabel =
+                err.sourceLine !== undefined ? `${err.sourceLine + 1}行目: ` : "";
+            btn.textContent = lineLabel + err.message;
+            btn.title = "エディタの該当行へ移動";
+            btn.addEventListener("click", () => {
+                if (err.sourceLine !== undefined) {
+                    this.moveEditorToSourceLine(err.sourceLine);
+                }
+            });
+            li.appendChild(btn);
+            this.refErrorList.appendChild(li);
+        });
     }
 
     showPrev() {
@@ -515,17 +725,28 @@ class NovelPlayer {
     }
 
     refreshLabelList() {
-        if (!this.labelList) return;
-        const names = Object.keys(this.labels);
+        if (!this.labelList || !this.isNovelMenuOpen()) return;
+        let names = Object.keys(this.labels).sort((a, b) => this.labels[a] - this.labels[b]);
+        const filter = this.getLabelFilterText();
+        if (filter) {
+            names = names.filter((n) => n.toLowerCase().includes(filter));
+        }
         const current = this.script.length
             ? this.getLabelForIndex(this.viewIndex)
             : null;
 
         this.labelList.innerHTML = "";
-        if (names.length === 0) {
+        if (Object.keys(this.labels).length === 0) {
             const empty = document.createElement("span");
             empty.className = "label-list-empty";
             empty.textContent = "（ラベルなし）";
+            this.labelList.appendChild(empty);
+            return;
+        }
+        if (names.length === 0) {
+            const empty = document.createElement("span");
+            empty.className = "label-list-empty";
+            empty.textContent = "（該当なし）";
             this.labelList.appendChild(empty);
             return;
         }
@@ -548,17 +769,181 @@ class NovelPlayer {
         }
     }
 
+    refreshLabelFlow() {
+        const container = this.labelFlowModalList;
+        if (!container || typeof buildLabelFlow !== "function") return;
+
+        const filter = this.getLabelFlowFilterText();
+        let flows = buildLabelFlow(this.script, this.labels);
+        if (filter) {
+            flows = flows.filter((f) => f.name.toLowerCase().includes(filter));
+        }
+
+        container.innerHTML = "";
+        if (Object.keys(this.labels).length === 0) {
+            const empty = document.createElement("p");
+            empty.className = "label-flow-empty";
+            empty.textContent = "（ラベルなし）";
+            container.appendChild(empty);
+            return;
+        }
+        if (flows.length === 0) {
+            const empty = document.createElement("p");
+            empty.className = "label-flow-empty";
+            empty.textContent = "（該当なし）";
+            container.appendChild(empty);
+            return;
+        }
+
+        const current = this.script.length
+            ? this.getLabelForIndex(this.viewIndex)
+            : null;
+
+        flows.forEach((flow) => {
+            const block = document.createElement("div");
+            block.className = "label-flow-item";
+            if (flow.name === current) block.classList.add("is-current");
+
+            const head = document.createElement("button");
+            head.type = "button";
+            head.className = "label-flow-name";
+            head.textContent = `@${flow.name}`;
+            head.title = "このラベルへプレビュー";
+            head.addEventListener("click", () => this.jumpToLabelByName(flow.name));
+            block.appendChild(head);
+
+            const body = document.createElement("div");
+            body.className = "label-flow-body";
+
+            if (flow.incoming.length === 0) {
+                const line = document.createElement("div");
+                line.className = "label-flow-line label-flow-in";
+                line.textContent = "← なし（入口の可能性）";
+                body.appendChild(line);
+            } else {
+                flow.incoming.forEach((ref) => {
+                    this.appendLabelFlowLine(body, "← ", ref, "in");
+                });
+            }
+
+            if (flow.outgoing.length === 0) {
+                const line = document.createElement("div");
+                line.className = "label-flow-line label-flow-out";
+                line.textContent = "→ （分岐・ジャンプなし）";
+                body.appendChild(line);
+            } else {
+                flow.outgoing.forEach((ref) => {
+                    this.appendLabelFlowLine(body, "→ ", ref, "out");
+                });
+            }
+
+            block.appendChild(body);
+            container.appendChild(block);
+        });
+    }
+
+    appendLabelFlowLine(parent, prefix, ref, direction) {
+        const line = document.createElement("div");
+        line.className =
+            "label-flow-line label-flow-" + (direction === "out" ? "out" : "in");
+
+        if (prefix) {
+            line.appendChild(document.createTextNode(prefix));
+        }
+
+        const parts =
+            typeof getLabelFlowRefParts === "function"
+                ? getLabelFlowRefParts(ref, direction)
+                : [{ type: "text", value: formatLabelFlowRef(ref, direction) }];
+
+        for (const part of parts) {
+            if (part.type === "label") {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "label-flow-link";
+                btn.textContent = part.value;
+                const exists = this.labels.hasOwnProperty(part.value);
+                btn.title = exists
+                    ? `@${part.value} へ移動`
+                    : `未定義ラベル「${part.value}」`;
+                if (!exists) btn.classList.add("is-missing");
+                if (exists) {
+                    btn.addEventListener("click", () =>
+                        this.jumpToLabelByName(part.value)
+                    );
+                } else {
+                    btn.disabled = true;
+                }
+                line.appendChild(btn);
+            } else {
+                line.appendChild(document.createTextNode(part.value));
+            }
+        }
+
+        parent.appendChild(line);
+    }
+
     isPreviewLineUnit() {
         return this.previewUnit && this.previewUnit.value === "line";
     }
 
-    /** 呼び出し元の script 位置を積む（@return はここへ戻す。@return 行の次ではない） */
-    pushCallReturn(returnIndex, isFromChoice) {
+    /** 本文 @call の戻り先（@call 直後が @ラベル でもファイル順の続きへ） */
+    getContinuationAfterCall(callIndex, targetLabel) {
+        if (!this.labels.hasOwnProperty(targetLabel)) {
+            return callIndex + 1;
+        }
+        const callItem = this.script[callIndex];
+        const callSource = callItem.sourceLine ?? -1;
+        const subStart = this.labels[targetLabel];
+        let depth = 0;
+        let returnScriptIdx = -1;
+        for (let i = subStart; i < this.script.length; i++) {
+            const item = this.script[i];
+            if (item.type === "call") depth++;
+            else if (item.type === "return") {
+                if (depth === 0) {
+                    returnScriptIdx = i;
+                    break;
+                }
+                depth--;
+            }
+        }
+        if (returnScriptIdx < 0) {
+            console.warn(
+                `@call ${targetLabel}: サブルーチンに @return がありません`
+            );
+            return Math.min(callIndex + 1, this.script.length);
+        }
+        for (let i = callIndex + 1; i < this.script.length; i++) {
+            const sl = this.script[i].sourceLine;
+            if (sl === undefined || sl <= callSource) continue;
+            if (i >= subStart && i <= returnScriptIdx) continue;
+            return i;
+        }
+        return returnScriptIdx + 1;
+    }
+
+    pushCallReturn(callScriptIndex, targetLabel, isFromChoice) {
+        const index = isFromChoice
+            ? callScriptIndex
+            : this.getContinuationAfterCall(callScriptIndex, targetLabel);
         this.callStack.push({
-            index: returnIndex,
+            index,
             lineUnitIndex: 0,
             returnToChoice: isFromChoice,
         });
+    }
+
+    applyReturnFrame(frame) {
+        this.index = frame.index;
+        this.lineUnitIndex = frame.lineUnitIndex;
+        this.viewIndex = frame.index;
+        this.viewLineUnit = frame.lineUnitIndex;
+        if (frame.returnToChoice) {
+            this.renderCurrentView();
+        } else {
+            this.showLine();
+        }
     }
 
     paintAt(index, lineUnitIndex) {
@@ -603,7 +988,7 @@ class NovelPlayer {
                     });
                     if (this.labels.hasOwnProperty(choice.target)) {
                         if (choice.mode === "call") {
-                            this.pushCallReturn(index, true);
+                            this.pushCallReturn(index, choice.target, true);
                         }
                         this.viewIndex = this.labels[choice.target];
                         this.viewLineUnit = 0;
@@ -667,6 +1052,7 @@ class NovelPlayer {
     renderCurrentView() {
         if (!this.script.length) {
             this.showEndState();
+            this.refreshLabelUI();
             return;
         }
 
@@ -685,6 +1071,21 @@ class NovelPlayer {
                 continue;
             }
             if (line.type === "return") {
+                const frame = this.callStack.pop();
+                if (frame) {
+                    idx = frame.index;
+                    lu = frame.lineUnitIndex || 0;
+                    this.index = idx;
+                    this.lineUnitIndex = lu;
+                    if (frame.returnToChoice) {
+                        if (this.paintAt(idx, 0)) {
+                            this.syncPlaybackIndexAfterView(idx, 0);
+                            this.refreshLabelUI();
+                            return;
+                        }
+                    }
+                    continue;
+                }
                 idx++;
                 continue;
             }
@@ -700,14 +1101,14 @@ class NovelPlayer {
                 }
                 if (this.paintAt(idx, lu)) {
                     this.syncPlaybackIndexAfterView(idx, lu);
-                    this.refreshLabelList();
+                    this.refreshLabelUI();
                     return;
                 }
             }
             if (line.type === "choice" || line.type === "end") {
                 if (this.paintAt(idx, 0)) {
                     this.syncPlaybackIndexAfterView(idx, 0);
-                    this.refreshLabelList();
+                    this.refreshLabelUI();
                     return;
                 }
             }
@@ -715,7 +1116,7 @@ class NovelPlayer {
         }
 
         this.showEndState();
-        this.refreshLabelList();
+        this.refreshLabelUI();
     }
 
     showLine() {
@@ -739,7 +1140,7 @@ class NovelPlayer {
         }
         if (line.type === "call") {
             if (this.labels.hasOwnProperty(line.target)) {
-                this.pushCallReturn(this.index + 1, false);
+                this.pushCallReturn(this.index, line.target, false);
                 this.index = this.labels[line.target];
                 this.lineUnitIndex = 0;
                 this.showLine();
@@ -753,15 +1154,7 @@ class NovelPlayer {
         if (line.type === "return") {
             const frame = this.callStack.pop();
             if (frame) {
-                this.index = frame.index;
-                this.lineUnitIndex = frame.lineUnitIndex;
-                this.viewIndex = frame.index;
-                this.viewLineUnit = frame.lineUnitIndex;
-                if (frame.returnToChoice) {
-                    this.renderCurrentView();
-                } else {
-                    this.showLine();
-                }
+                this.applyReturnFrame(frame);
             } else {
                 console.warn("@return に対応する @call がありません");
                 this.index++;
@@ -805,6 +1198,7 @@ class NovelPlayer {
         this.lineUnitIndex = 0;
         this.viewIndex = 0;
         this.viewLineUnit = 0;
+        this.callStack = [];
         this.renderCurrentView();
         this.updatePrevButton();
     }
@@ -838,10 +1232,12 @@ class NovelPlayer {
             alert(`ラベル "${labelName}" が見つかりません`);
             return;
         }
+        this.closeLabelFlowModal();
         this.pushPreviewHistory({
             viewIndex: this.viewIndex,
             viewLineUnit: this.viewLineUnit,
         });
+        this.callStack = [];
         this.lastJumpLabel = labelName;
         this.viewIndex = this.labels[labelName];
         this.viewLineUnit = 0;
