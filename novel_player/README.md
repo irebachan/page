@@ -27,8 +27,8 @@
 
 ## call / return の確認（3分）
 
-1. **選択肢** … 公園で「ミナに話しかける」→ 会話 → 次へで `@return` → **3つの選択肢が再表示**されれば OK  
-2. **本文 @call** … `@call` の直後に `@ラベル` が続いても、`@return` 後に **本編の続き**（別枝のラベルに吸われない）なら OK  
-3. 迷ったらブラウザコンソールで `novelPlayer.getPreviewDebugState()` … `callStack` が空なのに return した等を確認  
+1. **選択肢** … 公園で「ミナに話しかける」→ 会話 → 次へで `@return` → **3つの選択肢が再表示**されれば OK
+2. **本文 @call** … `@call` の直後に `@ラベル` が続いても、`@return` 後に **本編の続き**（別枝のラベルに吸われない）なら OK
+3. 迷ったらブラウザコンソールで `novelPlayer.getPreviewDebugState()` … `callStack` が空なのに return した等を確認
 
 ラベルチップでジャンプすると call スタックはリセットされます（意図どおり）。

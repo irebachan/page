@@ -13,7 +13,6 @@ class ExportSettings {
         this.jumpTag = document.getElementById("jumpTag");
         this.replaceList = document.getElementById("replaceList");
         this.addReplaceButton = document.getElementById("addReplace");
-        this.scriptTextBox = document.getElementById("scriptText");
         this.exportFormat = document.getElementById("exportFormat");
         this.formatOptionsTyrano = document.getElementById("formatOptionsTyrano");
         this.formatOptionsRenpy = document.getElementById("formatOptionsRenpy");
@@ -104,8 +103,18 @@ class ExportSettings {
         this.replaceList.appendChild(newItem);
     }
 
+    getScriptText() {
+        if (window.novelPlayer && typeof window.novelPlayer.getScriptText === "function") {
+            return window.novelPlayer.getScriptText();
+        }
+        if (window.ScenarioEditor && document.getElementById("scriptEditorHost")) {
+            return "";
+        }
+        return "";
+    }
+
     getExportText() {
-        const rawScript = this.scriptTextBox.value;
+        const rawScript = this.getScriptText();
         const format = this.exportFormat ? this.exportFormat.value : "tyrano";
         let text;
         if (format === "tyrano") {
@@ -134,7 +143,7 @@ class ExportSettings {
         if (typeof saveFileBlob === "function") saveFileBlob(blob, "scenario_formatted", ext);
         const exportSettingsModal = document.getElementById("exportSettingsModal");
         exportSettingsModal.style.display = "none";
-        setTimeout(() => this.scriptTextBox.focus(), 200);
+        setTimeout(() => window.novelPlayer?.focusEditor(), 200);
     }
 
     copyFormattedText() {

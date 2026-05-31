@@ -15,7 +15,8 @@ class NovelPlayer {
         this.prevBtn = document.getElementById("prev");
         this.previewHistory = [];
         this.choicesBox = document.getElementById("choices");
-        this.scriptTextBox = document.getElementById("scriptText");
+        this.scriptEditorHost = document.getElementById("scriptEditorHost");
+        this.scenarioEditor = null;
         this.restartBtn = document.getElementById("restart");
         this.prevChoiceBtn = document.getElementById("prevChoice");
         this.labelList = document.getElementById("labelList");
@@ -56,7 +57,7 @@ class NovelPlayer {
         }
         this.restartBtn.addEventListener("click", () => this.restart());
         this.updateScriptDebounced = this.debounce(() => this.updateScript(), 300);
-        this.scriptTextBox.addEventListener("input", () => this.updateScriptDebounced());
+        this.initScenarioEditor();
         this.saveButton.addEventListener("click", () => this.saveScriptToFile());
         this.loadButton.addEventListener("click", () => this.fileInput.click());
         this.fileInput.addEventListener("change", (e) => this.loadScriptFromFile(e));
@@ -83,13 +84,6 @@ class NovelPlayer {
             });
         }
 
-        this.scriptTextBox.addEventListener("keydown", (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                e.preventDefault();
-                this.previewFromEditorLine();
-            }
-        });
-
         if (this.previewUnit) {
             this.previewUnit.addEventListener("change", () => {
                 this.lineUnitIndex = 0;
@@ -107,7 +101,7 @@ class NovelPlayer {
         });
 
         document.addEventListener("keydown", (e) => {
-            if (e.target === this.scriptTextBox || e.defaultPrevented) return;
+            if (this.isEditorFocused() || e.defaultPrevented) return;
             if (e.key === "ArrowRight" && this.nextBtn.style.display !== "none") {
                 e.preventDefault();
                 this.showLine();
@@ -294,9 +288,38 @@ class NovelPlayer {
         };
     }
 
+    initScenarioEditor() {
+        if (!this.scriptEditorHost || !window.ScenarioEditor) {
+            console.error("ScenarioEditor が読み込まれていません");
+            return;
+        }
+        this.scenarioEditor = window.ScenarioEditor.create(this.scriptEditorHost, {
+            onChange: () => this.updateScriptDebounced(),
+            onPreviewShortcut: () => this.previewFromEditorLine(),
+        });
+    }
+
+    getScriptText() {
+        return this.scenarioEditor ? this.scenarioEditor.getValue() : "";
+    }
+
+    setScriptText(text) {
+        if (this.scenarioEditor) {
+            this.scenarioEditor.setValue(text);
+        }
+    }
+
+    isEditorFocused() {
+        return this.scenarioEditor ? this.scenarioEditor.isFocused() : false;
+    }
+
+    focusEditor() {
+        this.scenarioEditor?.focus();
+    }
+
     init() {
-        // 初期スクリプトをテキストエリアに表示
-        this.scriptTextBox.value = this.defaultScript.trim();
+        // 初期スクリプトをエディタに表示
+        this.setScriptText(this.defaultScript.trim());
         this.updateScript();
 
         // 次へボタンの初期状態設定（ゲーム開始時は表示）
@@ -318,7 +341,7 @@ class NovelPlayer {
         const preservePosition = options.preservePreviewPosition !== false;
         const anchor = preservePosition ? this.capturePreviewAnchor() : null;
 
-        const rawScript = this.scriptTextBox.value;
+        const rawScript = this.getScriptText();
         const parseResult = this.parser.parse(rawScript);
         this.script = parseResult.script;
         this.labels = parseResult.labels;
@@ -404,10 +427,9 @@ class NovelPlayer {
                 line?.type === "choice"
                     ? line.choices.map((c) => c.text).join("|")
                     : null,
-            editorSourceLine:
-                document.activeElement === this.scriptTextBox
-                    ? this.getEditorSourceLine()
-                    : null,
+            editorSourceLine: this.isEditorFocused()
+                ? this.getEditorSourceLine()
+                : null,
         };
     }
 
@@ -516,7 +538,7 @@ class NovelPlayer {
     }
 
     getLineUnitForSourceLine(lineItem, targetSourceLine) {
-        const rawLines = this.scriptTextBox.value.split("\n");
+        const rawLines = this.getScriptText().split("\n");
         const start = lineItem.sourceLine;
         if (start === undefined) return 0;
         if (targetSourceLine <= start) return 0;
@@ -670,13 +692,14 @@ class NovelPlayer {
     }
 
     getEditorSourceLine() {
-        const text = this.scriptTextBox.value;
-        const pos = this.scriptTextBox.selectionStart;
-        return text.substring(0, pos).split("\n").length - 1;
+        if (this.scenarioEditor) {
+            return this.scenarioEditor.getCursorLine();
+        }
+        return 0;
     }
 
     findPreviewIndexForSourceLine(targetLine) {
-        const lines = this.scriptTextBox.value.split("\n");
+        const lines = this.getScriptText().split("\n");
         const trimmed = (lines[targetLine] || "").trim();
         if (
             trimmed.startsWith("@") &&
@@ -1204,27 +1227,9 @@ class NovelPlayer {
     }
 
     moveEditorToSourceLine(lineNum) {
-        const box = this.scriptTextBox;
-        if (!box || lineNum < 0) return;
-        const lines = box.value.split("\n");
-        if (lineNum >= lines.length) return;
-
-        let pos = 0;
-        for (let i = 0; i < lineNum; i++) {
-            pos += lines[i].length + 1;
+        if (this.scenarioEditor) {
+            this.scenarioEditor.goToLine(lineNum);
         }
-
-        box.focus();
-        box.setSelectionRange(pos, pos);
-
-        const style = getComputedStyle(box);
-        let lineHeight = parseFloat(style.lineHeight);
-        if (Number.isNaN(lineHeight) || lineHeight <= 0) {
-            lineHeight = (parseFloat(style.fontSize) || 16) * 1.25;
-        }
-        const paddingTop = parseFloat(style.paddingTop) || 0;
-        const targetTop = lineNum * lineHeight + paddingTop - box.clientHeight * 0.25;
-        box.scrollTop = Math.max(0, targetTop);
     }
 
     jumpToLabelByName(labelName) {
@@ -1258,25 +1263,30 @@ class NovelPlayer {
 
     // シナリオをテキストファイルとして保存
     saveScriptToFile() {
-        const scriptContent = this.scriptTextBox.value;
+        const scriptContent = this.getScriptText();
         const blob = new Blob([scriptContent], { type: 'text/plain;charset=utf-8' });
         if (typeof saveFileBlob === "function") saveFileBlob(blob, "scenario", "txt");
-        setTimeout(() => this.scriptTextBox.focus(), 200);
+        setTimeout(() => this.focusEditor(), 200);
     }
 
-    // 元のテキストをクリップボードにコピー
+    // シナリオをクリップボードにコピー
     copyOriginalText() {
-        try {
-            this.scriptTextBox.select();
-            document.execCommand('copy');
-            window.getSelection().removeAllRanges();
-
-            if (typeof showTemporaryNotification === "function") showTemporaryNotification("コピーしました");
-
-            setTimeout(() => this.scriptTextBox.focus(), 200);
-        } catch (err) {
-            console.error('クリップボードへのコピーに失敗しました:', err);
-        }
+        const text = this.getScriptText();
+        const copy = async () => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                this.scenarioEditor?.selectAll();
+                document.execCommand("copy");
+            }
+            if (typeof showTemporaryNotification === "function") {
+                showTemporaryNotification("コピーしました");
+            }
+            setTimeout(() => this.focusEditor(), 200);
+        };
+        copy().catch((err) => {
+            console.error("クリップボードへのコピーに失敗しました:", err);
+        });
     }
 
     // ファイルからシナリオを読み込み
@@ -1287,24 +1297,24 @@ class NovelPlayer {
         const reader = new FileReader();
         reader.onload = (e) => {
             const content = e.target.result;
-            this.scriptTextBox.value = content;
+            this.setScriptText(content);
             this.resetPreviewState();
             this.updateScript({ preservePreviewPosition: false });
 
             this.fileInput.value = '';
 
-            setTimeout(() => this.scriptTextBox.focus(), 200);
+            setTimeout(() => this.focusEditor(), 200);
         };
         reader.readAsText(file);
     }
 
     clearScriptText() {
         if (confirm('テキストエリアをクリアしますか？')) {
-            this.scriptTextBox.value = '';
+            this.setScriptText('');
             this.resetPreviewState();
             this.updateScript({ preservePreviewPosition: false });
 
-            setTimeout(() => this.scriptTextBox.focus(), 200);
+            setTimeout(() => this.focusEditor(), 200);
         }
     }
 }

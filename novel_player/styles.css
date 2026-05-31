@@ -769,23 +769,22 @@ body.menu-drawer-open {
     padding-right: calc(var(--menu-float-size) + var(--scrollbar-reserve) + var(--menu-scroll-gap));
 }
 
-#scriptText {
+.script-editor-host {
     width: 100%;
     flex: 1;
     min-height: 0;
-    color: #fff;
-    background: #333;
     border: 1px solid #444;
-    padding: 1em;
-    font-family: monospace;
-    font-size: 1.1em;
-    white-space: pre-wrap;
-    resize: none;
-    overflow: auto;
+    overflow: hidden;
     margin-bottom: 0;
-    -webkit-overflow-scrolling: touch;
     box-sizing: border-box;
-    scrollbar-gutter: stable;
+}
+
+.script-editor-host .cm-editor {
+    height: 100%;
+}
+
+.script-editor-host .cm-editor.cm-focused {
+    outline: none;
 }
 
 /* テキスト出力設定のスタイル */
@@ -1149,7 +1148,8 @@ body.menu-drawer-open {
         min-height: 40px;
     }
 
-    #scriptText {
+    #scriptText,
+    .script-editor-host {
         flex: 1 1 auto;
         min-height: 0;
         height: auto;

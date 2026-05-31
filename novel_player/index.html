@@ -117,7 +117,7 @@
             </button>
         </div>
         <div class="scenario-editor-wrap">
-            <textarea id="scriptText"></textarea>
+            <div id="scriptEditorHost" class="script-editor-host" aria-label="シナリオ編集"></div>
         </div>
         <div id="scenarioMenuPanel" class="menu-drawer menu-drawer--scenario" aria-hidden="true">
             <div class="menu-drawer-backdrop" data-menu-close="scenario" tabindex="-1"></div>
@@ -361,6 +361,7 @@
         </div>
     </div>
 
+    <script src="editor/scenario_editor.bundle.js"></script>
     <script src="novel_player_utils.js"></script>
     <script src="panel_resizer.js"></script>
     <script src="export_helpers.js"></script>
