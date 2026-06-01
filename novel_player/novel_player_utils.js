@@ -106,13 +106,23 @@ function readTextFromClipboard() {
     return Promise.reject(new Error("clipboard read unavailable"));
 }
 
-/** 日本語を含むテキストの .txt 用（Windows のメモ帳向けに UTF-8 BOM 付き） */
+const UTF8_BOM_BYTES = new Uint8Array([0xef, 0xbb, 0xbf]);
+
+/** UTF-8 BOM + 本文をバイト列で組み立て（スマホのダウンロードでも化けにくい） */
+function encodeUtf8WithBom(text) {
+    const body = new TextEncoder().encode(text ?? "");
+    const out = new Uint8Array(UTF8_BOM_BYTES.length + body.length);
+    out.set(UTF8_BOM_BYTES, 0);
+    out.set(body, UTF8_BOM_BYTES.length);
+    return out;
+}
+
 function createUtf8TextBlob(text) {
-    return new Blob(["\uFEFF", text ?? ""], { type: "text/plain;charset=utf-8" });
+    return new Blob([encodeUtf8WithBom(text)], { type: "text/plain;charset=utf-8" });
 }
 
 function createUtf8TextFile(text, filename) {
-    return new File(["\uFEFF", text ?? ""], filename, { type: "text/plain;charset=utf-8" });
+    return new File([encodeUtf8WithBom(text)], filename, { type: "text/plain;charset=utf-8" });
 }
 
 function saveTextFile(text, titleOrPrefix, extension) {

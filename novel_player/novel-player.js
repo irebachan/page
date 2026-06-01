@@ -1694,6 +1694,9 @@ class NovelPlayer {
         const scriptContent = this.getScriptText();
         if (typeof saveTextFile === "function") {
             saveTextFile(scriptContent, this.activeProjectTitle, "txt");
+            if (typeof showTemporaryNotification === "function") {
+                showTemporaryNotification("UTF-8 でエクスポートしました");
+            }
         }
         void this.persistProject();
         setTimeout(() => this.focusEditor(), 200);
@@ -1790,7 +1793,7 @@ class NovelPlayer {
             this.fileInput.value = "";
             this.openImportChoiceModal(content, file.name || "インポート");
         };
-        reader.readAsText(file);
+        reader.readAsText(file, "UTF-8");
     }
 
     clearScriptText() {
