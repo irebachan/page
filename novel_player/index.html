@@ -38,6 +38,12 @@
 
 <body>
     <nav class="app-menu-bar" aria-label="メニュー">
+        <div class="app-menu-bar__project">
+            <select id="projectSelect" class="app-menu-bar__project-select" aria-label="作品を選ぶ"></select>
+            <button type="button" id="projectNewButton" class="app-menu-bar__project-btn" title="新しい作品">＋</button>
+            <button type="button" id="projectRenameButton" class="app-menu-bar__project-btn" title="名前を変更">✎</button>
+            <button type="button" id="projectDeleteButton" class="app-menu-bar__project-btn" title="作品を削除">🗑</button>
+        </div>
         <span id="previewStatusBar" class="app-menu-bar__status" aria-live="polite"></span>
         <div class="app-menu-bar__items">
             <button type="button" id="scenarioMenuButton" class="menu-toggle menu-toggle--text menu-toggle--compact" aria-expanded="false"
@@ -139,9 +145,8 @@
                     aria-label="メニューを閉じる">&times;</button>
             </div>
             <div class="menu-drawer-body menu-drawer-body--stack">
-                <p class="menu-drawer-hint">下書きはこの端末のブラウザに自動保存されます。</p>
-                <button type="button" id="saveButton">📥 保存</button>
-                <button type="button" id="loadButton">📤 読み込み</button>
+                <button type="button" id="saveButton">📥 エクスポート</button>
+                <button type="button" id="loadButton">📤 インポート</button>
                 <button type="button" id="pasteLoadButton">📋 クリップボードから読み込み</button>
                 <button type="button" id="copyButton">📋 コピー / 共有</button>
                 <button type="button" id="clearButton">🗑️ クリア</button>
@@ -311,11 +316,13 @@ preview.overflow=wrap
                     <p>分割（プレビュー＋エディタ）→ プレビュー全画面 → エディタ全画面 → 分割 …</p>
                     <p>分割のときは、中央の区切り線をドラッグして幅を変えられます。</p>
 
-                    <h3>下書き・ファイル</h3>
+                    <h3>作品・ファイル</h3>
                     <ul class="help-compact">
-                        <li>編集内容は<strong>この端末のブラウザ</strong>に自動保存（再起動時に復元を確認）</li>
+                        <li>起動時は<strong>最後に開いていた作品</strong>を自動で開く（空ならサンプル）</li>
+                        <li>作品は<strong>画面上部</strong>で切り替え（ブラウザ内に自動保存）</li>
+                        <li>外にファイルとして残すときは <strong>エクスポート</strong></li>
                         <li>渡すときは <strong>コピー / 共有</strong>（コピー済みのうえ共有シートが開きます）</li>
-                        <li>取り込みは <strong>貼り付けで読み込み</strong></li>
+                        <li>取り込みは <strong>インポート</strong> または <strong>貼り付けで読み込み</strong></li>
                     </ul>
 
                     <h3>進行</h3>
@@ -340,7 +347,7 @@ preview.overflow=wrap
                 <p>シナリオを編集しながらプレビューする試作ツール。共有はテキスト想定。</p>
                 <ul class="help-compact">
                     <li>即時プレビュー（分割 / 全画面切替は右上 □）</li>
-                    <li>この端末へ自動下書き、保存・読込・コピー / 共有、ティラノ / Ren'Py 向け出力</li>
+                    <li>作品の自動保存・エクスポート / インポート・コピー / 共有、ティラノ / Ren'Py 向け出力</li>
                 </ul>
                 <p>操作・記法は <strong>ヘルプ</strong> を参照。</p>
             </div>
@@ -446,7 +453,7 @@ preview.overflow=wrap
 
     <script src="editor/scenario_editor.bundle.js"></script>
     <script src="novel_player_utils.js"></script>
-    <script src="draft_storage.js"></script>
+    <script src="project_storage.js"></script>
     <script src="panel_resizer.js"></script>
     <script src="panel_layout.js"></script>
     <script src="export_helpers.js"></script>

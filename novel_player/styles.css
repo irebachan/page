@@ -44,6 +44,46 @@ body {
     flex: 0 0 auto;
 }
 
+.app-menu-bar__project {
+    display: flex;
+    align-items: center;
+    gap: 0.2em;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-right: 0.35em;
+}
+
+.app-menu-bar__project-select {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 14em;
+    padding: 0.28em 0.35em;
+    font-size: 0.8rem;
+    color: #eee;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+.app-menu-bar__project-btn {
+    flex: 0 0 auto;
+    width: 1.85rem;
+    height: 1.85rem;
+    padding: 0;
+    font-size: 0.85rem;
+    line-height: 1;
+    color: #ccc;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.app-menu-bar__project-btn:hover {
+    background: #383838;
+    color: #fff;
+}
+
 .app-menu-bar__status {
     flex: 1 1 auto;
     min-width: 0;
@@ -1423,6 +1463,23 @@ body.menu-drawer-open {
         min-width: 2rem;
         min-height: 2rem;
         border-radius: 6px;
+    }
+
+    .app-menu-bar {
+        flex-wrap: wrap;
+    }
+
+    .app-menu-bar__project {
+        flex: 1 1 100%;
+        order: -1;
+        margin-right: 0;
+        margin-bottom: 0.15em;
+        max-width: none;
+    }
+
+    .app-menu-bar__project-select {
+        max-width: none;
+        font-size: 0.85rem;
     }
 
     .app-menu-bar__status {

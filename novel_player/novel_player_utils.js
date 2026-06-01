@@ -9,6 +9,24 @@ function isSecureAppContext() {
     );
 }
 
+function sanitizeExportBasename(title) {
+    const base = (title || "scenario").trim() || "scenario";
+    return base.replace(/[\\/:*?"<>|]/g, "_").slice(0, 48);
+}
+
+function buildExportFilename(title, extension) {
+    const ext = (extension || "txt").replace(/^\.+/, "") || "txt";
+    const prefix = sanitizeExportBasename(title);
+    const now = new Date();
+    const dateStr =
+        now.getFullYear() +
+        ("0" + (now.getMonth() + 1)).slice(-2) +
+        ("0" + now.getDate()).slice(-2) +
+        ("0" + now.getHours()).slice(-2) +
+        ("0" + now.getMinutes()).slice(-2);
+    return `${prefix}_${dateStr}.${ext}`;
+}
+
 function canUseWebShareText(text) {
     if (!isSecureAppContext() || typeof navigator.share !== "function") {
         return false;
@@ -18,6 +36,20 @@ function canUseWebShareText(text) {
     }
     try {
         return navigator.canShare({ text: text ?? "" });
+    } catch (_) {
+        return false;
+    }
+}
+
+function canUseWebShareFiles(file) {
+    if (!isSecureAppContext() || typeof navigator.share !== "function") {
+        return false;
+    }
+    if (typeof navigator.canShare !== "function") {
+        return true;
+    }
+    try {
+        return navigator.canShare({ files: [file] });
     } catch (_) {
         return false;
     }
@@ -70,18 +102,11 @@ function showTemporaryNotification(message) {
     setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 2000);
 }
 
-function saveFileBlob(blob, filenamePrefix, extension) {
-    const ext = extension || "txt";
+function saveFileBlob(blob, titleOrPrefix, extension) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const now = new Date();
-    const dateStr = now.getFullYear() +
-        ("0" + (now.getMonth() + 1)).slice(-2) +
-        ("0" + now.getDate()).slice(-2) +
-        ("0" + now.getHours()).slice(-2) +
-        ("0" + now.getMinutes()).slice(-2);
-    a.download = filenamePrefix + "_" + dateStr + "." + ext;
+    a.download = buildExportFilename(titleOrPrefix, extension);
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {

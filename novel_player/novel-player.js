@@ -37,9 +37,15 @@ class NovelPlayer {
         this.pasteLoadButton = document.getElementById("pasteLoadButton");
         this.clearButton = document.getElementById("clearButton");
         this.copyButton = document.getElementById("copyButton");
-        this.lastDraftSavedAt = null;
-        this.draftSavePending = false;
-        this.suppressDraftSave = false;
+        this.activeProjectId = null;
+        this.activeProjectTitle = "無題";
+        this.lastProjectSavedAt = null;
+        this.projectSavePending = false;
+        this.suppressProjectSave = false;
+        this.projectSelect = document.getElementById("projectSelect");
+        this.projectNewButton = document.getElementById("projectNewButton");
+        this.projectRenameButton = document.getElementById("projectRenameButton");
+        this.projectDeleteButton = document.getElementById("projectDeleteButton");
         this.previewUnit = document.getElementById("previewUnit");
         this.syncEditorOnLabelJump = document.getElementById("syncEditorOnLabelJump");
         this.SYNC_EDITOR_LABEL_KEY = "novelPlayer.syncEditorOnLabelJump";
@@ -64,7 +70,7 @@ class NovelPlayer {
         }
         this.restartBtn.addEventListener("click", () => this.restart());
         this.updateScriptDebounced = this.debounce(() => this.updateScript(), 300);
-        this.persistDraftDebounced = this.debounce(() => this.persistDraft(), 2000);
+        this.persistProjectDebounced = this.debounce(() => this.persistProject(), 2000);
         this.initScenarioEditor();
         if (this.saveButton) {
             this.saveButton.addEventListener("click", () => this.saveScriptToFile());
@@ -83,6 +89,20 @@ class NovelPlayer {
         }
         if (this.copyButton) {
             this.copyButton.addEventListener("click", () => this.copyOriginalText());
+        }
+        if (this.projectSelect) {
+            this.projectSelect.addEventListener("change", () => {
+                void this.switchToProject(this.projectSelect.value);
+            });
+        }
+        if (this.projectNewButton) {
+            this.projectNewButton.addEventListener("click", () => void this.createNewProject());
+        }
+        if (this.projectRenameButton) {
+            this.projectRenameButton.addEventListener("click", () => void this.renameCurrentProject());
+        }
+        if (this.projectDeleteButton) {
+            this.projectDeleteButton.addEventListener("click", () => void this.deleteCurrentProject());
         }
 
         if (this.previewFromCursorBtn) {
@@ -317,42 +337,130 @@ class NovelPlayer {
         this.scenarioEditor = window.ScenarioEditor.create(this.scriptEditorHost, {
             onChange: () => {
                 this.updateScriptDebounced();
-                this.scheduleDraftSave();
+                this.scheduleProjectSave();
             },
             onPreviewShortcut: () => this.previewFromEditorLine(),
             onCursorChange: () => this.updateEditorStatusBar(),
         });
     }
 
-    scheduleDraftSave() {
-        if (this.suppressDraftSave || !window.DraftStorage) return;
-        this.draftSavePending = true;
+    scheduleProjectSave() {
+        if (this.suppressProjectSave || !window.ProjectStorage || !this.activeProjectId) return;
+        this.projectSavePending = true;
         this.updateEditorStatusBar();
-        this.persistDraftDebounced();
+        this.persistProjectDebounced();
     }
 
-    async persistDraft() {
-        if (!window.DraftStorage) return;
+    async persistProject() {
+        if (!window.ProjectStorage || !this.activeProjectId) return;
         const text = this.getScriptText();
         try {
-            const record = await DraftStorage.save({ text });
+            const record = await ProjectStorage.saveProject({
+                id: this.activeProjectId,
+                title: this.activeProjectTitle,
+                text,
+            });
             if (record) {
-                this.lastDraftSavedAt = record.savedAt;
-                this.draftSavePending = false;
+                this.lastProjectSavedAt = record.savedAt;
+                this.projectSavePending = false;
                 this.updateEditorStatusBar();
             }
         } catch (err) {
-            console.warn("下書きの保存に失敗:", err);
+            console.warn("作品の保存に失敗:", err);
         }
     }
 
-    getDraftStatusSuffix() {
-        if (!window.DraftStorage) return "";
-        if (this.draftSavePending) return " · 下書き保存待ち";
-        if (this.lastDraftSavedAt) {
-            return ` · 下書き ${DraftStorage.formatSavedAt(this.lastDraftSavedAt)}`;
+    getProjectStatusSuffix() {
+        if (!window.ProjectStorage) return "";
+        if (this.projectSavePending) return " · 保存待ち";
+        if (this.lastProjectSavedAt) {
+            return ` · 保存 ${ProjectStorage.formatSavedAt(this.lastProjectSavedAt)}`;
         }
         return "";
+    }
+
+    async refreshProjectSelect() {
+        if (!this.projectSelect || !window.ProjectStorage) return;
+        const list = await ProjectStorage.list();
+        const current = this.projectSelect.value;
+        this.projectSelect.innerHTML = "";
+        list.forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.textContent = p.title;
+            opt.title = `${p.title} · ${ProjectStorage.formatSavedAt(p.savedAt)}`;
+            this.projectSelect.appendChild(opt);
+        });
+        if (this.activeProjectId) {
+            this.projectSelect.value = this.activeProjectId;
+        } else if (list.length > 0) {
+            this.projectSelect.value = list[0].id;
+        }
+    }
+
+    async loadProjectById(id) {
+        if (!window.ProjectStorage || !id) return;
+        const project = await ProjectStorage.get(id);
+        if (!project) return;
+        ProjectStorage.setActiveId(id);
+        this.activeProjectId = project.id;
+        this.activeProjectTitle = project.title;
+        this.lastProjectSavedAt = project.savedAt;
+        this.suppressProjectSave = true;
+        this.setScriptText(project.text);
+        this.resetPreviewState();
+        this.updateScript({ preservePreviewPosition: false });
+        this.suppressProjectSave = false;
+        await this.refreshProjectSelect();
+        setTimeout(() => this.focusEditor(), 100);
+    }
+
+    async switchToProject(id) {
+        if (!window.ProjectStorage || !id || id === this.activeProjectId) return;
+        await this.persistProject();
+        await this.loadProjectById(id);
+    }
+
+    async createNewProject() {
+        if (!window.ProjectStorage) return;
+        await this.persistProject();
+        const n = (await ProjectStorage.list()).length + 1;
+        const titleInput = prompt("新しい作品名", `作品${n}`);
+        if (titleInput === null) return;
+        const title = titleInput.trim() || `作品${n}`;
+        const project = await ProjectStorage.create({ title, text: "" });
+        await this.loadProjectById(project.id);
+    }
+
+    async renameCurrentProject() {
+        if (!window.ProjectStorage || !this.activeProjectId) return;
+        const titleInput = prompt("作品名", this.activeProjectTitle);
+        if (titleInput === null) return;
+        this.activeProjectTitle = titleInput.trim() || "無題";
+        await this.persistProject();
+        await this.refreshProjectSelect();
+    }
+
+    async deleteCurrentProject() {
+        if (!window.ProjectStorage || !this.activeProjectId) return;
+        if (!confirm(`「${this.activeProjectTitle}」を削除しますか？`)) return;
+        const deletingId = this.activeProjectId;
+        await ProjectStorage.remove(deletingId);
+        this.activeProjectId = null;
+        const remaining = await ProjectStorage.list();
+        if (remaining.length === 0) {
+            const project = await ProjectStorage.create({ title: "作品1", text: "" });
+            await this.loadProjectById(project.id);
+            this.suppressProjectSave = true;
+            this.setScriptText(this.defaultScript.trim());
+            this.resetPreviewState();
+            this.updateScript({ preservePreviewPosition: false });
+            this.suppressProjectSave = false;
+            void this.persistProject();
+        } else {
+            await this.loadProjectById(remaining[0].id);
+        }
+        await this.refreshProjectSelect();
     }
 
     getScriptText() {
@@ -376,39 +484,31 @@ class NovelPlayer {
     async init() {
         const defaultText = this.defaultScript.trim();
         let initialText = defaultText;
-        let skippedExistingDraft = false;
 
-        if (window.DraftStorage) {
+        // 確認ダイアログなし: 最後に開いていた作品をそのまま開く。本文が空ならサンプル。
+        if (window.ProjectStorage) {
             try {
-                const draft = await DraftStorage.load();
-                if (draft?.text != null) {
-                    const sameAsDefault = draft.text.trim() === defaultText;
-                    if (!sameAsDefault) {
-                        const when = DraftStorage.formatSavedAt(draft.savedAt);
-                        const restore = confirm(
-                            `このブラウザに保存した下書き（${when}）を復元しますか？\n` +
-                                "（キャンセルでサンプルシナリオを読み込みます）"
-                        );
-                        if (restore) {
-                            initialText = draft.text;
-                            this.lastDraftSavedAt = draft.savedAt || null;
-                        } else {
-                            skippedExistingDraft = true;
-                        }
-                    }
+                const project = await ProjectStorage.ensureActiveProject();
+                this.activeProjectId = project.id;
+                this.activeProjectTitle = project.title;
+                this.lastProjectSavedAt = project.savedAt || null;
+                ProjectStorage.setActiveId(project.id);
+                if (project.text && project.text.trim()) {
+                    initialText = project.text;
                 }
             } catch (err) {
-                console.warn("下書きの読み込みに失敗:", err);
+                console.warn("作品の読み込みに失敗:", err);
             }
         }
 
-        this.suppressDraftSave = true;
+        this.suppressProjectSave = true;
         this.setScriptText(initialText);
         this.updateScript();
-        this.suppressDraftSave = false;
+        this.suppressProjectSave = false;
 
-        if (window.DraftStorage && !skippedExistingDraft && !this.lastDraftSavedAt) {
-            void this.persistDraft();
+        if (window.ProjectStorage && this.activeProjectId) {
+            void this.persistProject();
+            void this.refreshProjectSelect();
         }
 
         this.nextBtn.style.display = "block";
@@ -602,7 +702,7 @@ class NovelPlayer {
         const displayLine = line + 1;
         const lines = this.getScriptText().split("\n");
         const trimmed = (lines[line] || "").trim();
-        const draftSuffix = this.getDraftStatusSuffix();
+        const draftSuffix = this.getProjectStatusSuffix();
         const base = this.formatEditorStatusBase(displayLine);
         let main = base;
         if (
@@ -1513,8 +1613,10 @@ class NovelPlayer {
     saveScriptToFile() {
         const scriptContent = this.getScriptText();
         const blob = new Blob([scriptContent], { type: 'text/plain;charset=utf-8' });
-        if (typeof saveFileBlob === "function") saveFileBlob(blob, "scenario", "txt");
-        void this.persistDraft();
+        if (typeof saveFileBlob === "function") {
+            saveFileBlob(blob, this.activeProjectTitle, "txt");
+        }
+        void this.persistProject();
         setTimeout(() => this.focusEditor(), 200);
     }
 
@@ -1545,7 +1647,7 @@ class NovelPlayer {
         this.setScriptText(text);
         this.resetPreviewState();
         this.updateScript({ preservePreviewPosition: false });
-        void this.persistDraft();
+        void this.persistProject();
         if (typeof showTemporaryNotification === "function") {
             showTemporaryNotification("貼り付けました");
         }
@@ -1565,9 +1667,20 @@ class NovelPlayer {
                 document.execCommand("copy");
             }
 
-            if (typeof canUseWebShareText === "function" && canUseWebShareText(text)) {
+            const exportFilename =
+                typeof buildExportFilename === "function"
+                    ? buildExportFilename(this.activeProjectTitle, "txt")
+                    : "scenario.txt";
+            if (typeof canUseWebShareFiles === "function" || typeof canUseWebShareText === "function") {
                 try {
-                    await navigator.share({ title: "scenario", text });
+                    const file = new File([text], exportFilename, {
+                        type: "text/plain;charset=utf-8",
+                    });
+                    if (typeof canUseWebShareFiles === "function" && canUseWebShareFiles(file)) {
+                        await navigator.share({ files: [file] });
+                    } else if (typeof canUseWebShareText === "function" && canUseWebShareText(text)) {
+                        await navigator.share({ title: exportFilename, text });
+                    }
                 } catch (err) {
                     if (err && err.name !== "AbortError") {
                         console.warn("共有シートの表示に失敗:", err);
@@ -1596,7 +1709,7 @@ class NovelPlayer {
             this.setScriptText(content);
             this.resetPreviewState();
             this.updateScript({ preservePreviewPosition: false });
-            void this.persistDraft();
+            void this.persistProject();
 
             this.fileInput.value = '';
 
@@ -1610,11 +1723,7 @@ class NovelPlayer {
             this.setScriptText('');
             this.resetPreviewState();
             this.updateScript({ preservePreviewPosition: false });
-            this.lastDraftSavedAt = null;
-            this.draftSavePending = false;
-            if (window.DraftStorage) {
-                void DraftStorage.clear();
-            }
+            void this.persistProject();
             this.updateEditorStatusBar();
 
             setTimeout(() => this.focusEditor(), 200);
