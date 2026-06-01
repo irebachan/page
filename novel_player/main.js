@@ -101,6 +101,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 labelFlowModal.style.display = "none";
                 return;
             }
+            const importChoiceModal = document.getElementById("importChoiceModal");
+            if (importChoiceModal && importChoiceModal.style.display === "block") {
+                importChoiceModal.style.display = "none";
+                if (window.novelPlayer) window.novelPlayer.pendingImport = null;
+                return;
+            }
             closeAllMenus();
         }
     });

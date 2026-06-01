@@ -59,6 +59,21 @@ function canUseClipboardRead() {
     return isSecureAppContext() && navigator.clipboard && navigator.clipboard.readText;
 }
 
+/** 貼り付け読み込みが使えない理由（使えるときは null） */
+function getClipboardReadUnavailableReason() {
+    if (typeof window === "undefined") return "この環境では使えません";
+    if (window.location.protocol === "file:") {
+        return "HTML をファイル直開きしているため使えません（http://localhost などで開いてください）";
+    }
+    if (!window.isSecureContext) {
+        return "HTTPS または localhost で開いていないため使えません";
+    }
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+        return "このブラウザではクリップボード読み取りに対応していません";
+    }
+    return null;
+}
+
 function canUseClipboardWrite() {
     return isSecureAppContext() && navigator.clipboard && navigator.clipboard.writeText;
 }

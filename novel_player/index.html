@@ -326,7 +326,7 @@ preview.overflow=wrap
                         <li>作品は<strong>画面上部</strong>で切り替え（ブラウザ内に自動保存）</li>
                         <li>外にファイルとして残すときは <strong>エクスポート</strong></li>
                         <li>渡すときは <strong>コピー / 共有</strong>（コピー済みのうえ共有シートが開きます）</li>
-                        <li>取り込みは <strong>インポート</strong> または <strong>貼り付けで読み込み</strong></li>
+                        <li><strong>インポート</strong>／<strong>貼り付け</strong> … 新規作品 or 上書きを選択（貼り付けは HTTPS / localhost のみ）</li>
                     </ul>
 
                     <h3>進行</h3>
@@ -338,6 +338,19 @@ preview.overflow=wrap
                     </ul>
                     <p>エディタのカーソル行から始める：<kbd>Ctrl</kbd>+<kbd>Enter</kbd>（Mac は <kbd>⌘</kbd>+<kbd>Enter</kbd>）</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- インポート先の選択 -->
+    <div id="importChoiceModal" class="modal">
+        <div class="modal-content modal-content--import">
+            <span class="close import-choice-close">&times;</span>
+            <h2>インポート</h2>
+            <p id="importChoiceMessage" class="import-choice-message"></p>
+            <div class="import-choice-actions">
+                <button type="button" id="importAsNewButton" class="import-choice-btn import-choice-btn--primary">新しい作品として開く</button>
+                <button type="button" id="importOverwriteButton" class="import-choice-btn">現在の作品に上書き</button>
             </div>
         </div>
     </div>

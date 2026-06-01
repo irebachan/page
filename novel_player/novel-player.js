@@ -46,6 +46,11 @@ class NovelPlayer {
         this.projectNewButton = document.getElementById("projectNewButton");
         this.projectRenameButton = document.getElementById("projectRenameButton");
         this.projectDeleteButton = document.getElementById("projectDeleteButton");
+        this.importChoiceModal = document.getElementById("importChoiceModal");
+        this.importChoiceMessage = document.getElementById("importChoiceMessage");
+        this.importAsNewButton = document.getElementById("importAsNewButton");
+        this.importOverwriteButton = document.getElementById("importOverwriteButton");
+        this.pendingImport = null;
         this.previewUnit = document.getElementById("previewUnit");
         this.syncEditorOnLabelJump = document.getElementById("syncEditorOnLabelJump");
         this.SYNC_EDITOR_LABEL_KEY = "novelPlayer.syncEditorOnLabelJump";
@@ -103,6 +108,21 @@ class NovelPlayer {
         }
         if (this.projectDeleteButton) {
             this.projectDeleteButton.addEventListener("click", () => void this.deleteCurrentProject());
+        }
+        if (this.importAsNewButton) {
+            this.importAsNewButton.addEventListener("click", () => void this.applyPendingImport("new"));
+        }
+        if (this.importOverwriteButton) {
+            this.importOverwriteButton.addEventListener("click", () => void this.applyPendingImport("overwrite"));
+        }
+        const importChoiceClose = document.querySelector(".import-choice-close");
+        if (importChoiceClose && this.importChoiceModal) {
+            importChoiceClose.addEventListener("click", () => this.closeImportChoiceModal());
+        }
+        if (this.importChoiceModal) {
+            this.importChoiceModal.addEventListener("click", (e) => {
+                if (e.target === this.importChoiceModal) this.closeImportChoiceModal();
+            });
         }
 
         if (this.previewFromCursorBtn) {
@@ -439,6 +459,66 @@ class NovelPlayer {
         this.activeProjectTitle = titleInput.trim() || "無題";
         await this.persistProject();
         await this.refreshProjectSelect();
+    }
+
+    titleFromImportSource(sourceLabel) {
+        const raw = (sourceLabel || "").trim();
+        if (!raw) return "無題";
+        const base = raw.replace(/\.[^.]+$/, "").trim();
+        return base || "無題";
+    }
+
+    openImportChoiceModal(text, sourceLabel) {
+        if (!text || !this.importChoiceModal) return;
+        this.pendingImport = {
+            text,
+            suggestedTitle: this.titleFromImportSource(sourceLabel),
+            sourceLabel: sourceLabel || "テキスト",
+        };
+        if (this.importChoiceMessage) {
+            const name = this.pendingImport.suggestedTitle;
+            const current = this.activeProjectTitle || "（無題）";
+            this.importChoiceMessage.textContent =
+                `「${name}」を新しい作品として開くか、「${current}」に上書きするか選んでください。`;
+        }
+        this.importChoiceModal.style.display = "block";
+    }
+
+    closeImportChoiceModal() {
+        if (this.importChoiceModal) {
+            this.importChoiceModal.style.display = "none";
+        }
+        this.pendingImport = null;
+    }
+
+    async applyPendingImport(mode) {
+        const pending = this.pendingImport;
+        this.closeImportChoiceModal();
+        if (!pending || !window.ProjectStorage) return;
+
+        if (mode === "new") {
+            await this.persistProject();
+            let title = pending.suggestedTitle;
+            const existing = await ProjectStorage.list();
+            if (existing.some((p) => p.title === title)) {
+                const n = existing.length + 1;
+                title = `${title} (${n})`;
+            }
+            const project = await ProjectStorage.create({ title, text: pending.text });
+            await this.loadProjectById(project.id);
+            if (typeof showTemporaryNotification === "function") {
+                showTemporaryNotification(`「${title}」を開きました`);
+            }
+        } else {
+            this.setScriptText(pending.text);
+            this.resetPreviewState();
+            this.updateScript({ preservePreviewPosition: false });
+            void this.persistProject();
+            if (typeof showTemporaryNotification === "function") {
+                showTemporaryNotification("上書きしました");
+            }
+        }
+        setTimeout(() => this.focusEditor(), 200);
     }
 
     async deleteCurrentProject() {
@@ -1621,10 +1701,14 @@ class NovelPlayer {
     }
 
     async loadScriptFromClipboard() {
-        if (typeof canUseClipboardRead === "function" && !canUseClipboardRead()) {
+        const blockedReason =
+            typeof getClipboardReadUnavailableReason === "function"
+                ? getClipboardReadUnavailableReason()
+                : null;
+        if (blockedReason) {
             this.focusEditor();
             if (typeof showTemporaryNotification === "function") {
-                showTemporaryNotification("この開き方では読めません。エディタに直接貼り付けてください");
+                showTemporaryNotification(blockedReason);
             }
             return;
         }
@@ -1634,24 +1718,19 @@ class NovelPlayer {
         } catch (err) {
             console.warn("クリップボードの読み取りに失敗:", err);
             if (typeof showTemporaryNotification === "function") {
-                showTemporaryNotification("クリップボードを読めませんでした");
+                showTemporaryNotification(
+                    "クリップボードを読めませんでした（許可ダイアログで拒否した、など）"
+                );
             }
             return;
         }
         if (!text.trim()) {
             if (typeof showTemporaryNotification === "function") {
-                showTemporaryNotification("クリップボードが空です");
+                showTemporaryNotification("クリップボードにテキストがありません");
             }
             return;
         }
-        this.setScriptText(text);
-        this.resetPreviewState();
-        this.updateScript({ preservePreviewPosition: false });
-        void this.persistProject();
-        if (typeof showTemporaryNotification === "function") {
-            showTemporaryNotification("貼り付けました");
-        }
-        setTimeout(() => this.focusEditor(), 200);
+        this.openImportChoiceModal(text, "クリップボード");
     }
 
     // クリップボードへ入れたうえで、可能なら共有シートも開く（シート内の「コピー」は不要）
@@ -1706,14 +1785,8 @@ class NovelPlayer {
         const reader = new FileReader();
         reader.onload = (e) => {
             const content = e.target.result;
-            this.setScriptText(content);
-            this.resetPreviewState();
-            this.updateScript({ preservePreviewPosition: false });
-            void this.persistProject();
-
-            this.fileInput.value = '';
-
-            setTimeout(() => this.focusEditor(), 200);
+            this.fileInput.value = "";
+            this.openImportChoiceModal(content, file.name || "インポート");
         };
         reader.readAsText(file);
     }

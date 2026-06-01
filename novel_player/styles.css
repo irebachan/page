@@ -1234,6 +1234,46 @@ body.menu-drawer-open {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
+.modal-content--import {
+    max-width: 420px;
+}
+
+.import-choice-message {
+    margin: 0 0 1.25em;
+    line-height: 1.45;
+    color: #ccc;
+}
+
+.import-choice-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+.import-choice-btn {
+    width: 100%;
+    padding: 0.65em 1em;
+    font-size: 1rem;
+    color: #eee;
+    background: #444;
+    border: 1px solid #666;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.import-choice-btn:hover {
+    background: #555;
+}
+
+.import-choice-btn--primary {
+    background: #3a5a7a;
+    border-color: #5a8ab0;
+}
+
+.import-choice-btn--primary:hover {
+    background: #4a6f94;
+}
+
 /* ヘルプ・このツールについてコンテンツ */
 .help-content,
 .about-content {
