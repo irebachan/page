@@ -1,7 +1,7 @@
 import { StreamLanguage } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 
-/** ノベル試作プレイヤー用の簡易シンタックス */
+/** Novel Draft 用の簡易シンタックス */
 export const novelLanguage = StreamLanguage.define({
     name: "novel",
     token(stream) {

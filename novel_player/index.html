@@ -32,7 +32,11 @@
         content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>ノベル試作プレイヤー</title>
+    <meta name="theme-color" content="#1a1a1a">
+    <title>Novel Draft</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -342,12 +346,13 @@ preview.overflow=wrap
     <div id="aboutModal" class="modal">
         <div class="modal-content">
             <span class="close about-close">&times;</span>
-            <h2>このツールについて</h2>
+            <h2>Novel Draft</h2>
             <div class="about-content">
-                <p>シナリオを編集しながらプレビューする試作ツール。共有はテキスト想定。</p>
+                <p>ブラウザでシナリオを書きながらプレビューするエディタ。作品は端末内に保存、共有はテキスト想定。</p>
                 <ul class="help-compact">
                     <li>即時プレビュー（分割 / 全画面切替は右上 □）</li>
                     <li>作品の自動保存・エクスポート / インポート・コピー / 共有、ティラノ / Ren'Py 向け出力</li>
+                    <li>HTTPS 配信時は PWA（ホーム画面に追加・オフラインで UI 表示）</li>
                 </ul>
                 <p>操作・記法は <strong>ヘルプ</strong> を参照。</p>
             </div>
@@ -465,6 +470,7 @@ preview.overflow=wrap
     <script src="export_settings.js"></script>
     <script src="novel-player.js"></script>
     <script src="main.js"></script>
+    <script src="pwa.js"></script>
 </body>
 
 </html>
