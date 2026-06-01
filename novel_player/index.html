@@ -139,8 +139,11 @@
                     aria-label="メニューを閉じる">&times;</button>
             </div>
             <div class="menu-drawer-body menu-drawer-body--stack">
+                <p class="menu-drawer-hint">下書きはこの端末のブラウザに自動保存されます。</p>
                 <button type="button" id="saveButton">📥 保存</button>
                 <button type="button" id="loadButton">📤 読み込み</button>
+                <button type="button" id="shareButton">📤 共有</button>
+                <button type="button" id="pasteLoadButton">📋 クリップボードから読み込み</button>
                 <button type="button" id="copyButton">📋 コピー</button>
                 <button type="button" id="clearButton">🗑️ クリア</button>
                 <details class="meta-settings" id="metaSettings">
@@ -309,6 +312,13 @@ preview.overflow=wrap
                     <p>分割（プレビュー＋エディタ）→ プレビュー全画面 → エディタ全画面 → 分割 …</p>
                     <p>分割のときは、中央の区切り線をドラッグして幅を変えられます。</p>
 
+                    <h3>下書き・ファイル</h3>
+                    <ul class="help-compact">
+                        <li>編集内容は<strong>この端末のブラウザ</strong>に自動保存（再起動時に復元を確認）</li>
+                        <li>スマホでファイルに残すときは <strong>共有…</strong> からメモ等へ</li>
+                        <li>別アプリのテキストは <strong>クリップボードから読み込み</strong></li>
+                    </ul>
+
                     <h3>進行</h3>
                     <p>プレビュー画面では、次のどれかで進められます。</p>
                     <ul class="help-compact">
@@ -331,7 +341,7 @@ preview.overflow=wrap
                 <p>シナリオを編集しながらプレビューする試作ツール。共有はテキスト想定。</p>
                 <ul class="help-compact">
                     <li>即時プレビュー（分割 / 全画面切替は右上 □）</li>
-                    <li>保存・読込・コピー、ティラノ / Ren'Py 向け出力</li>
+                    <li>この端末へ自動下書き、保存・読込・共有・コピー、ティラノ / Ren'Py 向け出力</li>
                 </ul>
                 <p>操作・記法は <strong>ヘルプ</strong> を参照。</p>
             </div>
@@ -437,6 +447,7 @@ preview.overflow=wrap
 
     <script src="editor/scenario_editor.bundle.js"></script>
     <script src="novel_player_utils.js"></script>
+    <script src="draft_storage.js"></script>
     <script src="panel_resizer.js"></script>
     <script src="panel_layout.js"></script>
     <script src="export_helpers.js"></script>

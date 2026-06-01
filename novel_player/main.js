@@ -159,8 +159,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const metaPreviewOverflow = document.getElementById("metaPreviewOverflow");
     const metaReloadButton = document.getElementById("metaReloadButton");
     const metaApplyButton = document.getElementById("metaApplyButton");
+    const shareBtn = document.getElementById("shareButton");
+    const pasteLoadBtn = document.getElementById("pasteLoadButton");
     const copyBtn = document.getElementById("copyButton");
-    [saveBtn, loadBtn, clearBtn, copyBtn].forEach((btn) => {
+    [saveBtn, loadBtn, shareBtn, pasteLoadBtn, clearBtn, copyBtn].forEach((btn) => {
         if (!btn) return;
         btn.addEventListener("click", () => closeScenarioMenu());
     });

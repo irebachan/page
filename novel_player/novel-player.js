@@ -34,8 +34,13 @@ class NovelPlayer {
         this.saveButton = document.getElementById("saveButton");
         this.loadButton = document.getElementById("loadButton");
         this.fileInput = document.getElementById("fileInput");
+        this.shareButton = document.getElementById("shareButton");
+        this.pasteLoadButton = document.getElementById("pasteLoadButton");
         this.clearButton = document.getElementById("clearButton");
         this.copyButton = document.getElementById("copyButton");
+        this.lastDraftSavedAt = null;
+        this.draftSavePending = false;
+        this.suppressDraftSave = false;
         this.previewUnit = document.getElementById("previewUnit");
         this.syncEditorOnLabelJump = document.getElementById("syncEditorOnLabelJump");
         this.SYNC_EDITOR_LABEL_KEY = "novelPlayer.syncEditorOnLabelJump";
@@ -60,12 +65,29 @@ class NovelPlayer {
         }
         this.restartBtn.addEventListener("click", () => this.restart());
         this.updateScriptDebounced = this.debounce(() => this.updateScript(), 300);
+        this.persistDraftDebounced = this.debounce(() => this.persistDraft(), 2000);
         this.initScenarioEditor();
-        this.saveButton.addEventListener("click", () => this.saveScriptToFile());
-        this.loadButton.addEventListener("click", () => this.fileInput.click());
-        this.fileInput.addEventListener("change", (e) => this.loadScriptFromFile(e));
-        this.clearButton.addEventListener("click", () => this.clearScriptText());
-        this.copyButton.addEventListener("click", () => this.copyToClipboard());
+        if (this.saveButton) {
+            this.saveButton.addEventListener("click", () => this.saveScriptToFile());
+        }
+        if (this.loadButton) {
+            this.loadButton.addEventListener("click", () => this.fileInput.click());
+        }
+        if (this.fileInput) {
+            this.fileInput.addEventListener("change", (e) => this.loadScriptFromFile(e));
+        }
+        if (this.shareButton) {
+            this.shareButton.addEventListener("click", () => this.shareScript());
+        }
+        if (this.pasteLoadButton) {
+            this.pasteLoadButton.addEventListener("click", () => this.loadScriptFromClipboard());
+        }
+        if (this.clearButton) {
+            this.clearButton.addEventListener("click", () => this.clearScriptText());
+        }
+        if (this.copyButton) {
+            this.copyButton.addEventListener("click", () => this.copyToClipboard());
+        }
 
         if (this.previewFromCursorBtn) {
             this.previewFromCursorBtn.addEventListener("click", () => this.previewFromEditorLine());
@@ -243,8 +265,7 @@ class NovelPlayer {
 
 `;
 
-        // 初期化
-        this.init();
+        void this.init();
     }
 
     initSyncEditorOnLabelJump() {
@@ -298,10 +319,44 @@ class NovelPlayer {
             return;
         }
         this.scenarioEditor = window.ScenarioEditor.create(this.scriptEditorHost, {
-            onChange: () => this.updateScriptDebounced(),
+            onChange: () => {
+                this.updateScriptDebounced();
+                this.scheduleDraftSave();
+            },
             onPreviewShortcut: () => this.previewFromEditorLine(),
             onCursorChange: () => this.updateEditorStatusBar(),
         });
+    }
+
+    scheduleDraftSave() {
+        if (this.suppressDraftSave || !window.DraftStorage) return;
+        this.draftSavePending = true;
+        this.updateEditorStatusBar();
+        this.persistDraftDebounced();
+    }
+
+    async persistDraft() {
+        if (!window.DraftStorage) return;
+        const text = this.getScriptText();
+        try {
+            const record = await DraftStorage.save({ text });
+            if (record) {
+                this.lastDraftSavedAt = record.savedAt;
+                this.draftSavePending = false;
+                this.updateEditorStatusBar();
+            }
+        } catch (err) {
+            console.warn("下書きの保存に失敗:", err);
+        }
+    }
+
+    getDraftStatusSuffix() {
+        if (!window.DraftStorage) return "";
+        if (this.draftSavePending) return " · 下書き保存待ち";
+        if (this.lastDraftSavedAt) {
+            return ` · 下書き ${DraftStorage.formatSavedAt(this.lastDraftSavedAt)}`;
+        }
+        return "";
     }
 
     getScriptText() {
@@ -322,12 +377,44 @@ class NovelPlayer {
         this.scenarioEditor?.focus();
     }
 
-    init() {
-        // 初期スクリプトをエディタに表示
-        this.setScriptText(this.defaultScript.trim());
-        this.updateScript();
+    async init() {
+        const defaultText = this.defaultScript.trim();
+        let initialText = defaultText;
+        let skippedExistingDraft = false;
 
-        // 次へボタンの初期状態設定（ゲーム開始時は表示）
+        if (window.DraftStorage) {
+            try {
+                const draft = await DraftStorage.load();
+                if (draft?.text != null) {
+                    const sameAsDefault = draft.text.trim() === defaultText;
+                    if (!sameAsDefault) {
+                        const when = DraftStorage.formatSavedAt(draft.savedAt);
+                        const restore = confirm(
+                            `このブラウザに保存した下書き（${when}）を復元しますか？\n` +
+                                "（キャンセルでサンプルシナリオを読み込みます）"
+                        );
+                        if (restore) {
+                            initialText = draft.text;
+                            this.lastDraftSavedAt = draft.savedAt || null;
+                        } else {
+                            skippedExistingDraft = true;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn("下書きの読み込みに失敗:", err);
+            }
+        }
+
+        this.suppressDraftSave = true;
+        this.setScriptText(initialText);
+        this.updateScript();
+        this.suppressDraftSave = false;
+
+        if (window.DraftStorage && !skippedExistingDraft && !this.lastDraftSavedAt) {
+            void this.persistDraft();
+        }
+
         this.nextBtn.style.display = "block";
     }
 
@@ -519,7 +606,9 @@ class NovelPlayer {
         const displayLine = line + 1;
         const lines = this.getScriptText().split("\n");
         const trimmed = (lines[line] || "").trim();
+        const draftSuffix = this.getDraftStatusSuffix();
         const base = this.formatEditorStatusBase(displayLine);
+        let main = base;
         if (
             trimmed.startsWith("@") &&
             !trimmed.startsWith("@goto") &&
@@ -527,16 +616,17 @@ class NovelPlayer {
             trimmed !== "@return" &&
             trimmed !== "@end"
         ) {
-            this.editorStatusBar.textContent = `${base} · ${trimmed}`;
-            return;
+            main = `${base} · ${trimmed}`;
+        } else {
+            const pos = this.findPreviewIndexForSourceLine(line);
+            const label = pos ? this.getLabelForIndex(pos.viewIndex) : null;
+            if (label) {
+                main = `${base} · @${label}`;
+            }
         }
-        const pos = this.findPreviewIndexForSourceLine(line);
-        const label = pos ? this.getLabelForIndex(pos.viewIndex) : null;
-        if (label) {
-            this.editorStatusBar.textContent = `${base} · @${label}`;
-            return;
-        }
-        this.editorStatusBar.textContent = base;
+        const full = main + draftSuffix;
+        this.editorStatusBar.textContent = full;
+        this.editorStatusBar.title = full;
     }
 
     getLabelFilterText() {
@@ -1433,6 +1523,54 @@ class NovelPlayer {
         const scriptContent = this.getScriptText();
         const blob = new Blob([scriptContent], { type: 'text/plain;charset=utf-8' });
         if (typeof saveFileBlob === "function") saveFileBlob(blob, "scenario", "txt");
+        void this.persistDraft();
+        setTimeout(() => this.focusEditor(), 200);
+    }
+
+    async shareScript() {
+        const text = this.getScriptText();
+        if (navigator.share) {
+            try {
+                const file = new File([text], "scenario.txt", { type: "text/plain;charset=utf-8" });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file], title: "scenario" });
+                } else {
+                    await navigator.share({ title: "scenario", text });
+                }
+                void this.persistDraft();
+                if (typeof showTemporaryNotification === "function") {
+                    showTemporaryNotification("共有しました");
+                }
+                setTimeout(() => this.focusEditor(), 200);
+                return;
+            } catch (err) {
+                if (err && err.name === "AbortError") return;
+                console.warn("共有に失敗:", err);
+            }
+        }
+        this.copyOriginalText();
+    }
+
+    async loadScriptFromClipboard() {
+        let text = "";
+        try {
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                text = await navigator.clipboard.readText();
+            }
+        } catch (err) {
+            console.warn("クリップボードの読み取りに失敗:", err);
+        }
+        if (!text.trim()) {
+            alert("クリップボードが空か、読み取れませんでした。");
+            return;
+        }
+        if (!confirm("クリップボードの内容でエディタを置き換えますか？")) {
+            return;
+        }
+        this.setScriptText(text);
+        this.resetPreviewState();
+        this.updateScript({ preservePreviewPosition: false });
+        void this.persistDraft();
         setTimeout(() => this.focusEditor(), 200);
     }
 
@@ -1467,6 +1605,7 @@ class NovelPlayer {
             this.setScriptText(content);
             this.resetPreviewState();
             this.updateScript({ preservePreviewPosition: false });
+            void this.persistDraft();
 
             this.fileInput.value = '';
 
@@ -1480,6 +1619,12 @@ class NovelPlayer {
             this.setScriptText('');
             this.resetPreviewState();
             this.updateScript({ preservePreviewPosition: false });
+            this.lastDraftSavedAt = null;
+            this.draftSavePending = false;
+            if (window.DraftStorage) {
+                void DraftStorage.clear();
+            }
+            this.updateEditorStatusBar();
 
             setTimeout(() => this.focusEditor(), 200);
         }
