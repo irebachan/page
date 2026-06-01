@@ -1692,11 +1692,8 @@ class NovelPlayer {
     // シナリオをテキストファイルとして保存
     saveScriptToFile() {
         const scriptContent = this.getScriptText();
-        if (typeof saveTextFile === "function") {
-            saveTextFile(scriptContent, this.activeProjectTitle, "txt");
-            if (typeof showTemporaryNotification === "function") {
-                showTemporaryNotification("UTF-8 でエクスポートしました");
-            }
+        if (typeof exportTextFile === "function") {
+            void exportTextFile(scriptContent, this.activeProjectTitle, "txt");
         }
         void this.persistProject();
         setTimeout(() => this.focusEditor(), 200);

@@ -125,8 +125,41 @@ function createUtf8TextFile(text, filename) {
     return new File([encodeUtf8WithBom(text)], filename, { type: "text/plain;charset=utf-8" });
 }
 
-function saveTextFile(text, titleOrPrefix, extension) {
+function isAndroidDevice() {
+    return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+}
+
+/**
+ * UTF-8 テキストをファイルとして渡す。
+ * Android では Chrome のダウンロードプレビューが化けるため、共有シートを優先する。
+ */
+async function exportTextFile(text, titleOrPrefix, extension) {
+    const filename = buildExportFilename(titleOrPrefix, extension);
+    const file = createUtf8TextFile(text, filename);
+    const android = isAndroidDevice();
+
+    if (android && canUseWebShareFiles(file)) {
+        try {
+            await navigator.share({ files: [file], title: filename });
+            showTemporaryNotification("共有先のアプリで保存してください");
+            return;
+        } catch (err) {
+            if (err && err.name === "AbortError") return;
+        }
+    }
+
     saveFileBlob(createUtf8TextBlob(text), titleOrPrefix, extension);
+    if (android) {
+        showTemporaryNotification(
+            "保存しました。Chromeの「ダウンロード」から開くと化けて見えることがあります（UTF-8 です）"
+        );
+    } else {
+        showTemporaryNotification("UTF-8 でエクスポートしました");
+    }
+}
+
+function saveTextFile(text, titleOrPrefix, extension) {
+    void exportTextFile(text, titleOrPrefix, extension);
 }
 
 function showTemporaryNotification(message) {

@@ -143,8 +143,8 @@ class ExportSettings {
             window.novelPlayer && window.novelPlayer.activeProjectTitle
                 ? window.novelPlayer.activeProjectTitle
                 : "scenario_formatted";
-        if (typeof saveTextFile === "function") {
-            saveTextFile(exportText, prefix, ext);
+        if (typeof exportTextFile === "function") {
+            void exportTextFile(exportText, prefix, ext);
         } else if (typeof saveFileBlob === "function" && typeof createUtf8TextBlob === "function") {
             saveFileBlob(createUtf8TextBlob(exportText), prefix, ext);
         }
