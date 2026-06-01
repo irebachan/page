@@ -48,6 +48,7 @@ class NovelPlayer {
         this.lastJumpLabel = "";
         /** @call の戻り先 */
         this.callStack = [];
+        this.previewMeta = {};
 
         // イベントリスナーの設定
         this.nextBtn.addEventListener("click", () => this.showLine());
@@ -235,8 +236,9 @@ class NovelPlayer {
 
 @choice_end
 - もう一度やり直す => morning
-- 終了する => end
+- 終了する => finish
 
+@finish
 @end
 
 `;
@@ -345,6 +347,8 @@ class NovelPlayer {
         const anchor = preservePosition ? this.capturePreviewAnchor() : null;
 
         const rawScript = this.getScriptText();
+        this.previewMeta = this.parsePreviewMeta(rawScript);
+        this.applyPreviewMetaToUI();
         const parseResult = this.parser.parse(rawScript);
         this.script = parseResult.script;
         this.labels = parseResult.labels;
@@ -360,6 +364,96 @@ class NovelPlayer {
         this.renderCurrentView();
         this.refreshReferenceErrors();
         this.updateEditorStatusBar();
+    }
+
+    parsePreviewMeta(rawScript) {
+        const match = (rawScript || "").match(/(^|\n)\s*@meta\s*\n([\s\S]*?)\n\s*@endmeta(?:\n|$)/);
+        if (!match) return {};
+        const body = match[2] || "";
+        const meta = {};
+        body.split("\n").forEach((rawLine) => {
+            const line = rawLine.trim();
+            if (!line || line.startsWith("//")) return;
+            const eq = line.indexOf("=");
+            if (eq <= 0) return;
+            const key = line.slice(0, eq).trim();
+            const value = line.slice(eq + 1).trim();
+            if (key) meta[key] = value;
+        });
+        return meta;
+    }
+
+    applyPreviewMetaToUI() {
+        if (!this.previewUnit) return;
+        const unit = this.previewMeta?.["preview.unit"];
+        if (unit === "block" || unit === "line") {
+            this.previewUnit.value = unit;
+        }
+    }
+
+    getPreviewMaxCharsPerLine() {
+        const n = parseInt(this.previewMeta?.["preview.maxCharsPerLine"], 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    }
+
+    getPreviewMaxLines() {
+        const n = parseInt(this.previewMeta?.["preview.maxLines"], 10);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    }
+
+    getPreviewOverflowMode() {
+        const mode = (this.previewMeta?.["preview.overflow"] || "").trim().toLowerCase();
+        return mode === "truncate" ? "truncate" : "wrap";
+    }
+
+    wrapTextByChars(text, maxChars) {
+        if (!maxChars || maxChars <= 0) return text;
+        return (text || "")
+            .split("\n")
+            .map((line) => {
+                if (!line) return "";
+                const chars = Array.from(line);
+                const chunks = [];
+                for (let i = 0; i < chars.length; i += maxChars) {
+                    chunks.push(chars.slice(i, i + maxChars).join(""));
+                }
+                return chunks.join("\n");
+            })
+            .join("\n");
+    }
+
+    truncateLineByChars(line, maxChars) {
+        if (!maxChars || maxChars <= 0) return line;
+        const chars = Array.from(line || "");
+        if (chars.length <= maxChars) return line;
+        return `${chars.slice(0, maxChars).join("")}…`;
+    }
+
+    applyPreviewTextMeta(text) {
+        let out = text != null ? String(text) : "";
+        const overflowMode = this.getPreviewOverflowMode();
+        const maxChars = this.getPreviewMaxCharsPerLine();
+        if (maxChars) {
+            if (overflowMode === "truncate") {
+                out = out
+                    .split("\n")
+                    .map((line) => this.truncateLineByChars(line, maxChars))
+                    .join("\n");
+            } else {
+                out = this.wrapTextByChars(out, maxChars);
+            }
+        }
+        const maxLines = this.getPreviewMaxLines();
+        if (maxLines) {
+            const parts = out.split("\n");
+            if (parts.length > maxLines) {
+                const clipped = parts.slice(0, maxLines);
+                const last = clipped[maxLines - 1] || "";
+                clipped[maxLines - 1] = last.endsWith("…") ? last : `${last}…`;
+                out = clipped.join("\n");
+            }
+        }
+        return out;
     }
 
     isNovelMenuOpen() {
@@ -1049,7 +1143,8 @@ class NovelPlayer {
             const rawText = line.text != null ? line.text : "";
             const parts = rawText.split("\n");
             const useLineUnit = this.isPreviewLineUnit() && parts.length > 1;
-            const displayText = useLineUnit ? parts[lineUnitIndex] : rawText;
+            const displayTextRaw = useLineUnit ? parts[lineUnitIndex] : rawText;
+            const displayText = this.applyPreviewTextMeta(displayTextRaw);
 
             if (line.name.trim() === "") {
                 this.nameBox.style.display = "none";

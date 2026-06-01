@@ -84,6 +84,150 @@ body {
     overflow: hidden;
 }
 
+/* 上部メニュー: 表示（分割 / プレビュー / エディタ）切替 */
+.panel-layout-toggle {
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    min-width: 2rem;
+    min-height: 2rem;
+    padding: 0;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: rgba(35, 35, 35, 0.92);
+    color: #ccc;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.panel-layout-toggle:hover {
+    background: rgba(55, 55, 55, 0.95);
+    color: #fff;
+    border-color: #777;
+}
+
+.panel-layout-toggle:focus-visible {
+    outline: 2px solid #9cf;
+    outline-offset: 2px;
+}
+
+.panel-layout-toggle__icon {
+    display: block;
+    pointer-events: none;
+}
+
+.panel-layout-toggle__icon--restore {
+    display: none;
+}
+
+/* パネル隅: 分割 ↔ 全画面 */
+.panel-expand-btn {
+    position: absolute;
+    top: 0.35em;
+    right: 0.35em;
+    z-index: 11;
+    width: 1.75rem;
+    height: 1.75rem;
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+    padding: 0;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: rgba(35, 35, 35, 0.92);
+    color: #ccc;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.panel-expand-btn[data-panel-expand="editor"] {
+    /* CodeMirror の縦スクロールバー位置と被るため少しだけ左へ */
+    right: calc(0.35em + 12px);
+}
+
+.panel-expand-btn:hover {
+    background: rgba(55, 55, 55, 0.95);
+    color: #fff;
+    border-color: #777;
+}
+
+.panel-expand-btn:focus-visible {
+    outline: 2px solid #9cf;
+    outline-offset: 2px;
+}
+
+.panel-expand-btn__icon {
+    display: block;
+    flex-shrink: 0;
+    pointer-events: none;
+}
+
+.panel-expand-btn__icon--restore {
+    display: none;
+}
+
+.panel-expand-btn.is-expanded .panel-expand-btn__icon--expand {
+    display: none;
+}
+
+.panel-expand-btn.is-expanded .panel-expand-btn__icon--restore {
+    display: block;
+}
+
+body[data-layout="preview"] .panel-splitter,
+body[data-layout="preview"] .scenario-box {
+    display: none;
+}
+
+body[data-layout="preview"] .novel-viewer {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    width: auto;
+    max-width: none;
+}
+
+/* プレビュー全画面: 横幅だけ読みやすく絞る（小説サイト寄り） */
+body[data-layout="preview"] .novel-viewer {
+    padding: 1em;
+}
+
+body[data-layout="preview"] .novel-content,
+body[data-layout="preview"] .button-area {
+    width: min(100%, 980px);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+body[data-layout="preview"] .text-container {
+    width: 100%;
+    max-width: none;
+}
+
+body[data-layout="preview"] .choices {
+    width: 100%;
+}
+
+body[data-layout="editor"] .panel-splitter,
+body[data-layout="editor"] .novel-viewer {
+    display: none;
+}
+
+body[data-layout="editor"] .scenario-box {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    width: auto;
+    max-width: none;
+}
+
 /* プレビュー | シナリオ の境界（ドラッグで幅／高さを調整） */
 .panel-splitter {
     flex: 0 0 10px;
@@ -329,6 +473,62 @@ body.menu-drawer-open {
 
 .menu-drawer-body--stack button:hover {
     background: #555;
+}
+
+.meta-settings {
+    margin: 0.1em 0;
+    padding-top: 0.35em;
+    border-top: 1px solid #444;
+}
+
+.meta-settings-summary {
+    cursor: pointer;
+    font-size: 0.95em;
+    color: #ddd;
+    user-select: none;
+}
+
+.meta-settings-summary:hover {
+    color: #fff;
+}
+
+.meta-settings-body {
+    margin-top: 0.45em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45em;
+}
+
+.meta-settings-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+    font-size: 0.9em;
+    color: #ccc;
+}
+
+.meta-settings-item input,
+.meta-settings-item select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.45em 0.55em;
+    font-size: 0.95em;
+    background: #333;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
+.meta-settings-actions {
+    display: flex;
+    gap: 0.4em;
+}
+
+.meta-settings-actions button {
+    flex: 1 1 0;
+    text-align: center;
+    font-size: 0.9em;
+    padding: 0.55em 0.45em;
 }
 
 .menu-drawer--novel .menu-drawer-body #restart,
@@ -1132,6 +1332,14 @@ body.menu-drawer-open {
         font-size: 0.85rem;
     }
 
+    .panel-layout-toggle {
+        width: 2rem;
+        height: 2rem;
+        min-width: 2rem;
+        min-height: 2rem;
+        border-radius: 6px;
+    }
+
     .app-menu-bar__status {
         display: none;
     }
@@ -1164,6 +1372,27 @@ body.menu-drawer-open {
         padding-top: 0.1em;
         padding-bottom: 0;
         overflow: hidden;
+    }
+
+    body[data-layout="preview"] .novel-viewer {
+        flex: 1 1 0;
+    }
+
+    body[data-layout="editor"] .scenario-box {
+        flex: 1 1 0;
+    }
+
+    .panel-expand-btn {
+        width: 2rem;
+        height: 2rem;
+        min-width: 2rem;
+        min-height: 2rem;
+        top: 0.25em;
+        right: 0.25em;
+    }
+
+    .panel-expand-btn[data-panel-expand="editor"] {
+        right: calc(0.25em + 10px);
     }
 
     .panel-splitter {

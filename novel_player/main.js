@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const helpModal = document.getElementById("helpModal");
     const helpBtn = document.getElementById("helpButton");
-    const closeBtn = document.querySelector(".close");
+    const closeBtn = document.querySelector("#helpModal .close");
 
     const exportSettingsModal = document.getElementById("exportSettingsModal");
     const exportSettingsBtn = document.getElementById("exportSettingsButton");
@@ -37,6 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
         syncBodyMenuClass();
         if (open && panel === novelMenuPanel) {
             novelPlayer.refreshLabelList();
+        }
+        if (open && panel === scenarioMenuPanel) {
+            readMetaToForm();
         }
     }
 
@@ -124,11 +127,101 @@ document.addEventListener("DOMContentLoaded", () => {
     const saveBtn = document.getElementById("saveButton");
     const loadBtn = document.getElementById("loadButton");
     const clearBtn = document.getElementById("clearButton");
+    const metaPreviewUnit = document.getElementById("metaPreviewUnit");
+    const metaMaxCharsPerLine = document.getElementById("metaMaxCharsPerLine");
+    const metaMaxLines = document.getElementById("metaMaxLines");
+    const metaPreviewOverflow = document.getElementById("metaPreviewOverflow");
+    const metaReloadButton = document.getElementById("metaReloadButton");
+    const metaApplyButton = document.getElementById("metaApplyButton");
     const copyBtn = document.getElementById("copyButton");
     [saveBtn, loadBtn, clearBtn, copyBtn].forEach((btn) => {
         if (!btn) return;
         btn.addEventListener("click", () => closeScenarioMenu());
     });
+
+    function getMetaDefaults() {
+        return {
+            unit: "block",
+            maxCharsPerLine: "28",
+            maxLines: "3",
+            overflow: "wrap",
+        };
+    }
+
+    function parseMetaBlock(scriptText) {
+        const m = scriptText.match(/(^|\n)\s*@meta\s*\n([\s\S]*?)\n\s*@endmeta(?:\n|$)/);
+        if (!m) return null;
+        const body = m[2];
+        const parsed = {};
+        body.split("\n").forEach((rawLine) => {
+            const line = rawLine.trim();
+            if (!line || line.startsWith("//")) return;
+            const eq = line.indexOf("=");
+            if (eq <= 0) return;
+            const key = line.slice(0, eq).trim();
+            const value = line.slice(eq + 1).trim();
+            if (key) parsed[key] = value;
+        });
+        return parsed;
+    }
+
+    function readMetaToForm() {
+        if (!metaPreviewUnit || !metaMaxCharsPerLine || !metaMaxLines || !metaPreviewOverflow) return;
+        const defaults = getMetaDefaults();
+        const parsed = parseMetaBlock(novelPlayer.getScriptText()) || {};
+        const unit = parsed["preview.unit"] || defaults.unit;
+        const chars = parsed["preview.maxCharsPerLine"] || defaults.maxCharsPerLine;
+        const lines = parsed["preview.maxLines"] || defaults.maxLines;
+        const overflow = parsed["preview.overflow"] || defaults.overflow;
+        metaPreviewUnit.value = (unit === "line") ? "line" : "block";
+        metaMaxCharsPerLine.value = chars;
+        metaMaxLines.value = lines;
+        metaPreviewOverflow.value = overflow === "truncate" ? "truncate" : "wrap";
+    }
+
+    function buildMetaBlockFromForm() {
+        const defaults = getMetaDefaults();
+        const unit = metaPreviewUnit?.value === "line" ? "line" : defaults.unit;
+        const maxChars = Math.max(1, parseInt(metaMaxCharsPerLine?.value || defaults.maxCharsPerLine, 10) || 28);
+        const maxLines = Math.max(1, parseInt(metaMaxLines?.value || defaults.maxLines, 10) || 3);
+        const overflow = metaPreviewOverflow?.value === "truncate" ? "truncate" : defaults.overflow;
+        return [
+            "@meta",
+            `preview.unit=${unit}`,
+            `preview.maxCharsPerLine=${maxChars}`,
+            `preview.maxLines=${maxLines}`,
+            `preview.overflow=${overflow}`,
+            "@endmeta",
+        ].join("\n");
+    }
+
+    function applyMetaFromForm() {
+        const current = novelPlayer.getScriptText();
+        const block = buildMetaBlockFromForm();
+        const re = /(^|\n)\s*@meta\s*\n[\s\S]*?\n\s*@endmeta(?:\n|$)/;
+        let next;
+        if (re.test(current)) {
+            next = current.replace(re, (matched, lead) => `${lead}${block}\n`);
+        } else {
+            next = `${block}\n\n${current}`;
+        }
+        novelPlayer.setScriptText(next);
+        if (typeof novelPlayer.updateScript === "function") {
+            novelPlayer.updateScript();
+        }
+        novelPlayer.focusEditor();
+    }
+
+    if (metaReloadButton) {
+        metaReloadButton.addEventListener("click", () => {
+            readMetaToForm();
+        });
+    }
+    if (metaApplyButton) {
+        metaApplyButton.addEventListener("click", () => {
+            applyMetaFromForm();
+        });
+    }
 
     const restartBtn = document.getElementById("restart");
     const prevChoiceBtn = document.getElementById("prevChoice");

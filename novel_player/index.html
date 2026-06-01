@@ -44,6 +44,17 @@
                 aria-controls="scenarioMenuPanel" aria-haspopup="true">ファイル</button>
             <button type="button" id="novelMenuButton" class="menu-toggle menu-toggle--text menu-toggle--compact" aria-expanded="false"
                 aria-controls="novelMenuPanel" aria-haspopup="true">プレビュー操作</button>
+            <button type="button" id="panelLayoutToggleButton" class="panel-layout-toggle" aria-pressed="false"
+                aria-label="表示を切り替え" title="表示を切り替え">
+                <svg class="panel-layout-toggle__icon panel-layout-toggle__icon--expand" width="16" height="16" viewBox="0 0 24 24"
+                    aria-hidden="true">
+                    <path fill="currentColor" d="M7 3h10v2H9v6H7V3zm10 18H7v-2h8v-6h2v8z" />
+                </svg>
+                <svg class="panel-layout-toggle__icon panel-layout-toggle__icon--restore" width="16" height="16" viewBox="0 0 24 24"
+                    aria-hidden="true">
+                    <path fill="currentColor" d="M9 5H5v4h2V7h2V5zm10 14h-4v-2h2v-2h2v4zM5 17v2h4v-2H7v-2H5v2zm14-10V5h-4v2h2v2h2v-2z" />
+                </svg>
+            </button>
         </div>
     </nav>
     <div class="app-main">
@@ -125,16 +136,47 @@
                 <div class="menu-drawer-body menu-drawer-body--stack">
                     <button type="button" id="saveButton">📥 保存</button>
                     <button type="button" id="loadButton">📤 読み込み</button>
-                    <button type="button" id="clearButton">🗑️ クリア</button>
-                    <button type="button" id="helpButton">❓ ヘルプ</button>
-                    <button type="button" id="aboutButton">ℹ️ このツールについて</button>
-                    <button type="button" id="exportSettingsButton">⚙️ 出力設定</button>
                     <button type="button" id="copyButton">📋 コピー</button>
+                    <button type="button" id="clearButton">🗑️ クリア</button>
+                    <details class="meta-settings" id="metaSettings">
+                        <summary class="meta-settings-summary">🧩 表示ルール（作品ごと）</summary>
+                        <div class="meta-settings-body">
+                            <label class="meta-settings-item">
+                                <span>表示単位</span>
+                                <select id="metaPreviewUnit">
+                                    <option value="block">block</option>
+                                    <option value="line">line</option>
+                                </select>
+                            </label>
+                            <label class="meta-settings-item">
+                                <span>1行あたり文字数</span>
+                                <input type="number" id="metaMaxCharsPerLine" min="1" step="1" inputmode="numeric">
+                            </label>
+                            <label class="meta-settings-item">
+                                <span>表示行数</span>
+                                <input type="number" id="metaMaxLines" min="1" step="1" inputmode="numeric">
+                            </label>
+                            <label class="meta-settings-item">
+                                <span>行あふれ時の表示</span>
+                                <select id="metaPreviewOverflow">
+                                    <option value="wrap">wrap（折り返し）</option>
+                                    <option value="truncate">truncate（切り詰め）</option>
+                                </select>
+                            </label>
+                            <div class="meta-settings-actions">
+                                <button type="button" id="metaReloadButton">現在値を読込</button>
+                                <button type="button" id="metaApplyButton">適用して保存</button>
+                            </div>
+                        </div>
+                    </details>
+                    <button type="button" id="exportSettingsButton">⚙️ 出力設定</button>
                     <details class="script-diagnostics" id="scriptDiagnostics">
                         <summary class="script-diagnostics-summary">参照エラー <span id="refErrorBadge"
                                 class="ref-error-badge">—</span></summary>
                         <ul id="refErrorList" class="ref-error-list" aria-live="polite"></ul>
                     </details>
+                    <button type="button" id="helpButton">❓ ヘルプ</button>
+                    <button type="button" id="aboutButton">ℹ️ このツールについて</button>
                 </div>
             </div>
         </div>
@@ -195,6 +237,23 @@
 
                 <h3>コメント</h3>
                 <pre>// この行はプレビューに表示されず、エクスポート後もコメントとして残ります</pre>
+
+                <h3>表示ルール（作品ごと）</h3>
+                <p>ファイル内の <code>@meta</code> 〜 <code>@endmeta</code> に表示ルールを書けます（位置は先頭固定ではありません）。</p>
+                <pre>
+@meta
+preview.unit=block
+preview.maxCharsPerLine=28
+preview.maxLines=3
+preview.overflow=wrap
+@endmeta
+                </pre>
+                <ul>
+                    <li><code>preview.unit</code>: <code>block</code> / <code>line</code></li>
+                    <li><code>preview.maxCharsPerLine</code>: 1行あたり文字数</li>
+                    <li><code>preview.maxLines</code>: 表示行数</li>
+                    <li><code>preview.overflow</code>: <code>wrap</code>（折り返し）/ <code>truncate</code>（切り詰め）</li>
+                </ul>
 
                 <h3>特殊テキスト出力</h3>
                 <p>「特殊形式で出力」ボタンを使用すると、ゲームエンジン用の特殊記号付きテキストを出力できます：</p>
@@ -360,6 +419,7 @@
     <script src="editor/scenario_editor.bundle.js"></script>
     <script src="novel_player_utils.js"></script>
     <script src="panel_resizer.js"></script>
+    <script src="panel_layout.js"></script>
     <script src="export_helpers.js"></script>
     <script src="export_format_custom.js"></script>
     <script src="export_render_tyrano.js"></script>

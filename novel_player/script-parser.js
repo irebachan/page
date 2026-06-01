@@ -19,9 +19,24 @@ class ScriptParser {
         let labelSourceLines = {};
         let i = 0;
         let currentName = ""; // 現在の名前を保持
+        let inMetaBlock = false;
 
         while (i < lines.length) {
             let line = lines[i].trim();
+
+            // @meta ... @endmeta はプレビュー・出力解析対象から除外
+            if (inMetaBlock) {
+                if (line === "@endmeta") {
+                    inMetaBlock = false;
+                }
+                i++;
+                continue;
+            }
+            if (line === "@meta") {
+                inMetaBlock = true;
+                i++;
+                continue;
+            }
 
             // 空行は blank として保持（変換後の見やすさのため）
             if (line === "") {
