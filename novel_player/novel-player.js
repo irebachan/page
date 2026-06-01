@@ -82,7 +82,7 @@ class NovelPlayer {
             this.clearButton.addEventListener("click", () => this.clearScriptText());
         }
         if (this.copyButton) {
-            this.copyButton.addEventListener("click", () => void this.copyScript());
+            this.copyButton.addEventListener("click", () => this.copyOriginalText());
         }
 
         if (this.previewFromCursorBtn) {
@@ -1509,10 +1509,6 @@ class NovelPlayer {
         }
     }
 
-    copyToClipboard() {
-        void this.copyScript();
-    }
-
     // シナリオをテキストファイルとして保存
     saveScriptToFile() {
         const scriptContent = this.getScriptText();
@@ -1520,25 +1516,6 @@ class NovelPlayer {
         if (typeof saveFileBlob === "function") saveFileBlob(blob, "scenario", "txt");
         void this.persistDraft();
         setTimeout(() => this.focusEditor(), 200);
-    }
-
-    async copyScript() {
-        const text = this.getScriptText();
-        if (typeof canUseWebShareText === "function" && canUseWebShareText(text)) {
-            try {
-                await navigator.share({ title: "scenario", text });
-                void this.persistDraft();
-                if (typeof showTemporaryNotification === "function") {
-                    showTemporaryNotification("コピーしました");
-                }
-                setTimeout(() => this.focusEditor(), 200);
-                return;
-            } catch (err) {
-                if (err && err.name === "AbortError") return;
-                console.warn("コピー（共有）に失敗:", err);
-            }
-        }
-        this.copyOriginalText();
     }
 
     async loadScriptFromClipboard() {
@@ -1575,10 +1552,10 @@ class NovelPlayer {
         setTimeout(() => this.focusEditor(), 200);
     }
 
-    // シナリオをクリップボードにコピー
+    // クリップボードへ入れたうえで、可能なら共有シートも開く（シート内の「コピー」は不要）
     copyOriginalText() {
         const text = this.getScriptText();
-        const copy = async () => {
+        const run = async () => {
             if (typeof copyTextToClipboard === "function") {
                 await copyTextToClipboard(text);
             } else if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1587,13 +1564,24 @@ class NovelPlayer {
                 this.scenarioEditor?.selectAll();
                 document.execCommand("copy");
             }
+
+            if (typeof canUseWebShareText === "function" && canUseWebShareText(text)) {
+                try {
+                    await navigator.share({ title: "scenario", text });
+                } catch (err) {
+                    if (err && err.name !== "AbortError") {
+                        console.warn("共有シートの表示に失敗:", err);
+                    }
+                }
+            }
+
             if (typeof showTemporaryNotification === "function") {
                 showTemporaryNotification("コピーしました");
             }
             setTimeout(() => this.focusEditor(), 200);
         };
-        copy().catch((err) => {
-            console.error("クリップボードへのコピーに失敗しました:", err);
+        run().catch((err) => {
+            console.error("コピーに失敗しました:", err);
         });
     }
 
