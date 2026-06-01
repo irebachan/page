@@ -181,7 +181,8 @@ body {
     display: block;
 }
 
-body[data-layout="preview"] .panel-splitter {
+body[data-layout="preview"] .panel-splitter,
+body[data-layout="preview"] .scenario-box {
     display: none;
 }
 
@@ -214,23 +215,8 @@ body[data-layout="preview"] .choices {
     width: 100%;
 }
 
-/* 片側全画面でも反対側メニューを使えるよう、親ボックスは残す */
-body[data-layout="preview"] .scenario-box {
-    flex: 0 0 0;
-    min-width: 0;
-    width: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    overflow: visible;
-}
-
-body[data-layout="preview"] .scenario-editor-wrap,
-body[data-layout="preview"] .scenario-box > .editor-panel-status {
-    display: none;
-}
-
-body[data-layout="editor"] .panel-splitter {
+body[data-layout="editor"] .panel-splitter,
+body[data-layout="editor"] .novel-viewer {
     display: none;
 }
 
@@ -240,21 +226,6 @@ body[data-layout="editor"] .scenario-box {
     min-height: 0;
     width: auto;
     max-width: none;
-}
-
-body[data-layout="editor"] .novel-viewer {
-    flex: 0 0 0;
-    min-width: 0;
-    width: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    overflow: visible;
-}
-
-body[data-layout="editor"] .novel-content,
-body[data-layout="editor"] .button-area {
-    display: none;
 }
 
 /* プレビュー | シナリオ の境界（ドラッグで幅／高さを調整） */

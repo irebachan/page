@@ -60,42 +60,6 @@
     <div class="app-main">
     <!-- 左側: ノベルビューア -->
     <div class="novel-viewer">
-        <div id="novelMenuPanel" class="menu-drawer menu-drawer--novel" aria-hidden="true">
-            <div class="menu-drawer-backdrop" data-menu-close="novel" tabindex="-1"></div>
-            <div class="menu-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="novelMenuTitle">
-                <div class="menu-drawer-header">
-                    <span id="novelMenuTitle" class="menu-drawer-title">プレビュー操作</span>
-                    <button type="button" class="menu-drawer-close" data-menu-close="novel"
-                        aria-label="メニューを閉じる">&times;</button>
-                </div>
-                <div class="menu-drawer-body">
-                    <div class="preview-unit-row">
-                        <label for="previewUnit">プレビュー・セリフの単位:</label>
-                        <select id="previewUnit">
-                            <option value="block">ブロックごと（#〜次の区切りまで一画面）</option>
-                            <option value="line">1行ずつ（「次へ」で1行進む）</option>
-                        </select>
-                    </div>
-                    <div class="preview-unit-row preview-option-row">
-                        <label>
-                            <input type="checkbox" id="syncEditorOnLabelJump" checked>
-                            ラベルジャンプでエディタも移動
-                        </label>
-                    </div>
-                    <button type="button" id="previewFromCursorButton"
-                        title="エディタのカーソル行からプレビュー（Ctrl+Enter / ⌘+Enter）">▶ この行からプレビュー</button>
-                    <button type="button" id="restart">🔄 最初に戻る</button>
-                    <button type="button" id="prevChoice" disabled title="履歴上の直近の選択肢画面へ">↩ 直前の選択肢へ</button>
-                    <div class="label-quick" id="labelQuick" aria-label="ラベルへ移動">
-                        <span class="label-quick-title">ラベル</span>
-                        <input type="search" id="labelFilter" class="label-filter" placeholder="ラベル名で絞り込み"
-                            autocomplete="off" spellcheck="false" aria-label="ラベル名で絞り込み">
-                        <div id="labelList" class="label-list" role="list"></div>
-                    </div>
-                    <button type="button" id="labelFlowOpenButton" class="label-flow-open-btn">🗺️ ラベルの流れ</button>
-                </div>
-            </div>
-        </div>
         <!-- 上部: 物語コンテンツエリア -->
         <div class="novel-content">
             <!-- 選択肢エリア（上に移動） -->
@@ -125,63 +89,101 @@
             <div id="scriptEditorHost" class="script-editor-host" aria-label="シナリオ編集"></div>
             <span id="editorStatusBar" class="editor-panel-status" aria-live="polite"></span>
         </div>
-        <div id="scenarioMenuPanel" class="menu-drawer menu-drawer--scenario" aria-hidden="true">
-            <div class="menu-drawer-backdrop" data-menu-close="scenario" tabindex="-1"></div>
-            <div class="menu-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="scenarioMenuTitle">
-                <div class="menu-drawer-header">
-                    <span id="scenarioMenuTitle" class="menu-drawer-title">ファイル</span>
-                    <button type="button" class="menu-drawer-close" data-menu-close="scenario"
-                        aria-label="メニューを閉じる">&times;</button>
-                </div>
-                <div class="menu-drawer-body menu-drawer-body--stack">
-                    <button type="button" id="saveButton">📥 保存</button>
-                    <button type="button" id="loadButton">📤 読み込み</button>
-                    <button type="button" id="copyButton">📋 コピー</button>
-                    <button type="button" id="clearButton">🗑️ クリア</button>
-                    <details class="meta-settings" id="metaSettings">
-                        <summary class="meta-settings-summary">🧩 表示ルール（作品ごと）</summary>
-                        <div class="meta-settings-body">
-                            <label class="meta-settings-item">
-                                <span>表示単位</span>
-                                <select id="metaPreviewUnit">
-                                    <option value="block">block</option>
-                                    <option value="line">line</option>
-                                </select>
-                            </label>
-                            <label class="meta-settings-item">
-                                <span>1行あたり文字数</span>
-                                <input type="number" id="metaMaxCharsPerLine" min="1" step="1" inputmode="numeric">
-                            </label>
-                            <label class="meta-settings-item">
-                                <span>表示行数</span>
-                                <input type="number" id="metaMaxLines" min="1" step="1" inputmode="numeric">
-                            </label>
-                            <label class="meta-settings-item">
-                                <span>行あふれ時の表示</span>
-                                <select id="metaPreviewOverflow">
-                                    <option value="wrap">wrap（折り返し）</option>
-                                    <option value="truncate">truncate（切り詰め）</option>
-                                </select>
-                            </label>
-                            <div class="meta-settings-actions">
-                                <button type="button" id="metaReloadButton">現在値を読込</button>
-                                <button type="button" id="metaApplyButton">適用して保存</button>
-                            </div>
-                        </div>
-                    </details>
-                    <button type="button" id="exportSettingsButton">⚙️ 出力設定</button>
-                    <details class="script-diagnostics" id="scriptDiagnostics">
-                        <summary class="script-diagnostics-summary">参照エラー <span id="refErrorBadge"
-                                class="ref-error-badge">—</span></summary>
-                        <ul id="refErrorList" class="ref-error-list" aria-live="polite"></ul>
-                    </details>
-                    <button type="button" id="helpButton">❓ ヘルプ</button>
-                    <button type="button" id="aboutButton">ℹ️ このツールについて</button>
-                </div>
-            </div>
-        </div>
         <input type="file" id="fileInput" accept=".txt" style="display:none">
     </div>
+    </div>
+
+    <div id="novelMenuPanel" class="menu-drawer menu-drawer--novel" aria-hidden="true">
+        <div class="menu-drawer-backdrop" data-menu-close="novel" tabindex="-1"></div>
+        <div class="menu-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="novelMenuTitle">
+            <div class="menu-drawer-header">
+                <span id="novelMenuTitle" class="menu-drawer-title">プレビュー操作</span>
+                <button type="button" class="menu-drawer-close" data-menu-close="novel"
+                    aria-label="メニューを閉じる">&times;</button>
+            </div>
+            <div class="menu-drawer-body">
+                <div class="preview-unit-row">
+                    <label for="previewUnit">プレビュー・セリフの単位:</label>
+                    <select id="previewUnit">
+                        <option value="block">ブロックごと（#〜次の区切りまで一画面）</option>
+                        <option value="line">1行ずつ（「次へ」で1行進む）</option>
+                    </select>
+                </div>
+                <div class="preview-unit-row preview-option-row">
+                    <label>
+                        <input type="checkbox" id="syncEditorOnLabelJump" checked>
+                        ラベルジャンプでエディタも移動
+                    </label>
+                </div>
+                <button type="button" id="previewFromCursorButton"
+                    title="エディタのカーソル行からプレビュー（Ctrl+Enter / ⌘+Enter）">▶ この行からプレビュー</button>
+                <button type="button" id="restart">🔄 最初に戻る</button>
+                <button type="button" id="prevChoice" disabled title="履歴上の直近の選択肢画面へ">↩ 直前の選択肢へ</button>
+                <div class="label-quick" id="labelQuick" aria-label="ラベルへ移動">
+                    <span class="label-quick-title">ラベル</span>
+                    <input type="search" id="labelFilter" class="label-filter" placeholder="ラベル名で絞り込み"
+                        autocomplete="off" spellcheck="false" aria-label="ラベル名で絞り込み">
+                    <div id="labelList" class="label-list" role="list"></div>
+                </div>
+                <button type="button" id="labelFlowOpenButton" class="label-flow-open-btn">🗺️ ラベルの流れ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scenarioMenuPanel" class="menu-drawer menu-drawer--scenario" aria-hidden="true">
+        <div class="menu-drawer-backdrop" data-menu-close="scenario" tabindex="-1"></div>
+        <div class="menu-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="scenarioMenuTitle">
+            <div class="menu-drawer-header">
+                <span id="scenarioMenuTitle" class="menu-drawer-title">ファイル</span>
+                <button type="button" class="menu-drawer-close" data-menu-close="scenario"
+                    aria-label="メニューを閉じる">&times;</button>
+            </div>
+            <div class="menu-drawer-body menu-drawer-body--stack">
+                <button type="button" id="saveButton">📥 保存</button>
+                <button type="button" id="loadButton">📤 読み込み</button>
+                <button type="button" id="copyButton">📋 コピー</button>
+                <button type="button" id="clearButton">🗑️ クリア</button>
+                <details class="meta-settings" id="metaSettings">
+                    <summary class="meta-settings-summary">🧩 表示ルール（作品ごと）</summary>
+                    <div class="meta-settings-body">
+                        <label class="meta-settings-item">
+                            <span>表示単位</span>
+                            <select id="metaPreviewUnit">
+                                <option value="block">block</option>
+                                <option value="line">line</option>
+                            </select>
+                        </label>
+                        <label class="meta-settings-item">
+                            <span>1行あたり文字数</span>
+                            <input type="number" id="metaMaxCharsPerLine" min="1" step="1" inputmode="numeric">
+                        </label>
+                        <label class="meta-settings-item">
+                            <span>表示行数</span>
+                            <input type="number" id="metaMaxLines" min="1" step="1" inputmode="numeric">
+                        </label>
+                        <label class="meta-settings-item">
+                            <span>行あふれ時の表示</span>
+                            <select id="metaPreviewOverflow">
+                                <option value="wrap">wrap（折り返し）</option>
+                                <option value="truncate">truncate（切り詰め）</option>
+                            </select>
+                        </label>
+                        <div class="meta-settings-actions">
+                            <button type="button" id="metaReloadButton">現在値を読込</button>
+                            <button type="button" id="metaApplyButton">適用して保存</button>
+                        </div>
+                    </div>
+                </details>
+                <button type="button" id="exportSettingsButton">⚙️ 出力設定</button>
+                <details class="script-diagnostics" id="scriptDiagnostics">
+                    <summary class="script-diagnostics-summary">参照エラー <span id="refErrorBadge"
+                            class="ref-error-badge">—</span></summary>
+                    <ul id="refErrorList" class="ref-error-list" aria-live="polite"></ul>
+                </details>
+                <button type="button" id="helpButton">❓ ヘルプ</button>
+                <button type="button" id="aboutButton">ℹ️ このツールについて</button>
+            </div>
+        </div>
     </div>
 
     <!-- ラベルの流れモーダル -->
