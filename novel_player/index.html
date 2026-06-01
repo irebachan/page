@@ -202,8 +202,17 @@
     <div id="helpModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>シナリオ記法ヘルプ</h2>
+            <h2>ヘルプ</h2>
             <div class="help-content">
+                <div class="help-tabs" role="tablist" aria-label="ヘルプの種類">
+                    <button type="button" class="help-tab is-active" role="tab" id="helpTabFormat"
+                        aria-selected="true" aria-controls="helpPanelFormat" data-help-tab="format">書式</button>
+                    <button type="button" class="help-tab" role="tab" id="helpTabOps" aria-selected="false"
+                        aria-controls="helpPanelOps" data-help-tab="ops" tabindex="-1">操作</button>
+                </div>
+
+                <div id="helpPanelFormat" class="help-panel is-active" role="tabpanel"
+                    aria-labelledby="helpTabFormat">
                 <h3>基本書式</h3>
                 <pre>
 #キャラ名
@@ -292,6 +301,23 @@ preview.overflow=wrap
 
 @end
                 </pre>
+                </div>
+
+                <div id="helpPanelOps" class="help-panel" role="tabpanel" aria-labelledby="helpTabOps" hidden>
+                    <h3>表示の切り替え</h3>
+                    <p>画面上部右の <strong>□</strong> を押すと、表示が次の順で切り替わります。</p>
+                    <p>分割（プレビュー＋エディタ）→ プレビュー全画面 → エディタ全画面 → 分割 …</p>
+                    <p>分割のときは、中央の区切り線をドラッグして幅を変えられます。</p>
+
+                    <h3>進行</h3>
+                    <p>プレビュー画面では、次のどれかで進められます。</p>
+                    <ul class="help-compact">
+                        <li><strong>▶ 次へ</strong> / <strong>◀ 戻る</strong></li>
+                        <li>メッセージ枠をタップ</li>
+                        <li><kbd>→</kbd> / <kbd>←</kbd>（エディタに入力中でないとき）</li>
+                    </ul>
+                    <p>エディタのカーソル行から始める：<kbd>Ctrl</kbd>+<kbd>Enter</kbd>（Mac は <kbd>⌘</kbd>+<kbd>Enter</kbd>）</p>
+                </div>
             </div>
         </div>
     </div>
@@ -302,21 +328,12 @@ preview.overflow=wrap
             <span class="close about-close">&times;</span>
             <h2>このツールについて</h2>
             <div class="about-content">
-                <p><strong>ノベル試作プレイヤー</strong>は、シナリオを編集しながら左側でプレビュー再生できるツールです。共有はテキストのやりとりで行うことを想定しています。</p>
-                <h3>できること</h3>
-                <ul>
-                    <li><strong>シナリオの編集とプレビュー</strong>: 右のテキストエリアでシナリオを書くと、左のビューアで即時プレビューできます。</li>
-                    <li><strong>保存・読み込み・コピー</strong>: シナリオをテキストファイルとして保存したり、読み込んだり、クリップボードにコピーしたりできます。</li>
-                    <li><strong>特殊形式での出力</strong>: 「出力設定」からティラノスクリプトや Ren'Py 用の記号付きテキストに変換して出力できます。記号はカスタマイズ可能です。</li>
+                <p>シナリオを編集しながらプレビューする試作ツール。共有はテキスト想定。</p>
+                <ul class="help-compact">
+                    <li>即時プレビュー（分割 / 全画面切替は右上 □）</li>
+                    <li>保存・読込・コピー、ティラノ / Ren'Py 向け出力</li>
                 </ul>
-                <h3>使い方のイメージ</h3>
-                <ol>
-                    <li>シナリオを書く（または読み込む）</li>
-                    <li>左側でプレビューしながら編集する</li>
-                    <li>完成したら「保存」でテキストファイルにするか、「特殊形式で出力」でゲームエンジン用に変換する</li>
-                    <li>共有するときは、テキストファイルやコピーしたテキストを渡す</li>
-                </ol>
-                <p>記法の詳細は「ヘルプ」を参照してください。</p>
+                <p>操作・記法は <strong>ヘルプ</strong> を参照。</p>
             </div>
         </div>
     </div>

@@ -105,9 +105,35 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    function setHelpTab(tabId) {
+        const tabs = helpModal?.querySelectorAll(".help-tab[role='tab']");
+        const panels = helpModal?.querySelectorAll(".help-panel[role='tabpanel']");
+        if (!tabs?.length || !panels?.length) return;
+        tabs.forEach((tab) => {
+            const active = tab.getAttribute("data-help-tab") === tabId;
+            tab.classList.toggle("is-active", active);
+            tab.setAttribute("aria-selected", active ? "true" : "false");
+            tab.tabIndex = active ? 0 : -1;
+        });
+        panels.forEach((panel) => {
+            const active = panel.id === (tabId === "format" ? "helpPanelFormat" : "helpPanelOps");
+            panel.classList.toggle("is-active", active);
+            panel.hidden = !active;
+        });
+    }
+
+    if (helpModal) {
+        helpModal.querySelectorAll(".help-tab[role='tab']").forEach((tab) => {
+            tab.addEventListener("click", () => {
+                setHelpTab(tab.getAttribute("data-help-tab") || "format");
+            });
+        });
+    }
+
     if (helpBtn && helpModal) {
         helpBtn.addEventListener("click", () => {
             closeScenarioMenu();
+            setHelpTab("format");
             helpModal.style.display = "block";
         });
     }
