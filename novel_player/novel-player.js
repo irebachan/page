@@ -1692,9 +1692,8 @@ class NovelPlayer {
     // シナリオをテキストファイルとして保存
     saveScriptToFile() {
         const scriptContent = this.getScriptText();
-        const blob = new Blob([scriptContent], { type: 'text/plain;charset=utf-8' });
-        if (typeof saveFileBlob === "function") {
-            saveFileBlob(blob, this.activeProjectTitle, "txt");
+        if (typeof saveTextFile === "function") {
+            saveTextFile(scriptContent, this.activeProjectTitle, "txt");
         }
         void this.persistProject();
         setTimeout(() => this.focusEditor(), 200);
@@ -1752,9 +1751,12 @@ class NovelPlayer {
                     : "scenario.txt";
             if (typeof canUseWebShareFiles === "function" || typeof canUseWebShareText === "function") {
                 try {
-                    const file = new File([text], exportFilename, {
-                        type: "text/plain;charset=utf-8",
-                    });
+                    const file =
+                        typeof createUtf8TextFile === "function"
+                            ? createUtf8TextFile(text, exportFilename)
+                            : new File([text], exportFilename, {
+                                  type: "text/plain;charset=utf-8",
+                              });
                     if (typeof canUseWebShareFiles === "function" && canUseWebShareFiles(file)) {
                         await navigator.share({ files: [file] });
                     } else if (typeof canUseWebShareText === "function" && canUseWebShareText(text)) {

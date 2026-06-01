@@ -136,11 +136,18 @@ class ExportSettings {
 
     exportScript() {
         const exportText = this.getExportText();
-        const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
         let ext = (this.exportExtension && this.exportExtension.value.trim()) || "txt";
         ext = ext.replace(/^\.+/, "");
         if (!ext) ext = "txt";
-        if (typeof saveFileBlob === "function") saveFileBlob(blob, "scenario_formatted", ext);
+        const prefix =
+            window.novelPlayer && window.novelPlayer.activeProjectTitle
+                ? window.novelPlayer.activeProjectTitle
+                : "scenario_formatted";
+        if (typeof saveTextFile === "function") {
+            saveTextFile(exportText, prefix, ext);
+        } else if (typeof saveFileBlob === "function" && typeof createUtf8TextBlob === "function") {
+            saveFileBlob(createUtf8TextBlob(exportText), prefix, ext);
+        }
         const exportSettingsModal = document.getElementById("exportSettingsModal");
         exportSettingsModal.style.display = "none";
         setTimeout(() => window.novelPlayer?.focusEditor(), 200);
