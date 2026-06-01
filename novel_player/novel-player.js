@@ -34,7 +34,6 @@ class NovelPlayer {
         this.saveButton = document.getElementById("saveButton");
         this.loadButton = document.getElementById("loadButton");
         this.fileInput = document.getElementById("fileInput");
-        this.shareButton = document.getElementById("shareButton");
         this.pasteLoadButton = document.getElementById("pasteLoadButton");
         this.clearButton = document.getElementById("clearButton");
         this.copyButton = document.getElementById("copyButton");
@@ -76,9 +75,6 @@ class NovelPlayer {
         if (this.fileInput) {
             this.fileInput.addEventListener("change", (e) => this.loadScriptFromFile(e));
         }
-        if (this.shareButton) {
-            this.shareButton.addEventListener("click", () => this.shareScript());
-        }
         if (this.pasteLoadButton) {
             this.pasteLoadButton.addEventListener("click", () => this.loadScriptFromClipboard());
         }
@@ -86,7 +82,7 @@ class NovelPlayer {
             this.clearButton.addEventListener("click", () => this.clearScriptText());
         }
         if (this.copyButton) {
-            this.copyButton.addEventListener("click", () => this.copyToClipboard());
+            this.copyButton.addEventListener("click", () => void this.copyScript());
         }
 
         if (this.previewFromCursorBtn) {
@@ -1513,9 +1509,8 @@ class NovelPlayer {
         }
     }
 
-    // テキストエリアの内容をクリップボードにコピー
     copyToClipboard() {
-        this.copyOriginalText();
+        void this.copyScript();
     }
 
     // シナリオをテキストファイルとして保存
@@ -1527,50 +1522,56 @@ class NovelPlayer {
         setTimeout(() => this.focusEditor(), 200);
     }
 
-    async shareScript() {
+    async copyScript() {
         const text = this.getScriptText();
-        if (navigator.share) {
+        if (typeof canUseWebShareText === "function" && canUseWebShareText(text)) {
             try {
-                const file = new File([text], "scenario.txt", { type: "text/plain;charset=utf-8" });
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({ files: [file], title: "scenario" });
-                } else {
-                    await navigator.share({ title: "scenario", text });
-                }
+                await navigator.share({ title: "scenario", text });
                 void this.persistDraft();
                 if (typeof showTemporaryNotification === "function") {
-                    showTemporaryNotification("共有しました");
+                    showTemporaryNotification("コピーしました");
                 }
                 setTimeout(() => this.focusEditor(), 200);
                 return;
             } catch (err) {
                 if (err && err.name === "AbortError") return;
-                console.warn("共有に失敗:", err);
+                console.warn("コピー（共有）に失敗:", err);
             }
         }
         this.copyOriginalText();
     }
 
     async loadScriptFromClipboard() {
-        let text = "";
-        try {
-            if (navigator.clipboard && navigator.clipboard.readText) {
-                text = await navigator.clipboard.readText();
+        if (typeof canUseClipboardRead === "function" && !canUseClipboardRead()) {
+            this.focusEditor();
+            if (typeof showTemporaryNotification === "function") {
+                showTemporaryNotification("この開き方では読めません。エディタに直接貼り付けてください");
             }
-        } catch (err) {
-            console.warn("クリップボードの読み取りに失敗:", err);
-        }
-        if (!text.trim()) {
-            alert("クリップボードが空か、読み取れませんでした。");
             return;
         }
-        if (!confirm("クリップボードの内容でエディタを置き換えますか？")) {
+        let text = "";
+        try {
+            text = await readTextFromClipboard();
+        } catch (err) {
+            console.warn("クリップボードの読み取りに失敗:", err);
+            if (typeof showTemporaryNotification === "function") {
+                showTemporaryNotification("クリップボードを読めませんでした");
+            }
+            return;
+        }
+        if (!text.trim()) {
+            if (typeof showTemporaryNotification === "function") {
+                showTemporaryNotification("クリップボードが空です");
+            }
             return;
         }
         this.setScriptText(text);
         this.resetPreviewState();
         this.updateScript({ preservePreviewPosition: false });
         void this.persistDraft();
+        if (typeof showTemporaryNotification === "function") {
+            showTemporaryNotification("貼り付けました");
+        }
         setTimeout(() => this.focusEditor(), 200);
     }
 
@@ -1578,7 +1579,9 @@ class NovelPlayer {
     copyOriginalText() {
         const text = this.getScriptText();
         const copy = async () => {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
+            if (typeof copyTextToClipboard === "function") {
+                await copyTextToClipboard(text);
+            } else if (navigator.clipboard && navigator.clipboard.writeText) {
                 await navigator.clipboard.writeText(text);
             } else {
                 this.scenarioEditor?.selectAll();

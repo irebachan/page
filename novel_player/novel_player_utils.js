@@ -1,4 +1,63 @@
-// ノベルプレイヤー共通ユーティリティ（通知・ファイル保存）
+// ノベルプレイヤー共通ユーティリティ（通知・ファイル保存・クリップボード）
+
+/** HTTPS / localhost など。file:// や LAN の http は false */
+function isSecureAppContext() {
+    return (
+        typeof window !== "undefined" &&
+        window.isSecureContext === true &&
+        window.location.protocol !== "file:"
+    );
+}
+
+function canUseWebShareText(text) {
+    if (!isSecureAppContext() || typeof navigator.share !== "function") {
+        return false;
+    }
+    if (typeof navigator.canShare !== "function") {
+        return true;
+    }
+    try {
+        return navigator.canShare({ text: text ?? "" });
+    } catch (_) {
+        return false;
+    }
+}
+
+function canUseClipboardRead() {
+    return isSecureAppContext() && navigator.clipboard && navigator.clipboard.readText;
+}
+
+function canUseClipboardWrite() {
+    return isSecureAppContext() && navigator.clipboard && navigator.clipboard.writeText;
+}
+
+function copyTextToClipboard(text) {
+    if (canUseClipboardWrite()) {
+        return navigator.clipboard.writeText(text);
+    }
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    let ok = false;
+    try {
+        ok = document.execCommand("copy");
+    } catch (_) {
+        ok = false;
+    }
+    document.body.removeChild(ta);
+    return ok ? Promise.resolve() : Promise.reject(new Error("copy failed"));
+}
+
+function readTextFromClipboard() {
+    if (canUseClipboardRead()) {
+        return navigator.clipboard.readText();
+    }
+    return Promise.reject(new Error("clipboard read unavailable"));
+}
 
 function showTemporaryNotification(message) {
     const existing = document.getElementById("temp-notification");
