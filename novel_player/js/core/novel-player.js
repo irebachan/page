@@ -137,25 +137,27 @@ class NovelPlayer {
             this.labelFilterInput.addEventListener("input", () => this.refreshLabelList());
         }
 
-        this._labelRenameMode = false;
+        /** プレビューメニュー・ラベルチップ: null | rename | delete */
+        this._labelChipMode = null;
         const labelAddButton = document.getElementById("labelAddButton");
         if (labelAddButton) {
             labelAddButton.addEventListener("click", () => this.promptAddLabel());
         }
         this.labelRenameModeButton = document.getElementById("labelRenameModeButton");
+        this.labelDeleteModeButton = document.getElementById("labelDeleteModeButton");
         if (this.labelRenameModeButton) {
-            this.labelRenameModeButton.addEventListener("click", () => {
-                this._labelRenameMode = !this._labelRenameMode;
-                this.labelRenameModeButton.classList.toggle(
-                    "is-active",
-                    this._labelRenameMode
-                );
-                this.labelRenameModeButton.setAttribute(
-                    "aria-pressed",
-                    this._labelRenameMode ? "true" : "false"
-                );
-                this.refreshLabelList();
-            });
+            this.labelRenameModeButton.addEventListener("click", () =>
+                this.setLabelChipMode("rename")
+            );
+        }
+        if (this.labelDeleteModeButton) {
+            this.labelDeleteModeButton.addEventListener("click", () =>
+                this.setLabelChipMode("delete")
+            );
+        }
+        this.labelUndoButton = document.getElementById("labelUndoButton");
+        if (this.labelUndoButton) {
+            this.labelUndoButton.addEventListener("click", () => this.scriptUndo());
         }
 
         if (this.nodeGraphFilter) {
@@ -164,7 +166,8 @@ class NovelPlayer {
 
         if (this.nodeGraphHost && typeof LabelGraphView === "function") {
             this.labelGraphView = new LabelGraphView(this.nodeGraphHost, {
-                onNodeClick: (name) => this.jumpToLabelByName(name),
+                onNodeClick: (name) =>
+                    this.jumpToLabelByName(name, { keepNodeGraphOpen: true }),
                 onConnect: (from, to) => this.graphConnectLabels(from, to),
                 onConnectCall: (from, to) => this.graphConnectCall(from, to),
                 onConnectChoice: (edge, to) => this.graphConnectChoice(edge, to),
@@ -172,7 +175,8 @@ class NovelPlayer {
                 onRemoveEdge: (edge) => this.graphRemoveEdge(edge),
                 onAddLabel: () => this.promptAddLabel(),
                 onRenameLabel: (name) => this.promptRenameLabel(name),
-                onUndo: () => this.graphUndo(),
+                onDeleteLabel: (name) => this.promptDeleteLabel(name),
+                onUndo: () => this.scriptUndo(),
                 canUndo: () => this.graphUndoStack.length > 0,
             });
         }
@@ -678,6 +682,20 @@ class NovelPlayer {
         if (this.graphUndoStack.length > this.GRAPH_UNDO_MAX) {
             this.graphUndoStack.shift();
         }
+        this.updateScriptUndoButton();
+    }
+
+    updateScriptUndoButton() {
+        const stackOk = this.graphUndoStack.length > 0;
+        if (this.labelUndoButton) {
+            this.labelUndoButton.disabled = !stackOk;
+        }
+        this.labelGraphView?.updateUndoButton?.();
+    }
+
+    /** 脚本の直前状態へ（ラベル操作・ノードグラフ操作の共有スタック） */
+    scriptUndo() {
+        return this.graphUndo();
     }
 
     graphUndo() {
@@ -685,7 +703,9 @@ class NovelPlayer {
         const prev = this.graphUndoStack.pop();
         this.setScriptText(prev);
         this.updateScript({ preservePreviewPosition: true });
-        this.refreshNodeGraph();
+        this.refreshNodeGraphIfOpen();
+        this.refreshLabelList();
+        this.updateScriptUndoButton();
         return true;
     }
 
@@ -787,6 +807,46 @@ class NovelPlayer {
         return result;
     }
 
+    /** プレビューメニューのラベルチップ操作モード（改名・削除は排他） */
+    setLabelChipMode(mode) {
+        this._labelChipMode = this._labelChipMode === mode ? null : mode;
+        if (this.labelRenameModeButton) {
+            const on = this._labelChipMode === "rename";
+            this.labelRenameModeButton.classList.toggle("is-active", on);
+            this.labelRenameModeButton.setAttribute("aria-pressed", on ? "true" : "false");
+        }
+        if (this.labelDeleteModeButton) {
+            const on = this._labelChipMode === "delete";
+            this.labelDeleteModeButton.classList.toggle("is-active", on);
+            this.labelDeleteModeButton.setAttribute("aria-pressed", on ? "true" : "false");
+        }
+        this.refreshLabelList();
+    }
+
+    handleLabelListChipClick(name) {
+        if (this._labelChipMode === "rename") {
+            this.promptRenameLabel(name);
+            return;
+        }
+        if (this._labelChipMode === "delete") {
+            this.promptDeleteLabel(name);
+            return;
+        }
+        this.jumpToLabelByName(name, {
+            keepNodeGraphOpen: this.isNodeGraphOpen(),
+        });
+    }
+
+    labelChipTitle(name) {
+        if (this._labelChipMode === "rename") {
+            return `「${name}」の名前を変更`;
+        }
+        if (this._labelChipMode === "delete") {
+            return `「${name}」を削除`;
+        }
+        return `@${name} へ移動`;
+    }
+
     promptAddLabel() {
         const suggested =
             typeof suggestNewLabelName === "function"
@@ -805,6 +865,56 @@ class NovelPlayer {
             return;
         }
         this.jumpToLabelByName(added);
+    }
+
+    promptDeleteLabel(labelName) {
+        if (!labelName || labelName.startsWith("__open__")) return;
+        if (!this.labels.hasOwnProperty(labelName)) {
+            window.alert(`ラベル「${labelName}」が見つかりません`);
+            return;
+        }
+
+        const refs =
+            typeof countLabelReferences === "function"
+                ? countLabelReferences(this.script, labelName)
+                : { goto: 0, call: 0, choice: 0, total: 0 };
+        const refLines = [];
+        if (refs.goto) refLines.push(`@goto … ${refs.goto} 件`);
+        if (refs.call) refLines.push(`@call … ${refs.call} 件`);
+        if (refs.choice) refLines.push(`選択肢の行き先 … ${refs.choice} 件`);
+        const refText =
+            refLines.length > 0
+                ? `\n\n他からの参照（あわせて削除／外します）:\n・${refLines.join("\n・")}`
+                : "\n\n他からの参照はありません。";
+
+        const ok = window.confirm(
+            `ラベル「${labelName}」を脚本から削除しますか？\n\n` +
+                `・@${labelName} のブロック（次の @ラベル 手前まで）を削除します\n` +
+                `・定義順（fallthrough）が変わります` +
+                refText +
+                `\n\nこの操作はメニューまたはグラフの「戻す」で取り消せます。`
+        );
+        if (!ok) return;
+
+        const result = this.applyLabelTextPatch(patchDeleteLabel, labelName);
+        if (!result) return;
+
+        if (this.lastJumpLabel === labelName) {
+            this.lastJumpLabel = "";
+        }
+        if (
+            this.script.length &&
+            this.getLabelForIndex(this.viewIndex) === labelName
+        ) {
+            this.viewIndex = 0;
+            this.viewLineUnit = 0;
+            this.renderCurrentView();
+        }
+        if (this.isNodeGraphOpen()) {
+            this.labelGraphView?.setCurrentLabel(
+                this.script.length ? this.getLabelForIndex(this.viewIndex) : null
+            );
+        }
     }
 
     promptRenameLabel(oldName) {
@@ -1428,22 +1538,18 @@ class NovelPlayer {
             return;
         }
 
-        const renameMode = this._labelRenameMode;
+        const chipMode = this._labelChipMode;
         names.forEach((name) => {
             const btn = document.createElement("button");
             btn.type = "button";
             btn.className = "label-chip";
             if (name === current) btn.classList.add("is-current");
-            if (renameMode) btn.classList.add("is-rename-mode");
+            if (chipMode === "rename") btn.classList.add("is-rename-mode");
+            if (chipMode === "delete") btn.classList.add("is-delete-mode");
             btn.textContent = name;
-            btn.title = renameMode
-                ? `「${name}」の名前を変更`
-                : `@${name} へ移動`;
+            btn.title = this.labelChipTitle(name);
             btn.setAttribute("role", "listitem");
-            btn.addEventListener("click", () => {
-                if (this._labelRenameMode) this.promptRenameLabel(name);
-                else this.jumpToLabelByName(name);
-            });
+            btn.addEventListener("click", () => this.handleLabelListChipClick(name));
             this.labelList.appendChild(btn);
         });
 
@@ -1451,6 +1557,7 @@ class NovelPlayer {
         if (currentBtn) {
             currentBtn.scrollIntoView({ block: "nearest", inline: "nearest" });
         }
+        this.updateScriptUndoButton();
     }
 
     updateNodeGraphHighlight() {
@@ -1861,11 +1968,13 @@ class NovelPlayer {
         this.viewLineUnit = 0;
         this.renderCurrentView();
 
-        if (
-            this.isSyncEditorOnLabelJumpEnabled() &&
-            this.labelSourceLines[labelName] !== undefined
-        ) {
+        const moveEditor =
+            options.forceEditorMove || this.isSyncEditorOnLabelJumpEnabled();
+        if (moveEditor && this.labelSourceLines[labelName] !== undefined) {
             this.moveEditorToSourceLine(this.labelSourceLines[labelName]);
+        }
+        if (options.keepNodeGraphOpen && this.isNodeGraphOpen()) {
+            this.labelGraphView?.setCurrentLabel(labelName);
         }
     }
 

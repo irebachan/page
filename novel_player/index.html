@@ -138,6 +138,10 @@
                             <button type="button" id="labelAddButton" class="label-manage-btn">＋ 追加</button>
                             <button type="button" id="labelRenameModeButton" class="label-manage-btn"
                                 aria-pressed="false" title="オンにしてからラベルをタップで改名">改名</button>
+                            <button type="button" id="labelDeleteModeButton" class="label-manage-btn label-manage-btn--danger"
+                                aria-pressed="false" title="オンにしてからラベルをタップで削除（確認あり）">削除</button>
+                            <button type="button" id="labelUndoButton" class="label-manage-btn" disabled
+                                title="ラベル操作・グラフ操作の直前の脚本に戻す">戻す</button>
                         </span>
                     </div>
                     <input type="search" id="labelFilter" class="label-filter" placeholder="ラベル名で絞り込み"
@@ -212,7 +216,18 @@
                 <h2 id="nodeGraphTitle" class="node-graph-panel__title">ノードグラフ</h2>
                 <button type="button" class="node-graph-panel__close" aria-label="閉じる">&times;</button>
             </header>
-            <p class="node-graph-panel__hint">ツール選択→ラベルをタップ。線タップは切断。＋ラベルは末尾に追加</p>
+            <p class="node-graph-panel__hint">ノードタップで移動（グラフは閉じない）。詳しくは下の「操作方法」</p>
+            <details class="node-graph-help">
+                <summary>操作方法</summary>
+                <div class="node-graph-help__body">
+                    <p><strong>表示</strong> … 空白ドラッグでパン、ホイールでズーム。「全体」でフィット。灰点線は定義順の続き（fallthrough）、黄褐破線は @call。</p>
+                    <p><strong>移動</strong> … ノードをタップするとプレビュー・エディタがそのラベルへ（設定でエディタ同期）。グラフは閉じません。</p>
+                    <p><strong>ラベル</strong> … ＋ラベルは末尾に追加。改名・削除はツールをオンにしてからノードを1回タップ（削除は確認あり）。戻すはメニューと共有。</p>
+                    <p><strong>接続</strong> … goto／call は起点→行き先の2タップ（goto は1本だけ差し替え、call は行を増やす）。end／return は1タップ。解除でツールオフ。</p>
+                    <p><strong>線</strong> … 矢印・スタブをタップで切断（ツール未選択でも可）。未接続の選択肢の線はドラッグで接続。</p>
+                    <p>行き先が無いラベルへつなぐと、末尾に @ラベル が足されます。操作はすべて脚本テキストを書き換えます（エディタの元に戻すとは別）。</p>
+                </div>
+            </details>
             <input type="search" id="nodeGraphFilter" class="node-graph-panel__filter" placeholder="ラベル名で絞り込み"
                 autocomplete="off" spellcheck="false" aria-label="ラベル名で絞り込み">
             <div id="nodeGraphHost" class="node-graph-host" aria-live="polite"></div>
@@ -347,6 +362,28 @@ preview.overflow=wrap
                         <li><kbd>→</kbd> / <kbd>←</kbd>（エディタに入力中でないとき）</li>
                     </ul>
                     <p>エディタのカーソル行から始める：<kbd>Ctrl</kbd>+<kbd>Enter</kbd>（Mac は <kbd>⌘</kbd>+<kbd>Enter</kbd>）</p>
+
+                    <h3>ノードグラフ</h3>
+                    <p>画面上部の <strong>ノードグラフ</strong> で分岐を俯瞰します。変更は脚本テキストへの反映です（正本はエディタの記法のまま）。</p>
+                    <ul class="help-compact">
+                        <li><strong>移動</strong> … ノードタップでプレビュー・エディタへ。グラフは閉じない（× / Esc で閉じる）</li>
+                        <li><strong>表示</strong> … パン・ズーム・「全体」。ラベル名フィルタ</li>
+                        <li><strong>＋ラベル</strong> … 脚本末尾に空ブロックを追加</li>
+                        <li><strong>改名・削除</strong> … ツールオン → ノード1タップ（削除は確認あり。参照も整理）</li>
+                        <li><strong>goto</strong> … 2タップ（既存 @goto は差し替え）／<strong>call</strong> … 2タップ（@call 行を追加）</li>
+                        <li><strong>end / return</strong> … ラベル1タップ／<strong>解除</strong> … ツールオフ</li>
+                        <li><strong>線タップ</strong> … 接続を切断。未接続選択肢の線はドラッグで接続</li>
+                        <li><strong>戻す</strong> … グラフまたはプレビューメニュー（ラベル欄）。<kbd>Ctrl</kbd>+<kbd>Z</kbd> も可（エディタの Undo とは別）</li>
+                    </ul>
+                    <p>灰点線は定義順の fallthrough、黄褐破線は @call。プレビューメニューの「ラベル」は一覧からのジャンプ向け、グラフはつながり編集向けです。</p>
+
+                    <h3>プレビューメニュー（ラベル）</h3>
+                    <ul class="help-compact">
+                        <li>チップタップ … ジャンプ（メニューは開いたまま。任意で閉じる）</li>
+                        <li><strong>＋ 追加</strong> … 末尾に @ラベル</li>
+                        <li><strong>改名 / 削除</strong> … オンにしてからチップタップ</li>
+                        <li><strong>戻す</strong> … グラフの「戻す」と同じ操作履歴</li>
+                    </ul>
                 </div>
             </div>
         </div>

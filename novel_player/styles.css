@@ -797,9 +797,14 @@ body.menu-drawer-open {
     cursor: pointer;
 }
 
-.label-manage-btn:hover {
+.label-manage-btn:hover:not(:disabled) {
     background: #4a4a4a;
     color: #fff;
+}
+
+.label-manage-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
 }
 
 .label-quick-actions {
@@ -813,6 +818,12 @@ body.menu-drawer-open {
     background: #2a4a6a;
     border-color: #6af;
     color: #cef;
+}
+
+.label-manage-btn--danger.is-active {
+    background: #4a2a2a;
+    border-color: #a66;
+    color: #fcc;
 }
 
 .label-filter {
@@ -966,8 +977,19 @@ body.menu-drawer-open {
     border-color: #8ac;
 }
 
+.label-chip.is-delete-mode {
+    border-style: dashed;
+    border-color: #c88;
+}
+
 .label-list:has(.label-chip.is-rename-mode) {
     outline: 1px dashed #456;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.label-list:has(.label-chip.is-delete-mode) {
+    outline: 1px dashed #644;
     outline-offset: 2px;
     border-radius: 4px;
 }
@@ -1047,6 +1069,40 @@ body.node-graph-open {
     margin: 0 0 0.65em;
     font-size: 0.9em;
     color: #aaa;
+}
+
+.node-graph-help {
+    flex: 0 0 auto;
+    margin: 0 0 0.65em;
+    font-size: 0.88em;
+    color: #bbb;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #1e1e1e;
+}
+
+.node-graph-help summary {
+    cursor: pointer;
+    padding: 0.45em 0.6em;
+    color: #ccc;
+    user-select: none;
+}
+
+.node-graph-help summary:hover {
+    color: #fff;
+}
+
+.node-graph-help__body {
+    padding: 0 0.65em 0.65em;
+    line-height: 1.45;
+}
+
+.node-graph-help__body p {
+    margin: 0.45em 0 0;
+}
+
+.node-graph-help__body p:first-child {
+    margin-top: 0;
 }
 
 .node-graph-panel__filter {
@@ -1177,6 +1233,11 @@ body.node-graph-open {
 .label-graph-toolbar button[data-action="cmd-return"].is-active {
     border-color: #8888b8;
     color: #c8c8e8;
+}
+
+.label-graph-toolbar button[data-action="cmd-delete"].is-active {
+    border-color: #a86868;
+    color: #f0c8c8;
 }
 
 .label-graph-viewport {

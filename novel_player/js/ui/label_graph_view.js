@@ -12,6 +12,7 @@ class LabelGraphView {
         this.onRemoveEdge = options.onRemoveEdge || null;
         this.onAddLabel = options.onAddLabel || null;
         this.onRenameLabel = options.onRenameLabel || null;
+        this.onDeleteLabel = options.onDeleteLabel || null;
         this.onUndo = options.onUndo || null;
         this.canUndo = options.canUndo || null;
         this.data = null;
@@ -50,6 +51,7 @@ class LabelGraphView {
             <span class="label-graph-toolbar__group" role="group" aria-label="ラベル">
                 <button type="button" data-action="label-add" title="脚本末尾に @ラベル を追加">＋ラベル</button>
                 <button type="button" data-action="cmd-rename" title="ラベル1つタップで名前変更（参照も更新）">改名</button>
+                <button type="button" data-action="cmd-delete" title="ラベル1つタップで削除（確認あり）">削除</button>
             </span>
             <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
             <span class="label-graph-toolbar__group" role="group" aria-label="接続">
@@ -68,6 +70,7 @@ class LabelGraphView {
             end: this.toolbar.querySelector('[data-action="cmd-end"]'),
             return: this.toolbar.querySelector('[data-action="cmd-return"]'),
             rename: this.toolbar.querySelector('[data-action="cmd-rename"]'),
+            delete: this.toolbar.querySelector('[data-action="cmd-delete"]'),
         };
         this.cmdOffBtn = this.toolbar.querySelector('[data-action="cmd-off"]');
         this.undoBtn = this.toolbar.querySelector('[data-action="undo"]');
@@ -123,6 +126,7 @@ class LabelGraphView {
             else if (action === "cmd-end") this.setCommandMode("end");
             else if (action === "cmd-return") this.setCommandMode("return");
             else if (action === "cmd-rename") this.setCommandMode("rename");
+            else if (action === "cmd-delete") this.setCommandMode("delete");
             else if (action === "cmd-off") this.clearCommandMode();
             else if (action === "undo") this.onUndo?.();
             this.updateUndoButton();
@@ -153,11 +157,12 @@ class LabelGraphView {
     commandModeHint() {
         const m = this._commandMode;
         if (!m) {
-            return "ツールを選び、次にタップするラベルへ反映。矢印・スタブのタップはいつでも切断";
+            return "ノードタップで移動（グラフは開いたまま）。ツール選択時は接続・改名など。線タップは切断";
         }
         if (m === "end") return "選択中: @end → ラベルを1つタップ";
         if (m === "return") return "選択中: @return → ラベルを1つタップ";
         if (m === "rename") return "選択中: 改名 → ラベルを1つタップ";
+        if (m === "delete") return "選択中: 削除 → ラベルを1つタップ（確認あり）";
         if (m === "goto") {
             if (this._connectFrom) {
                 return `選択中: @goto → 行き先をタップ（起点: ${this._connectFrom}）`;
@@ -189,7 +194,7 @@ class LabelGraphView {
         this.viewport.classList.toggle("is-connect-mode", twoStep);
         this.viewport.classList.toggle(
             "is-exit-mode",
-            m === "end" || m === "return" || m === "rename"
+            m === "end" || m === "return" || m === "rename" || m === "delete"
         );
         this.viewport.classList.toggle("is-tool-mode", !!m);
     }
@@ -299,6 +304,12 @@ class LabelGraphView {
 
         if (this._commandMode === "rename") {
             this.onRenameLabel?.(name);
+            this.clearCommandMode();
+            return;
+        }
+
+        if (this._commandMode === "delete") {
+            this.onDeleteLabel?.(name);
             this.clearCommandMode();
             return;
         }

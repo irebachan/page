@@ -495,3 +495,96 @@ function patchRenameLabel(text, _script, labels, labelSourceLines, oldName, newN
 
     return { ok: true, text: lines.join("\n"), oldName, newName };
 }
+
+/** 脚本内の参照件数（確認ダイアログ用） */
+function countLabelReferences(script, labelName) {
+    let goto = 0;
+    let call = 0;
+    let choice = 0;
+    if (!script || !labelName) {
+        return { goto, call, choice, total: 0 };
+    }
+    for (const item of script) {
+        if (item.type === "goto" && item.target === labelName) goto++;
+        if (item.type === "call" && item.target === labelName) call++;
+        if (item.type === "choice") {
+            for (const c of item.choices || []) {
+                if ((c.target || "").trim() === labelName) choice++;
+            }
+        }
+    }
+    return { goto, call, choice, total: goto + call + choice };
+}
+
+function lineInRanges(i, ranges) {
+    return ranges.some((r) => i >= r.start && i < r.end);
+}
+
+/** 同名の @ラベル ブロック範囲をすべて列挙 */
+function findLabelBlockRanges(lines, labelName) {
+    const ranges = [];
+    for (let start = 0; start < lines.length; start++) {
+        if (labelNameFromDefinitionLine(lines[start].trim()) !== labelName) continue;
+        let end = lines.length;
+        for (let i = start + 1; i < lines.length; i++) {
+            if (labelNameFromDefinitionLine(lines[i].trim()) !== null) {
+                end = i;
+                break;
+            }
+        }
+        ranges.push({ start, end });
+        start = end - 1;
+    }
+    return ranges;
+}
+
+function stripReferencesToLabel(lines, labelName, skipRanges) {
+    for (let i = lines.length - 1; i >= 0; i--) {
+        if (lineInRanges(i, skipRanges)) continue;
+        const trimmed = lines[i].trim();
+        const gotoTarget = parseJumpLineTarget(trimmed, "goto");
+        if (gotoTarget === labelName) {
+            lines.splice(i, 1);
+            continue;
+        }
+        const callTarget = parseJumpLineTarget(trimmed, "call");
+        if (callTarget === labelName) {
+            lines.splice(i, 1);
+            continue;
+        }
+        if (!trimmed.startsWith("-")) continue;
+        const choice = parseChoiceLineTarget(lines[i]);
+        if (!choice || choice.target !== labelName) continue;
+        const parts = parseChoiceLineParts(lines[i]);
+        if (!parts) continue;
+        lines[i] = `${parts.indent}- ${parts.textPart}`;
+    }
+}
+
+/** ラベルブロック削除＋他からの参照を外す */
+function patchDeleteLabel(text, script, labels, _labelSourceLines, labelName) {
+    if (!labelName) {
+        return { ok: false, error: "ラベルが指定されていません", text };
+    }
+    if (!labels.hasOwnProperty(labelName)) {
+        return { ok: false, error: `ラベル「${labelName}」が見つかりません`, text };
+    }
+
+    const lines = text.split("\n");
+    const ranges = findLabelBlockRanges(lines, labelName);
+    if (ranges.length === 0) {
+        return { ok: false, error: "ラベル定義行が見つかりません", text };
+    }
+
+    stripReferencesToLabel(lines, labelName, ranges);
+    for (let r = ranges.length - 1; r >= 0; r--) {
+        lines.splice(ranges[r].start, ranges[r].end - ranges[r].start);
+    }
+
+    return {
+        ok: true,
+        text: lines.join("\n"),
+        deletedLabel: labelName,
+        refsCleared: countLabelReferences(script, labelName).total,
+    };
+}
