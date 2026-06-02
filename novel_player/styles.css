@@ -818,49 +818,6 @@ body.menu-drawer-open {
     cursor: default;
 }
 
-.menu-drawer--novel .label-flow-open-btn {
-    width: 100%;
-    margin-top: 0.75em;
-    font-size: 1.05em;
-    padding: 0.65em 0.85em;
-    background: #444;
-    color: #fff;
-    border: 1px solid #666;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-.preview-vars-panel {
-    margin-top: 0.75em;
-    padding: 0.4em 0.5em;
-    background: rgba(255, 255, 255, 0.04);
-    border-radius: 4px;
-}
-
-.preview-vars-summary {
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: #ccc;
-}
-
-.preview-vars-list {
-    margin: 0.5em 0 0;
-    padding-left: 1.2em;
-    font-size: 0.85rem;
-    color: #aaa;
-    line-height: 1.4;
-}
-
-.preview-vars-empty {
-    list-style: none;
-    margin-left: -1.2em;
-    color: #666;
-}
-
-.menu-drawer--novel .label-flow-open-btn:hover {
-    background: #555;
-}
-
 /* 参照エラー（シナリオメニュー内・折りたたみ） */
 .script-diagnostics {
     margin-top: 0.5em;
@@ -969,35 +926,90 @@ body.menu-drawer-open {
     color: #cef;
 }
 
-/* ラベルの流れ（モーダル内） */
-.label-flow-modal-hint {
-    margin: 0 0 0.75em;
+/* ノードグラフ（全画面） */
+body.node-graph-open {
+    overflow: hidden;
+}
+
+.node-graph-panel {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: #141414;
+    box-sizing: border-box;
+}
+
+.node-graph-panel.is-open {
+    display: flex;
+    flex-direction: column;
+}
+
+.node-graph-panel__inner {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    margin: 0;
+    padding:
+        max(0.5em, env(safe-area-inset-top, 0px))
+        max(1em, env(safe-area-inset-right, 0px))
+        max(0.75em, env(safe-area-inset-bottom, 0px))
+        max(1em, env(safe-area-inset-left, 0px));
+    box-sizing: border-box;
+}
+
+.node-graph-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75em;
+    flex: 0 0 auto;
+    margin-bottom: 0.5em;
+    padding-bottom: 0.5em;
+    border-bottom: 1px solid #333;
+}
+
+.node-graph-panel__title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #eee;
+}
+
+.node-graph-panel__close {
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #ccc;
+    background: #2a2a2a;
+    border: 1px solid #555;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.node-graph-panel__close:hover {
+    background: #383838;
+    color: #fff;
+}
+
+.node-graph-panel__hint {
+    flex: 0 0 auto;
+    margin: 0 0 0.65em;
     font-size: 0.9em;
     color: #aaa;
 }
 
-.modal-content--label-flow {
-    display: flex;
-    flex-direction: column;
-    width: min(720px, 92vw);
-    max-width: none;
-    max-height: min(88vh, 100dvh - 2em);
-    margin: max(2vh, env(safe-area-inset-top, 0px)) auto 2vh;
-    padding: 1.25em 1.5em;
-    box-sizing: border-box;
-}
-
-.modal-content--label-flow h2 {
-    margin: 0 2em 0.35em 0;
-    font-size: 1.25rem;
-}
-
-.label-flow-modal-filter {
+.node-graph-panel__filter {
+    flex: 0 0 auto;
     display: block;
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 0.75em;
-    padding: 0.45em 0.55em;
+    padding: 0.5em 0.6em;
     font-size: 1em;
     background: #2a2a2a;
     color: #eee;
@@ -1005,52 +1017,42 @@ body.menu-drawer-open {
     border-radius: 4px;
 }
 
-.label-flow-modal-filter::placeholder {
+.node-graph-panel__filter::placeholder {
     color: #888;
 }
 
-.label-flow-list--modal {
+.node-graph-list {
     flex: 1 1 auto;
     min-height: 0;
-    max-height: none;
-    margin-top: 0;
-    overflow: visible;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-.label-flow-list--modal .label-flow-item {
-    margin-bottom: 0.65em;
-    padding: 0.5em 0.65em;
-}
-
-.label-flow-list--modal .label-flow-line {
-    font-size: 0.88em;
-}
-
-.label-flow-empty {
+.node-graph-empty {
     margin: 0;
     color: #888;
-    font-size: 0.85em;
+    font-size: 0.9em;
 }
 
-.label-flow-item {
-    margin-bottom: 0.55em;
-    padding: 0.35em 0.45em;
+.node-graph-item {
+    margin-bottom: 0.65em;
+    padding: 0.5em 0.65em;
     background: #2e2e2e;
     border: 1px solid #444;
     border-radius: 4px;
 }
 
-.label-flow-item.is-current {
+.node-graph-item.is-current {
     border-color: #6af;
     background: #2a3540;
 }
 
-.label-flow-name {
+.node-graph-name {
     display: block;
     width: 100%;
     text-align: left;
     padding: 0.15em 0;
-    font-size: 0.88em;
+    font-size: 0.95em;
     font-family: monospace;
     font-weight: 600;
     color: #cef;
@@ -1059,32 +1061,32 @@ body.menu-drawer-open {
     cursor: pointer;
 }
 
-.label-flow-name:hover {
+.node-graph-name:hover {
     color: #fff;
     text-decoration: underline;
 }
 
-.label-flow-body {
-    margin-top: 0.2em;
+.node-graph-body {
+    margin-top: 0.25em;
 }
 
-.label-flow-line {
-    font-size: 0.78em;
-    line-height: 1.4;
+.node-graph-line {
+    font-size: 0.88em;
+    line-height: 1.45;
     color: #bbb;
-    padding: 0.05em 0;
+    padding: 0.08em 0;
     word-break: break-word;
 }
 
-.label-flow-out {
+.node-graph-out {
     color: #bdc;
 }
 
-.label-flow-in {
+.node-graph-in {
     color: #cba;
 }
 
-.label-flow-link {
+.node-graph-link {
     display: inline;
     padding: 0 0.1em;
     margin: 0;
@@ -1098,12 +1100,12 @@ body.menu-drawer-open {
     vertical-align: baseline;
 }
 
-.label-flow-link:hover:not(:disabled) {
+.node-graph-link:hover:not(:disabled) {
     color: #cef;
     border-bottom-color: #cef;
 }
 
-.label-flow-link.is-missing {
+.node-graph-link.is-missing {
     color: #a88;
     border-bottom-color: #866;
     cursor: default;

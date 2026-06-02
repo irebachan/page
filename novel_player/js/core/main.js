@@ -16,9 +16,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const aboutBtn = document.getElementById("aboutButton");
     const aboutCloseBtn = document.querySelector(".about-close");
 
-    const labelFlowModal = document.getElementById("labelFlowModal");
-    const labelFlowOpenBtn = document.getElementById("labelFlowOpenButton");
-    const labelFlowCloseBtn = document.querySelector(".label-flow-close");
+    const nodeGraphButton = document.getElementById("nodeGraphButton");
+    const nodeGraphCloseBtn = document.querySelector(".node-graph-panel__close");
 
     const novelMenuPanel = document.getElementById("novelMenuPanel");
     const novelMenuButton = document.getElementById("novelMenuButton");
@@ -97,8 +96,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
-            if (labelFlowModal && labelFlowModal.style.display === "block") {
-                labelFlowModal.style.display = "none";
+            if (novelPlayer.isNodeGraphOpen()) {
+                novelPlayer.closeNodeGraph();
                 return;
             }
             const importChoiceModal = document.getElementById("importChoiceModal");
@@ -259,14 +258,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const restartBtn = document.getElementById("restart");
     const prevChoiceBtn = document.getElementById("prevChoice");
     const previewFromCursorBtn = document.getElementById("previewFromCursorButton");
-    [restartBtn, prevChoiceBtn, previewFromCursorBtn, labelFlowOpenBtn].forEach((btn) => {
+    [restartBtn, prevChoiceBtn, previewFromCursorBtn].forEach((btn) => {
         if (!btn) return;
         btn.addEventListener("click", () => closeNovelMenu());
     });
 
-    if (labelFlowOpenBtn && labelFlowModal) {
-        labelFlowOpenBtn.addEventListener("click", () => {
-            novelPlayer.openLabelFlowModal();
+    if (nodeGraphButton) {
+        nodeGraphButton.addEventListener("click", (e) => {
+            e.stopPropagation();
+            closeAllMenus();
+            novelPlayer.openNodeGraph();
         });
     }
 
@@ -288,24 +289,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    if (labelFlowCloseBtn && labelFlowModal) {
-        labelFlowCloseBtn.addEventListener("click", () => {
-            labelFlowModal.style.display = "none";
+    if (nodeGraphCloseBtn) {
+        nodeGraphCloseBtn.addEventListener("click", () => {
+            novelPlayer.closeNodeGraph();
         });
     }
-
-    window.addEventListener("click", (event) => {
-        if (helpModal && event.target === helpModal) {
-            helpModal.style.display = "none";
-        }
-        if (exportSettingsModal && event.target === exportSettingsModal) {
-            exportSettingsModal.style.display = "none";
-        }
-        if (aboutModal && event.target === aboutModal) {
-            aboutModal.style.display = "none";
-        }
-        if (labelFlowModal && event.target === labelFlowModal) {
-            labelFlowModal.style.display = "none";
-        }
-    });
 });

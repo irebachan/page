@@ -5,7 +5,6 @@
 ## できること
 
 - **編集とプレビュー**（分割 / 右上□で全画面切替）
-- **変数・条件分岐**（`@var` `@set` `@if` … プレビューで動作。エクスポートはテキストのまま）
 - **作品の自動保存**（このブラウザ内に複数保持、切り替え可能）
 - **エクスポート / インポート**、**コピー / 共有**、**特殊形式出力**（ティラノ / Ren'Py）
 - **PWA**（HTTPS 配信時にホーム画面へ追加・オフラインで UI を表示）
@@ -34,6 +33,25 @@ cd novel_player
 python3 -c "from PIL import Image, ImageDraw, ImageFont; ..."
 # または icons/icon.svg を差し替え
 ```
+
+## フォルダ構成
+
+```
+novel_player/
+  index.html, styles.css, manifest.webmanifest, sw.js, pwa.js  … 入口・PWA
+  editor/          … CodeMirror エディタ（build.mjs で bundle 生成）
+  icons/           … PWA アイコン
+  js/
+    core/          … プレイヤー本体・メニュー初期化
+    lib/           … 共通ユーティリティ（保存・クリップボード等）
+    storage/       … 作品の IndexedDB 保存
+    ui/            … パネル分割・レイアウト
+    script/        … 記法パーサー・参照エラー
+    export/        … ティラノ / Ren'Py 等への出力
+  docs/            … 設計メモ
+```
+
+エディタのビルド: `npm run build:editor`（`editor/scenario_editor.mjs` → `scenario_editor.bundle.js`）
 
 ## 記法
 

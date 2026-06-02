@@ -1,31 +1,31 @@
 /**
  * 静的アセットのオフライン用キャッシュ（作品データは IndexedDB）。
  */
-const CACHE_NAME = "novel-player-shell-v1";
+const CACHE_NAME = "novel-player-shell-v2";
 
 const SHELL_FILES = [
     "./",
     "./index.html",
     "./manifest.webmanifest",
     "./styles.css",
+    "./pwa.js",
     "./icons/icon.svg",
     "./icons/icon-192.png",
     "./icons/icon-512.png",
     "./editor/scenario_editor.bundle.js",
-    "./novel_player_utils.js",
-    "./project_storage.js",
-    "./panel_resizer.js",
-    "./panel_layout.js",
-    "./export_helpers.js",
-    "./export_format_custom.js",
-    "./export_render_tyrano.js",
-    "./export_render_renpy.js",
-    "./script_expr.js",
-    "./script-parser.js",
-    "./script_diagnostics.js",
-    "./export_settings.js",
-    "./novel-player.js",
-    "./main.js",
+    "./js/lib/novel_player_utils.js",
+    "./js/storage/project_storage.js",
+    "./js/ui/panel_resizer.js",
+    "./js/ui/panel_layout.js",
+    "./js/export/export_helpers.js",
+    "./js/export/export_format_custom.js",
+    "./js/export/export_render_tyrano.js",
+    "./js/export/export_render_renpy.js",
+    "./js/script/script-parser.js",
+    "./js/script/script_diagnostics.js",
+    "./js/export/export_settings.js",
+    "./js/core/novel-player.js",
+    "./js/core/main.js",
 ];
 
 function assetUrl(path) {
