@@ -361,3 +361,137 @@ function patchChoiceTarget(text, _script, labels, labelSourceLines, edge, toLabe
 
     return { ok: true, text: lines.join("\n") };
 }
+
+/** パーサーと衝突する @ 命令行にならないか */
+function validateLabelName(name, labels, excludeName) {
+    const n = (name || "").trim();
+    if (!n) {
+        return { ok: false, error: "ラベル名を入力してください" };
+    }
+    if (n.includes("\n") || n.includes("\r")) {
+        return { ok: false, error: "改行は使えません" };
+    }
+    const defLine = `@${n}`;
+    if (defLine.startsWith("@goto")) {
+        return { ok: false, error: "「goto」で始まる名前は使えません（@goto と解釈されます）" };
+    }
+    if (defLine.startsWith("@call")) {
+        return { ok: false, error: "「call」で始まる名前は使えません（@call と解釈されます）" };
+    }
+    if (defLine === "@return" || defLine === "@end") {
+        return { ok: false, error: "予約語のため使えません" };
+    }
+    if (defLine.startsWith("@meta") || defLine === "@endmeta") {
+        return { ok: false, error: "メタ記法と衝突する名前は使えません" };
+    }
+    if (labels.hasOwnProperty(n) && n !== excludeName) {
+        return { ok: false, error: `ラベル「${n}」は既にあります` };
+    }
+    return { ok: true, name: n };
+}
+
+function suggestNewLabelName(labels) {
+    let n = 1;
+    let name;
+    do {
+        name = `label_${n++}`;
+    } while (labels.hasOwnProperty(name));
+    return name;
+}
+
+function replaceLabelDefLine(line, newName) {
+    const indent = line.match(/^\s*/)[0];
+    return `${indent}@${newName}`;
+}
+
+/** 脚本パーサーと同様に @ラベル定義行か（@goto / @call 等は除く） */
+function labelNameFromDefinitionLine(trimmed) {
+    if (!trimmed.startsWith("@")) return null;
+    if (trimmed.startsWith("@goto") || trimmed.startsWith("@call")) return null;
+    if (trimmed === "@return" || trimmed === "@end") return null;
+    if (trimmed.startsWith("@meta") || trimmed === "@endmeta") return null;
+    return trimmed.slice(1);
+}
+
+function parseChoiceLineTarget(line) {
+    const parts = parseChoiceLineParts(line);
+    if (!parts?.hasTarget) return null;
+    const raw = line.trim().slice(1).trim();
+    const arrow = raw.indexOf("=>");
+    if (arrow < 0) return null;
+    const targetRaw = raw.slice(arrow + 2).trim();
+    if (targetRaw.startsWith("@call ")) {
+        return { mode: "call", target: targetRaw.slice(6).trim() };
+    }
+    if (targetRaw.startsWith("call ")) {
+        return { mode: "call", target: targetRaw.slice(5).trim() };
+    }
+    return { mode: "goto", target: targetRaw };
+}
+
+/** ファイル末尾に空のラベルブロックを追加 */
+function patchAddLabel(text, _script, labels, _labelSourceLines, labelName) {
+    const v = validateLabelName(labelName, labels);
+    if (!v.ok) {
+        return { ok: false, error: v.error, text };
+    }
+    const lines = appendLabelStub(text.split("\n"), v.name);
+    return { ok: true, text: lines.join("\n"), labelName: v.name };
+}
+
+/** 定義行と @goto / @call / 選択肢の参照をまとめて改名 */
+function patchRenameLabel(text, _script, labels, labelSourceLines, oldName, newName) {
+    const v = validateLabelName(newName, labels, oldName);
+    if (!v.ok) {
+        return { ok: false, error: v.error, text };
+    }
+    if (!labels.hasOwnProperty(oldName)) {
+        return { ok: false, error: `ラベル「${oldName}」が見つかりません`, text };
+    }
+    newName = v.name;
+    if (oldName === newName) {
+        return { ok: true, text };
+    }
+
+    const lines = text.split("\n");
+    let defCount = 0;
+    for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        if (labelNameFromDefinitionLine(trimmed) === oldName) {
+            lines[i] = replaceLabelDefLine(lines[i], newName);
+            defCount++;
+        }
+    }
+    if (defCount === 0) {
+        return { ok: false, error: "ラベル定義行が見つかりません", text };
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        if (labelNameFromDefinitionLine(trimmed) === newName) {
+            continue;
+        }
+        const gotoTarget = parseJumpLineTarget(trimmed, "goto");
+        if (gotoTarget === oldName) {
+            const indent = lines[i].match(/^\s*/)[0];
+            lines[i] = `${indent}@goto ${newName}`;
+            continue;
+        }
+        const callTarget = parseJumpLineTarget(trimmed, "call");
+        if (callTarget === oldName) {
+            const indent = lines[i].match(/^\s*/)[0];
+            lines[i] = `${indent}@call ${newName}`;
+            continue;
+        }
+        if (!trimmed.startsWith("-")) continue;
+        const choice = parseChoiceLineTarget(lines[i]);
+        if (!choice || choice.target !== oldName) continue;
+        const parts = parseChoiceLineParts(lines[i]);
+        if (!parts) continue;
+        const targetPart =
+            choice.mode === "call" ? `call ${newName}` : newName;
+        lines[i] = `${parts.indent}- ${parts.textPart} => ${targetPart}`;
+    }
+
+    return { ok: true, text: lines.join("\n"), oldName, newName };
+}

@@ -10,6 +10,8 @@ class LabelGraphView {
         this.onConnectChoice = options.onConnectChoice || null;
         this.onAddExit = options.onAddExit || null;
         this.onRemoveEdge = options.onRemoveEdge || null;
+        this.onAddLabel = options.onAddLabel || null;
+        this.onRenameLabel = options.onRenameLabel || null;
         this.onUndo = options.onUndo || null;
         this.canUndo = options.canUndo || null;
         this.data = null;
@@ -45,11 +47,18 @@ class LabelGraphView {
             <button type="button" data-action="zoom-out" title="縮小">－</button>
             <button type="button" data-action="fit" title="全体を表示">全体</button>
             <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
-            <button type="button" data-action="cmd-goto" title="2つのラベルをタップ（@goto は1本だけ・差し替え）">goto</button>
-            <button type="button" data-action="cmd-call" title="2つのラベルをタップ（@call は都度1行追加）">call</button>
-            <button type="button" data-action="cmd-end" title="ラベル1つタップで @end を追加">end</button>
-            <button type="button" data-action="cmd-return" title="ラベル1つタップで @return を追加">return</button>
-            <button type="button" data-action="cmd-off" title="ツール解除">解除</button>
+            <span class="label-graph-toolbar__group" role="group" aria-label="ラベル">
+                <button type="button" data-action="label-add" title="脚本末尾に @ラベル を追加">＋ラベル</button>
+                <button type="button" data-action="cmd-rename" title="ラベル1つタップで名前変更（参照も更新）">改名</button>
+            </span>
+            <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
+            <span class="label-graph-toolbar__group" role="group" aria-label="接続">
+                <button type="button" data-action="cmd-goto" title="2つのラベルをタップ（@goto は1本だけ・差し替え）">goto</button>
+                <button type="button" data-action="cmd-call" title="2つのラベルをタップ（@call は都度1行追加）">call</button>
+                <button type="button" data-action="cmd-end" title="ラベル1つタップで @end を追加">end</button>
+                <button type="button" data-action="cmd-return" title="ラベル1つタップで @return を追加">return</button>
+                <button type="button" data-action="cmd-off" title="ツール解除">解除</button>
+            </span>
             <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
             <button type="button" data-action="undo" title="直前のグラフ操作を戻す" disabled>戻す</button>
         `;
@@ -58,6 +67,7 @@ class LabelGraphView {
             call: this.toolbar.querySelector('[data-action="cmd-call"]'),
             end: this.toolbar.querySelector('[data-action="cmd-end"]'),
             return: this.toolbar.querySelector('[data-action="cmd-return"]'),
+            rename: this.toolbar.querySelector('[data-action="cmd-rename"]'),
         };
         this.cmdOffBtn = this.toolbar.querySelector('[data-action="cmd-off"]');
         this.undoBtn = this.toolbar.querySelector('[data-action="undo"]');
@@ -107,10 +117,12 @@ class LabelGraphView {
             if (action === "zoom-in") this.zoomBy(1.2);
             else if (action === "zoom-out") this.zoomBy(1 / 1.2);
             else if (action === "fit") this.fitToContent(null, { user: true });
+            else if (action === "label-add") this.onAddLabel?.();
             else if (action === "cmd-goto") this.setCommandMode("goto");
             else if (action === "cmd-call") this.setCommandMode("call");
             else if (action === "cmd-end") this.setCommandMode("end");
             else if (action === "cmd-return") this.setCommandMode("return");
+            else if (action === "cmd-rename") this.setCommandMode("rename");
             else if (action === "cmd-off") this.clearCommandMode();
             else if (action === "undo") this.onUndo?.();
             this.updateUndoButton();
@@ -145,6 +157,7 @@ class LabelGraphView {
         }
         if (m === "end") return "選択中: @end → ラベルを1つタップ";
         if (m === "return") return "選択中: @return → ラベルを1つタップ";
+        if (m === "rename") return "選択中: 改名 → ラベルを1つタップ";
         if (m === "goto") {
             if (this._connectFrom) {
                 return `選択中: @goto → 行き先をタップ（起点: ${this._connectFrom}）`;
@@ -174,7 +187,10 @@ class LabelGraphView {
         }
         const twoStep = m === "goto" || m === "call";
         this.viewport.classList.toggle("is-connect-mode", twoStep);
-        this.viewport.classList.toggle("is-exit-mode", m === "end" || m === "return");
+        this.viewport.classList.toggle(
+            "is-exit-mode",
+            m === "end" || m === "return" || m === "rename"
+        );
         this.viewport.classList.toggle("is-tool-mode", !!m);
     }
 
@@ -277,6 +293,12 @@ class LabelGraphView {
         if (this._commandMode === "end" || this._commandMode === "return") {
             if (this.onAddExit) this.onAddExit(name, this._commandMode);
             this.updateUndoButton();
+            this.clearCommandMode();
+            return;
+        }
+
+        if (this._commandMode === "rename") {
+            this.onRenameLabel?.(name);
             this.clearCommandMode();
             return;
         }

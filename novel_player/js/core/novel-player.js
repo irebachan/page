@@ -137,6 +137,27 @@ class NovelPlayer {
             this.labelFilterInput.addEventListener("input", () => this.refreshLabelList());
         }
 
+        this._labelRenameMode = false;
+        const labelAddButton = document.getElementById("labelAddButton");
+        if (labelAddButton) {
+            labelAddButton.addEventListener("click", () => this.promptAddLabel());
+        }
+        this.labelRenameModeButton = document.getElementById("labelRenameModeButton");
+        if (this.labelRenameModeButton) {
+            this.labelRenameModeButton.addEventListener("click", () => {
+                this._labelRenameMode = !this._labelRenameMode;
+                this.labelRenameModeButton.classList.toggle(
+                    "is-active",
+                    this._labelRenameMode
+                );
+                this.labelRenameModeButton.setAttribute(
+                    "aria-pressed",
+                    this._labelRenameMode ? "true" : "false"
+                );
+                this.refreshLabelList();
+            });
+        }
+
         if (this.nodeGraphFilter) {
             this.nodeGraphFilter.addEventListener("input", () => this.refreshNodeGraph());
         }
@@ -149,6 +170,8 @@ class NovelPlayer {
                 onConnectChoice: (edge, to) => this.graphConnectChoice(edge, to),
                 onAddExit: (label, kind) => this.graphAddExit(label, kind),
                 onRemoveEdge: (edge) => this.graphRemoveEdge(edge),
+                onAddLabel: () => this.promptAddLabel(),
+                onRenameLabel: (name) => this.promptRenameLabel(name),
                 onUndo: () => this.graphUndo(),
                 canUndo: () => this.graphUndoStack.length > 0,
             });
@@ -701,9 +724,7 @@ class NovelPlayer {
         if (typeof isOpenChoiceNodeId === "function" && isOpenChoiceNodeId(toLabel)) {
             return false;
         }
-        const ok = this.applyGraphTextPatch(patchLabelCall, fromLabel, toLabel);
-        if (ok) this.refreshNodeGraphIfOpen();
-        return ok;
+        return this.applyGraphTextPatch(patchLabelCall, fromLabel, toLabel);
     }
 
     graphAddExit(labelName, exitKind) {
@@ -725,6 +746,92 @@ class NovelPlayer {
         const ok = this.applyGraphTextPatch(removeGraphEdgeFromText, edge);
         if (ok) this.refreshNodeGraphIfOpen();
         return ok;
+    }
+
+    promptForLabelName(title, defaultValue, excludeName) {
+        let value = defaultValue ?? "";
+        for (;;) {
+            const raw = window.prompt(title, value);
+            if (raw === null) return null;
+            const check =
+                typeof validateLabelName === "function"
+                    ? validateLabelName(raw, this.labels, excludeName)
+                    : { ok: true, name: raw.trim() };
+            if (check.ok) return check.name;
+            window.alert(check.error || "無効なラベル名です");
+            value = raw;
+        }
+    }
+
+    applyLabelTextPatch(patchFn, ...args) {
+        if (typeof patchFn !== "function") return null;
+        const text = this.getScriptText();
+        const result = patchFn(
+            text,
+            this.script,
+            this.labels,
+            this.labelSourceLines,
+            ...args
+        );
+        if (!result?.ok) {
+            if (result?.error) window.alert(result.error);
+            return null;
+        }
+        if (result.text !== text) {
+            this.pushGraphUndo();
+        }
+        this.setScriptText(result.text);
+        this.updateScript({ preservePreviewPosition: true });
+        this.refreshLabelList();
+        this.refreshNodeGraphIfOpen();
+        return result;
+    }
+
+    promptAddLabel() {
+        const suggested =
+            typeof suggestNewLabelName === "function"
+                ? suggestNewLabelName(this.labels)
+                : "label_1";
+        const name = this.promptForLabelName(
+            "新しいラベル名（脚本の末尾に @ラベル を追加）",
+            suggested
+        );
+        if (!name) return;
+        const result = this.applyLabelTextPatch(patchAddLabel, name);
+        if (!result) return;
+        const added = result.labelName || name;
+        if (this.isNodeGraphOpen()) {
+            this.labelGraphView?.setCurrentLabel(added);
+            return;
+        }
+        this.jumpToLabelByName(added);
+    }
+
+    promptRenameLabel(oldName) {
+        if (!oldName || oldName.startsWith("__open__")) return;
+        if (!this.labels.hasOwnProperty(oldName)) {
+            window.alert(`ラベル「${oldName}」が見つかりません`);
+            return;
+        }
+        const name = this.promptForLabelName(
+            `ラベル「${oldName}」の新しい名前（参照もまとめて変更）`,
+            oldName,
+            oldName
+        );
+        if (!name || name === oldName) return;
+        const result = this.applyLabelTextPatch(patchRenameLabel, oldName, name);
+        if (!result) return;
+        const newName = result.newName || name;
+        if (this.lastJumpLabel === oldName) {
+            this.lastJumpLabel = newName;
+        }
+        if (this.isNodeGraphOpen()) {
+            this.labelGraphView?.setCurrentLabel(newName);
+            return;
+        }
+        if (this.script.length && this.getLabelForIndex(this.viewIndex) === oldName) {
+            this.jumpToLabelByName(newName);
+        }
     }
 
     parsePreviewMeta(rawScript) {
@@ -1321,15 +1428,22 @@ class NovelPlayer {
             return;
         }
 
+        const renameMode = this._labelRenameMode;
         names.forEach((name) => {
             const btn = document.createElement("button");
             btn.type = "button";
             btn.className = "label-chip";
             if (name === current) btn.classList.add("is-current");
+            if (renameMode) btn.classList.add("is-rename-mode");
             btn.textContent = name;
-            btn.title = `@${name} へ移動`;
+            btn.title = renameMode
+                ? `「${name}」の名前を変更`
+                : `@${name} へ移動`;
             btn.setAttribute("role", "listitem");
-            btn.addEventListener("click", () => this.jumpToLabelByName(name));
+            btn.addEventListener("click", () => {
+                if (this._labelRenameMode) this.promptRenameLabel(name);
+                else this.jumpToLabelByName(name);
+            });
             this.labelList.appendChild(btn);
         });
 
@@ -1498,6 +1612,16 @@ class NovelPlayer {
             return true;
         }
 
+        if (line.type === "goto" || line.type === "call") {
+            this.nameBox.style.display = "none";
+            this.nameBox.textContent = "";
+            this.textBox.textContent = `@${line.type} ${line.target}`;
+            this.nextBtn.style.display = "block";
+            this.choicesBox.innerHTML = "";
+            this.scrollTextContainerToTop();
+            return true;
+        }
+
         return false;
     }
 
@@ -1521,6 +1645,9 @@ class NovelPlayer {
         } else if (line.type === "end") {
             this.index = viewIndex + 1;
             this.lineUnitIndex = 0;
+        } else if (line.type === "goto" || line.type === "call") {
+            this.index = viewIndex;
+            this.lineUnitIndex = 0;
         }
         this.viewIndex = viewIndex;
         this.viewLineUnit = viewLineUnit;
@@ -1542,10 +1669,33 @@ class NovelPlayer {
 
         let idx = this.clampScriptIndex(this.viewIndex);
         let lu = this.viewLineUnit || 0;
+        const gotoGuard = new Set();
+        let steps = 0;
+        const maxSteps = this.script.length + 8;
 
-        while (idx < this.script.length) {
+        while (idx < this.script.length && steps++ < maxSteps) {
             const line = this.script[idx];
-            if (line.type === "goto" || line.type === "call") {
+            if (line.type === "call") {
+                if (this.paintAt(idx, 0)) {
+                    this.syncPlaybackIndexAfterView(idx, 0);
+                    this.refreshLabelUI();
+                    return;
+                }
+                idx++;
+                continue;
+            }
+            if (line.type === "goto") {
+                const guardKey = `${idx}\0${line.target}`;
+                if (gotoGuard.has(guardKey)) {
+                    if (this.paintAt(idx, 0)) {
+                        this.syncPlaybackIndexAfterView(idx, 0);
+                        this.refreshLabelUI();
+                        return;
+                    }
+                    idx++;
+                    continue;
+                }
+                gotoGuard.add(guardKey);
                 if (this.labels.hasOwnProperty(line.target)) {
                     idx = this.labels[line.target];
                     lu = 0;
@@ -1693,12 +1843,14 @@ class NovelPlayer {
         }
     }
 
-    jumpToLabelByName(labelName) {
+    jumpToLabelByName(labelName, options = {}) {
         if (!labelName || !this.labels.hasOwnProperty(labelName)) {
             alert(`ラベル "${labelName}" が見つかりません`);
             return;
         }
-        this.closeNodeGraph();
+        if (!options.keepNodeGraphOpen) {
+            this.closeNodeGraph();
+        }
         this.pushPreviewHistory({
             viewIndex: this.viewIndex,
             viewLineUnit: this.viewLineUnit,

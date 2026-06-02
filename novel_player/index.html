@@ -132,7 +132,14 @@
                 <button type="button" id="restart">🔄 最初に戻る</button>
                 <button type="button" id="prevChoice" disabled title="履歴上の直近の選択肢画面へ">↩ 直前の選択肢へ</button>
                 <div class="label-quick" id="labelQuick" aria-label="ラベルへ移動">
-                    <span class="label-quick-title">ラベル</span>
+                    <div class="label-quick-head">
+                        <span class="label-quick-title">ラベル</span>
+                        <span class="label-quick-actions">
+                            <button type="button" id="labelAddButton" class="label-manage-btn">＋ 追加</button>
+                            <button type="button" id="labelRenameModeButton" class="label-manage-btn"
+                                aria-pressed="false" title="オンにしてからラベルをタップで改名">改名</button>
+                        </span>
+                    </div>
                     <input type="search" id="labelFilter" class="label-filter" placeholder="ラベル名で絞り込み"
                         autocomplete="off" spellcheck="false" aria-label="ラベル名で絞り込み">
                     <div id="labelList" class="label-list" role="list"></div>
@@ -205,7 +212,7 @@
                 <h2 id="nodeGraphTitle" class="node-graph-panel__title">ノードグラフ</h2>
                 <button type="button" class="node-graph-panel__close" aria-label="閉じる">&times;</button>
             </header>
-            <p class="node-graph-panel__hint">ツール選択→ラベルをタップ。線タップはいつでも切断（@call は行を増やす）</p>
+            <p class="node-graph-panel__hint">ツール選択→ラベルをタップ。線タップは切断。＋ラベルは末尾に追加</p>
             <input type="search" id="nodeGraphFilter" class="node-graph-panel__filter" placeholder="ラベル名で絞り込み"
                 autocomplete="off" spellcheck="false" aria-label="ラベル名で絞り込み">
             <div id="nodeGraphHost" class="node-graph-host" aria-live="polite"></div>

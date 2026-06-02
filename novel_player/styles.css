@@ -773,11 +773,46 @@ body.menu-drawer-open {
     max-height: min(48vh, 20em);
 }
 
+.label-quick-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5em;
+    margin-bottom: 0.35em;
+}
+
 .label-quick-title {
-    display: block;
     font-size: 0.85em;
     color: #aaa;
-    margin-bottom: 0.35em;
+}
+
+.label-manage-btn {
+    flex: 0 0 auto;
+    padding: 0.2em 0.55em;
+    font-size: 0.8em;
+    background: #3a3a3a;
+    color: #ddd;
+    border: 1px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.label-manage-btn:hover {
+    background: #4a4a4a;
+    color: #fff;
+}
+
+.label-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em;
+    justify-content: flex-end;
+}
+
+.label-manage-btn.is-active {
+    background: #2a4a6a;
+    border-color: #6af;
+    color: #cef;
 }
 
 .label-filter {
@@ -924,6 +959,17 @@ body.menu-drawer-open {
     background: #2a4a6a;
     border-color: #6af;
     color: #cef;
+}
+
+.label-chip.is-rename-mode {
+    border-style: dashed;
+    border-color: #8ac;
+}
+
+.label-list:has(.label-chip.is-rename-mode) {
+    outline: 1px dashed #456;
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 /* ノードグラフ（全画面） */
@@ -1097,6 +1143,17 @@ body.node-graph-open {
     align-self: stretch;
     margin: 0 0.25em;
     background: #444;
+}
+
+.label-graph-toolbar__group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25em;
+    padding: 0.15em;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #252525;
 }
 
 .label-graph-viewport.is-connect-mode {
