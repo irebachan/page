@@ -17,6 +17,26 @@
 4. 別端末やバックアップ用に渡すときは **コピー / 共有** またはエクスポートした `.txt`
 5. 外から取り込むときは **インポート** または **貼り付け**（新規作品 / 現在の作品に上書きを選択）
 
+## ノードグラフの編集
+
+- **@goto**: ノードを別ノードへドラッグ、または「接続」で2回クリック
+- **選択肢**: `- 文 =>` の時点で線が出る（未接続は「未接続」へ点線）。線をノードへドラッグで接続
+- **@call**: 黄褐色の破線（グラフから新規作成はしない）
+- **削除**: 矢印をクリック（ドラッグしなければ削除）
+- **戻す**: ツールバー「戻す」または Ctrl+Z（グラフ操作のみ）
+- ノード下に本文プレビュー（約40字）。ベタ指定は原稿で
+
+## ノードグラフ（dagre）
+
+縦方向レイアウト用に [dagre](https://github.com/dagrejs/dagre) を `js/lib/` に置きます（初回または clone 直後）:
+
+```bash
+cd novel_player
+mkdir -p js/lib
+curl -fsSL -o js/lib/graphlib.min.js "https://cdn.jsdelivr.net/npm/graphlib@2.1.8/dist/graphlib.min.js"
+curl -fsSL -o js/lib/dagre.min.js "https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"
+```
+
 ## PWA（ホーム画面に追加）
 
 **HTTPS**（GitHub Pages など）で開いているときだけ有効です。`file://` 直開きでは登録されません。

@@ -1,7 +1,7 @@
 /**
  * 静的アセットのオフライン用キャッシュ（作品データは IndexedDB）。
  */
-const CACHE_NAME = "novel-player-shell-v2";
+const CACHE_NAME = "novel-player-shell-v21";
 
 const SHELL_FILES = [
     "./",
@@ -22,7 +22,11 @@ const SHELL_FILES = [
     "./js/export/export_render_tyrano.js",
     "./js/export/export_render_renpy.js",
     "./js/script/script-parser.js",
+    "./js/lib/graphlib.min.js",
+    "./js/lib/dagre.min.js",
     "./js/script/script_diagnostics.js",
+    "./js/script/script_graph_patch.js",
+    "./js/ui/label_graph_view.js",
     "./js/export/export_settings.js",
     "./js/core/novel-player.js",
     "./js/core/main.js",

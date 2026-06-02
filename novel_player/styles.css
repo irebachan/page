@@ -1021,95 +1021,258 @@ body.node-graph-open {
     color: #888;
 }
 
-.node-graph-list {
+.node-graph-host {
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    position: relative;
 }
 
-.node-graph-empty {
-    margin: 0;
-    color: #888;
-    font-size: 0.9em;
+.label-graph-view {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
-.node-graph-item {
-    margin-bottom: 0.65em;
-    padding: 0.5em 0.65em;
+.label-graph-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.35em;
+    margin-bottom: 0.5em;
+}
+
+.label-graph-toolbar button {
+    min-width: 2.25rem;
+    padding: 0.35em 0.65em;
+    font-size: 1rem;
+    line-height: 1.2;
+    color: #ddd;
     background: #2e2e2e;
-    border: 1px solid #444;
+    border: 1px solid #555;
     border-radius: 4px;
+    cursor: pointer;
 }
 
-.node-graph-item.is-current {
+.label-graph-toolbar button:hover {
+    background: #3a3a3a;
+    color: #fff;
+}
+
+.label-graph-toolbar button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.label-graph-toolbar button.is-active {
+    background: #2a4a6a;
     border-color: #6af;
-    background: #2a3540;
+    color: #cef;
 }
 
-.node-graph-name {
+.label-graph-toolbar__sep {
+    width: 1px;
+    align-self: stretch;
+    margin: 0 0.25em;
+    background: #444;
+}
+
+.label-graph-viewport.is-connect-mode {
+    cursor: crosshair;
+}
+
+.label-graph-viewport {
+    flex: 1 1 auto;
+    min-height: 12rem;
+    overflow: hidden;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    cursor: grab;
+    touch-action: none;
+    outline: none;
+}
+
+.label-graph-viewport:active {
+    cursor: grabbing;
+}
+
+.label-graph-svg {
     display: block;
     width: 100%;
-    text-align: left;
-    padding: 0.15em 0;
-    font-size: 0.95em;
-    font-family: monospace;
-    font-weight: 600;
-    color: #cef;
-    background: transparent;
-    border: none;
-    cursor: pointer;
+    height: 100%;
 }
 
-.node-graph-name:hover {
-    color: #fff;
-    text-decoration: underline;
+.label-graph-arrowhead {
+    fill: #6a8aaa;
+    stroke: none;
 }
 
-.node-graph-body {
-    margin-top: 0.25em;
+.label-graph-arrowhead-call {
+    fill: #b0a070;
+    stroke: none;
 }
 
-.node-graph-line {
-    font-size: 0.88em;
-    line-height: 1.45;
-    color: #bbb;
-    padding: 0.08em 0;
-    word-break: break-word;
+.label-graph-arrowhead-fallthrough {
+    fill: #888;
+    stroke: none;
 }
 
-.node-graph-out {
-    color: #bdc;
+.label-graph-edge-hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 16;
+    pointer-events: stroke;
 }
 
-.node-graph-in {
-    color: #cba;
+.label-graph-edge-hit--stub {
+    stroke-width: 20;
 }
 
-.node-graph-link {
-    display: inline;
-    padding: 0 0.1em;
-    margin: 0;
-    font: inherit;
-    font-family: monospace;
-    color: #8df;
-    background: transparent;
-    border: none;
-    border-bottom: 1px dashed #6af;
-    cursor: pointer;
-    vertical-align: baseline;
+.label-graph-edge {
+    fill: none;
+    stroke: #6a8aaa;
+    stroke-width: 1.5;
+    pointer-events: none;
 }
 
-.node-graph-link:hover:not(:disabled) {
-    color: #cef;
-    border-bottom-color: #cef;
+.label-graph-edge[data-kind="choice"] {
+    stroke: #7ab89a;
 }
 
-.node-graph-link.is-missing {
-    color: #a88;
-    border-bottom-color: #866;
-    cursor: default;
+.label-graph-edge.is-stub {
+    stroke-dasharray: 5 4;
     opacity: 0.85;
+}
+
+.label-graph-edge[data-kind="call"] {
+    stroke: #b0a070;
+    stroke-dasharray: 6 4;
+}
+
+.label-graph-edge[data-kind="fallthrough"] {
+    stroke: #888;
+    stroke-dasharray: 4 5;
+    opacity: 0.9;
+}
+
+.label-graph-node__name {
+    fill: #e8f0ff;
+    font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
+    font-size: 13px;
+    font-weight: 600;
+    pointer-events: none;
+    user-select: none;
+}
+
+.label-graph-node__preview {
+    fill: #9ab;
+    font-size: 10px;
+    font-family: system-ui, -apple-system, "Hiragino Sans", "Segoe UI", sans-serif;
+    font-weight: normal;
+    pointer-events: none;
+    user-select: none;
+}
+
+.label-graph-edge.is-dimmed {
+    opacity: 0.12;
+}
+
+.label-graph-drag-line {
+    stroke: #8cf;
+    stroke-width: 2;
+    stroke-dasharray: 6 4;
+    pointer-events: none;
+}
+
+.label-graph-node.is-link-source rect {
+    stroke: #8cf;
+    stroke-width: 2;
+}
+
+.label-graph-edge-label {
+    pointer-events: none;
+}
+
+.label-graph-edge-label text {
+    font-size: 11px;
+    font-family: system-ui, -apple-system, "Hiragino Sans", "Segoe UI", sans-serif;
+    font-weight: normal;
+    pointer-events: none;
+    user-select: none;
+}
+
+.label-graph-edge-label[data-kind="choice"] rect {
+    fill: #1e2a24;
+    stroke: #7ab89a;
+    stroke-width: 1;
+}
+
+.label-graph-edge-label[data-kind="choice"] text {
+    fill: #b8e0c8;
+}
+
+.label-graph-edge-label[data-kind="goto"] rect {
+    fill: #1e2834;
+    stroke: #6a8aaa;
+    stroke-width: 1;
+}
+
+.label-graph-edge-label[data-kind="goto"] text {
+    fill: #c8daf0;
+}
+
+.label-graph-edge-label[data-kind="call"] rect {
+    fill: #2a2820;
+    stroke: #b0a070;
+    stroke-width: 1;
+}
+
+.label-graph-edge-label[data-kind="call"] text {
+    fill: #e8dcb8;
+}
+
+.label-graph-edge-label.is-dimmed {
+    opacity: 0.12;
+}
+
+.label-graph-node rect {
+    fill: #2e3a48;
+    stroke: #557;
+    stroke-width: 1.5;
+}
+
+.label-graph-node.is-current rect {
+    fill: #2a4a6a;
+    stroke: #6af;
+    stroke-width: 2;
+}
+
+.label-graph-node.is-ghost rect {
+    fill: #3a2e2e;
+    stroke: #866;
+    stroke-dasharray: 4 3;
+}
+
+.label-graph-node.is-ghost .label-graph-node__name {
+    fill: #caa;
+}
+
+.label-graph-node.is-dimmed {
+    opacity: 0.15;
+}
+
+.label-graph-empty,
+.label-graph-missing-lib {
+    margin: 0.5em 0 0;
+    color: #888;
+    font-size: 0.9em;
+    line-height: 1.45;
+}
+
+.label-graph-missing-lib {
+    color: #c96;
 }
 
 /* 右側: シナリオテキストボックス (編集可) */

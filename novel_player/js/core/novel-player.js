@@ -26,8 +26,12 @@ class NovelPlayer {
         this.refErrorBadge = document.getElementById("refErrorBadge");
         this.refErrorList = document.getElementById("refErrorList");
         this.nodeGraphPanel = document.getElementById("nodeGraphPanel");
-        this.nodeGraphList = document.getElementById("nodeGraphList");
+        this.nodeGraphHost = document.getElementById("nodeGraphHost");
         this.nodeGraphFilter = document.getElementById("nodeGraphFilter");
+        this.labelGraphView = null;
+        this._nodeGraphNeedsFit = false;
+        this.graphUndoStack = [];
+        this.GRAPH_UNDO_MAX = 50;
         this.nodeGraphButton = document.getElementById("nodeGraphButton");
         this.novelMenuPanel = document.getElementById("novelMenuPanel");
         this.previewStatusBar = document.getElementById("previewStatusBar");
@@ -136,6 +140,17 @@ class NovelPlayer {
 
         if (this.nodeGraphFilter) {
             this.nodeGraphFilter.addEventListener("input", () => this.refreshNodeGraph());
+        }
+
+        if (this.nodeGraphHost && typeof LabelGraphView === "function") {
+            this.labelGraphView = new LabelGraphView(this.nodeGraphHost, {
+                onNodeClick: (name) => this.jumpToLabelByName(name),
+                onConnect: (from, to) => this.graphConnectLabels(from, to),
+                onConnectChoice: (edge, to) => this.graphConnectChoice(edge, to),
+                onRemoveEdge: (edge) => this.graphRemoveEdge(edge),
+                onUndo: () => this.graphUndo(),
+                canUndo: () => this.graphUndoStack.length > 0,
+            });
         }
 
         if (this.scriptDiagnostics) {
@@ -627,7 +642,67 @@ class NovelPlayer {
         this.viewLineUnit = resolved.viewLineUnit;
         this.renderCurrentView();
         this.refreshReferenceErrors();
+        this.refreshNodeGraphIfOpen();
         this.updateEditorStatusBar();
+    }
+
+    pushGraphUndo() {
+        const text = this.getScriptText();
+        const top = this.graphUndoStack[this.graphUndoStack.length - 1];
+        if (top === text) return;
+        this.graphUndoStack.push(text);
+        if (this.graphUndoStack.length > this.GRAPH_UNDO_MAX) {
+            this.graphUndoStack.shift();
+        }
+    }
+
+    graphUndo() {
+        if (!this.graphUndoStack.length) return false;
+        const prev = this.graphUndoStack.pop();
+        this.setScriptText(prev);
+        this.updateScript({ preservePreviewPosition: true });
+        this.refreshNodeGraph();
+        return true;
+    }
+
+    applyGraphTextPatch(patchFn, ...args) {
+        if (typeof patchFn !== "function") return false;
+        const text = this.getScriptText();
+        const result = patchFn(
+            text,
+            this.script,
+            this.labels,
+            this.labelSourceLines,
+            ...args
+        );
+        if (!result?.ok) {
+            if (result?.error) console.warn(result.error);
+            return false;
+        }
+        if (result.text !== text) {
+            this.pushGraphUndo();
+        }
+        this.setScriptText(result.text);
+        this.updateScript({ preservePreviewPosition: true });
+        return true;
+    }
+
+    graphConnectLabels(fromLabel, toLabel) {
+        if (typeof isOpenChoiceNodeId === "function" && isOpenChoiceNodeId(toLabel)) {
+            return false;
+        }
+        return this.applyGraphTextPatch(patchLabelGoto, fromLabel, toLabel);
+    }
+
+    graphConnectChoice(edge, toLabel) {
+        if (typeof isOpenChoiceNodeId === "function" && isOpenChoiceNodeId(toLabel)) {
+            return false;
+        }
+        return this.applyGraphTextPatch(patchChoiceTarget, edge, toLabel);
+    }
+
+    graphRemoveEdge(edge) {
+        return this.applyGraphTextPatch(removeGraphEdgeFromText, edge);
     }
 
     parsePreviewMeta(rawScript) {
@@ -732,7 +807,7 @@ class NovelPlayer {
 
     refreshLabelUI() {
         this.refreshLabelList();
-        this.refreshNodeGraphIfOpen();
+        this.updateNodeGraphHighlight();
         this.updatePreviewStatusBar();
         this.updateEditorStatusBar();
     }
@@ -823,13 +898,21 @@ class NovelPlayer {
         if (this.nodeGraphFilter && this.labelFilterInput) {
             this.nodeGraphFilter.value = this.labelFilterInput.value;
         }
-        this.refreshNodeGraph();
+        this._nodeGraphNeedsFit = true;
         this.nodeGraphPanel.classList.add("is-open");
         this.nodeGraphPanel.setAttribute("aria-hidden", "false");
         document.body.classList.add("node-graph-open");
         if (this.nodeGraphButton) {
             this.nodeGraphButton.setAttribute("aria-expanded", "true");
         }
+        this.refreshNodeGraph();
+        requestAnimationFrame(() => {
+            if (!this.isNodeGraphOpen() || !this.labelGraphView) return;
+            const current = this.script.length
+                ? this.getLabelForIndex(this.viewIndex)
+                : null;
+            this.labelGraphView.fitToContent(current);
+        });
         if (this.nodeGraphFilter) {
             this.nodeGraphFilter.focus();
         }
@@ -1234,118 +1317,32 @@ class NovelPlayer {
         }
     }
 
+    updateNodeGraphHighlight() {
+        if (!this.isNodeGraphOpen() || !this.labelGraphView) return;
+        const current = this.script.length
+            ? this.getLabelForIndex(this.viewIndex)
+            : null;
+        this.labelGraphView.setCurrentLabel(current);
+    }
+
     refreshNodeGraph() {
-        const container = this.nodeGraphList;
-        if (!container || typeof buildLabelFlow !== "function") return;
-
-        const filter = this.getNodeGraphFilterText();
-        let flows = buildLabelFlow(this.script, this.labels);
-        if (filter) {
-            flows = flows.filter((f) => f.name.toLowerCase().includes(filter));
-        }
-
-        container.innerHTML = "";
-        if (Object.keys(this.labels).length === 0) {
-            const empty = document.createElement("p");
-            empty.className = "node-graph-empty";
-            empty.textContent = "（ラベルなし）";
-            container.appendChild(empty);
-            return;
-        }
-        if (flows.length === 0) {
-            const empty = document.createElement("p");
-            empty.className = "node-graph-empty";
-            empty.textContent = "（該当なし）";
-            container.appendChild(empty);
-            return;
-        }
+        if (!this.labelGraphView || typeof buildLabelGraphData !== "function") return;
 
         const current = this.script.length
             ? this.getLabelForIndex(this.viewIndex)
             : null;
+        const data = buildLabelGraphData(
+            this.script,
+            this.labels,
+            this.labelSourceLines
+        );
 
-        flows.forEach((flow) => {
-            const block = document.createElement("div");
-            block.className = "node-graph-item";
-            if (flow.name === current) block.classList.add("is-current");
-
-            const head = document.createElement("button");
-            head.type = "button";
-            head.className = "node-graph-name";
-            head.textContent = `@${flow.name}`;
-            head.title = "このラベルへプレビュー";
-            head.addEventListener("click", () => this.jumpToLabelByName(flow.name));
-            block.appendChild(head);
-
-            const body = document.createElement("div");
-            body.className = "node-graph-body";
-
-            if (flow.incoming.length === 0) {
-                const line = document.createElement("div");
-                line.className = "node-graph-line node-graph-in";
-                line.textContent = "← なし（入口の可能性）";
-                body.appendChild(line);
-            } else {
-                flow.incoming.forEach((ref) => {
-                    this.appendNodeGraphLine(body, "← ", ref, "in");
-                });
-            }
-
-            if (flow.outgoing.length === 0) {
-                const line = document.createElement("div");
-                line.className = "node-graph-line node-graph-out";
-                line.textContent = "→ （分岐・ジャンプなし）";
-                body.appendChild(line);
-            } else {
-                flow.outgoing.forEach((ref) => {
-                    this.appendNodeGraphLine(body, "→ ", ref, "out");
-                });
-            }
-
-            block.appendChild(body);
-            container.appendChild(block);
+        this.labelGraphView.render(data, {
+            filter: this.getNodeGraphFilterText(),
+            currentLabel: current,
+            fit: this._nodeGraphNeedsFit,
         });
-    }
-
-    appendNodeGraphLine(parent, prefix, ref, direction) {
-        const line = document.createElement("div");
-        line.className =
-            "node-graph-line node-graph-" + (direction === "out" ? "out" : "in");
-
-        if (prefix) {
-            line.appendChild(document.createTextNode(prefix));
-        }
-
-        const parts =
-            typeof getLabelFlowRefParts === "function"
-                ? getLabelFlowRefParts(ref, direction)
-                : [{ type: "text", value: formatLabelFlowRef(ref, direction) }];
-
-        for (const part of parts) {
-            if (part.type === "label") {
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "node-graph-link";
-                btn.textContent = part.value;
-                const exists = this.labels.hasOwnProperty(part.value);
-                btn.title = exists
-                    ? `@${part.value} へ移動`
-                    : `未定義ラベル「${part.value}」`;
-                if (!exists) btn.classList.add("is-missing");
-                if (exists) {
-                    btn.addEventListener("click", () =>
-                        this.jumpToLabelByName(part.value)
-                    );
-                } else {
-                    btn.disabled = true;
-                }
-                line.appendChild(btn);
-            } else {
-                line.appendChild(document.createTextNode(part.value));
-            }
-        }
-
-        parent.appendChild(line);
+        this._nodeGraphNeedsFit = false;
     }
 
     isPreviewLineUnit() {

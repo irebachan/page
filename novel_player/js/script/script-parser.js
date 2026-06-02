@@ -107,7 +107,13 @@ class ScriptParser {
                 // 次の空行または#または@までの全テキストを収集
                 while (i < lines.length) {
                     line = lines[i].trim();
-                    if (line === "" || line.startsWith("#") || line.startsWith("@") || line.startsWith("//")) {
+                    if (
+                        line === "" ||
+                        line.startsWith("#") ||
+                        line.startsWith("@") ||
+                        line.startsWith("//") ||
+                        line.startsWith("-")
+                    ) {
                         break;
                     }
                     textLines.push(line);
@@ -128,7 +134,13 @@ class ScriptParser {
                 // 次の空行または#または@までの全テキストを収集
                 while (i < lines.length) {
                     line = lines[i].trim();
-                    if (line === "" || line.startsWith("#") || line.startsWith("@") || line.startsWith("//")) {
+                    if (
+                        line === "" ||
+                        line.startsWith("#") ||
+                        line.startsWith("@") ||
+                        line.startsWith("//") ||
+                        line.startsWith("-")
+                    ) {
                         break;
                     }
                     textLines.push(line);

@@ -205,10 +205,10 @@
                 <h2 id="nodeGraphTitle" class="node-graph-panel__title">ノードグラフ</h2>
                 <button type="button" class="node-graph-panel__close" aria-label="閉じる">&times;</button>
             </header>
-            <p class="node-graph-panel__hint">ラベル名をクリックするとプレビューへ移動します</p>
+            <p class="node-graph-panel__hint">灰点線＝脚本の定義順で隣るラベル同士（末尾に @goto 等がないとき）</p>
             <input type="search" id="nodeGraphFilter" class="node-graph-panel__filter" placeholder="ラベル名で絞り込み"
                 autocomplete="off" spellcheck="false" aria-label="ラベル名で絞り込み">
-            <div id="nodeGraphList" class="node-graph-list" aria-live="polite"></div>
+            <div id="nodeGraphHost" class="node-graph-host" aria-live="polite"></div>
         </div>
     </div>
 
@@ -482,7 +482,11 @@ preview.overflow=wrap
     <script src="js/export/export_render_tyrano.js"></script>
     <script src="js/export/export_render_renpy.js"></script>
     <script src="js/script/script-parser.js"></script>
+    <script src="js/lib/graphlib.min.js"></script>
+    <script src="js/lib/dagre.min.js"></script>
     <script src="js/script/script_diagnostics.js"></script>
+    <script src="js/script/script_graph_patch.js"></script>
+    <script src="js/ui/label_graph_view.js"></script>
     <script src="js/export/export_settings.js"></script>
     <script src="js/core/novel-player.js"></script>
     <script src="js/core/main.js"></script>
