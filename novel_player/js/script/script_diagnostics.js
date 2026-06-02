@@ -353,7 +353,42 @@ function buildLabelGraphData(script, labels, labelSourceLines) {
         return a.name.localeCompare(b.name, "ja");
     });
 
+    const { padBottom, minWidth } = computeNodeLayoutExtras(edges);
+    for (const n of nodes) {
+        n.layoutPadBottom = padBottom.get(n.name) || 0;
+        n.layoutMinWidth = minWidth.get(n.name) || 0;
+    }
+
     return { nodes, edges };
+}
+
+/** 下端スタブ用の余白・幅（dagre レイアウトにだけ使う） */
+function computeNodeLayoutExtras(edges) {
+    const padBottom = new Map();
+    const minWidth = new Map();
+    const bumpPad = (from, v) => {
+        padBottom.set(from, Math.max(padBottom.get(from) || 0, v));
+    };
+    const bumpW = (from, v) => {
+        minWidth.set(from, Math.max(minWidth.get(from) || 0, v));
+    };
+
+    for (const e of edges) {
+        if (!e.from) continue;
+        if (e.kind === "exit") {
+            const i = e.exitIndex ?? 0;
+            const n = e.exitGroupSize || 1;
+            bumpPad(e.from, 34 + i * 8 + 20);
+            if (n > 1) bumpW(e.from, Math.max(100, (n - 1) * 50 + 56));
+        }
+        if (e.kind === "choice" && e.disconnected) {
+            const i = e.choiceIndex ?? 0;
+            const n = e.choiceGroupSize || 1;
+            bumpPad(e.from, 54 + i * 18 + 26);
+            if (n > 1) bumpW(e.from, Math.max(100, (n - 1) * 64 + 56));
+        }
+    }
+    return { padBottom, minWidth };
 }
 
 function formatLabelFlowRef(ref, direction) {

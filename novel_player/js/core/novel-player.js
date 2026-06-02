@@ -29,7 +29,6 @@ class NovelPlayer {
         this.nodeGraphHost = document.getElementById("nodeGraphHost");
         this.nodeGraphFilter = document.getElementById("nodeGraphFilter");
         this.labelGraphView = null;
-        this._nodeGraphNeedsFit = false;
         this.graphUndoStack = [];
         this.GRAPH_UNDO_MAX = 50;
         this.nodeGraphButton = document.getElementById("nodeGraphButton");
@@ -146,8 +145,9 @@ class NovelPlayer {
             this.labelGraphView = new LabelGraphView(this.nodeGraphHost, {
                 onNodeClick: (name) => this.jumpToLabelByName(name),
                 onConnect: (from, to) => this.graphConnectLabels(from, to),
+                onConnectCall: (from, to) => this.graphConnectCall(from, to),
                 onConnectChoice: (edge, to) => this.graphConnectChoice(edge, to),
-                onReconnectEdge: (edge, to) => this.graphReconnectEdge(edge, to),
+                onAddExit: (label, kind) => this.graphAddExit(label, kind),
                 onRemoveEdge: (edge) => this.graphRemoveEdge(edge),
                 onUndo: () => this.graphUndo(),
                 canUndo: () => this.graphUndoStack.length > 0,
@@ -692,24 +692,39 @@ class NovelPlayer {
         if (typeof isOpenChoiceNodeId === "function" && isOpenChoiceNodeId(toLabel)) {
             return false;
         }
-        return this.applyGraphTextPatch(patchLabelGoto, fromLabel, toLabel);
+        const ok = this.applyGraphTextPatch(patchLabelGoto, fromLabel, toLabel);
+        if (ok) this.refreshNodeGraphIfOpen();
+        return ok;
+    }
+
+    graphConnectCall(fromLabel, toLabel) {
+        if (typeof isOpenChoiceNodeId === "function" && isOpenChoiceNodeId(toLabel)) {
+            return false;
+        }
+        const ok = this.applyGraphTextPatch(patchLabelCall, fromLabel, toLabel);
+        if (ok) this.refreshNodeGraphIfOpen();
+        return ok;
+    }
+
+    graphAddExit(labelName, exitKind) {
+        const ok = this.applyGraphTextPatch(patchLabelExit, labelName, exitKind);
+        if (ok) this.refreshNodeGraphIfOpen();
+        return ok;
     }
 
     graphConnectChoice(edge, toLabel) {
         if (typeof isOpenChoiceNodeId === "function" && isOpenChoiceNodeId(toLabel)) {
             return false;
         }
-        return this.applyGraphTextPatch(patchChoiceTarget, edge, toLabel);
+        const ok = this.applyGraphTextPatch(patchChoiceTarget, edge, toLabel);
+        if (ok) this.refreshNodeGraphIfOpen();
+        return ok;
     }
 
     graphRemoveEdge(edge) {
         const ok = this.applyGraphTextPatch(removeGraphEdgeFromText, edge);
         if (ok) this.refreshNodeGraphIfOpen();
         return ok;
-    }
-
-    graphReconnectEdge(edge, toLabel) {
-        return this.applyGraphTextPatch(patchJumpEdgeTarget, edge, toLabel);
     }
 
     parsePreviewMeta(rawScript) {
@@ -905,7 +920,6 @@ class NovelPlayer {
         if (this.nodeGraphFilter && this.labelFilterInput) {
             this.nodeGraphFilter.value = this.labelFilterInput.value;
         }
-        this._nodeGraphNeedsFit = true;
         this.nodeGraphPanel.classList.add("is-open");
         this.nodeGraphPanel.setAttribute("aria-hidden", "false");
         document.body.classList.add("node-graph-open");
@@ -915,6 +929,7 @@ class NovelPlayer {
         this.refreshNodeGraph();
         requestAnimationFrame(() => {
             if (!this.isNodeGraphOpen() || !this.labelGraphView) return;
+            if (this.labelGraphView.isViewCustomized()) return;
             const current = this.script.length
                 ? this.getLabelForIndex(this.viewIndex)
                 : null;
@@ -1347,9 +1362,8 @@ class NovelPlayer {
         this.labelGraphView.render(data, {
             filter: this.getNodeGraphFilterText(),
             currentLabel: current,
-            fit: this._nodeGraphNeedsFit,
+            fitIfNeeded: true,
         });
-        this._nodeGraphNeedsFit = false;
     }
 
     isPreviewLineUnit() {

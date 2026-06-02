@@ -6,8 +6,9 @@ class LabelGraphView {
         this.container = container;
         this.onNodeClick = options.onNodeClick || null;
         this.onConnect = options.onConnect || null;
+        this.onConnectCall = options.onConnectCall || null;
         this.onConnectChoice = options.onConnectChoice || null;
-        this.onReconnectEdge = options.onReconnectEdge || null;
+        this.onAddExit = options.onAddExit || null;
         this.onRemoveEdge = options.onRemoveEdge || null;
         this.onUndo = options.onUndo || null;
         this.canUndo = options.canUndo || null;
@@ -15,10 +16,13 @@ class LabelGraphView {
         this.state = { filter: "", currentLabel: null };
         this.layout = null;
         this.transform = { x: 0, y: 0, k: 1 };
+        /** パン・ズーム・「全体」でユーザーが見え方を決めたら true（再オープン時も維持） */
+        this._viewCustomized = false;
         this._panning = false;
         this._panStart = null;
         this._needsFit = false;
-        this._connectMode = false;
+        /** null | goto | call | end | return */
+        this._commandMode = null;
         this._connectFrom = null;
         this._linkDragFrom = null;
         this._linkDragEdge = null;
@@ -41,12 +45,28 @@ class LabelGraphView {
             <button type="button" data-action="zoom-out" title="縮小">－</button>
             <button type="button" data-action="fit" title="全体を表示">全体</button>
             <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
-            <button type="button" data-action="connect" title="2つのノードを順にクリックして @goto を追加・変更">接続</button>
+            <button type="button" data-action="cmd-goto" title="2つのラベルをタップ（@goto は1本だけ・差し替え）">goto</button>
+            <button type="button" data-action="cmd-call" title="2つのラベルをタップ（@call は都度1行追加）">call</button>
+            <button type="button" data-action="cmd-end" title="ラベル1つタップで @end を追加">end</button>
+            <button type="button" data-action="cmd-return" title="ラベル1つタップで @return を追加">return</button>
+            <button type="button" data-action="cmd-off" title="ツール解除">解除</button>
+            <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
             <button type="button" data-action="undo" title="直前のグラフ操作を戻す" disabled>戻す</button>
         `;
-        this.connectBtn = this.toolbar.querySelector('[data-action="connect"]');
+        this.cmdBtns = {
+            goto: this.toolbar.querySelector('[data-action="cmd-goto"]'),
+            call: this.toolbar.querySelector('[data-action="cmd-call"]'),
+            end: this.toolbar.querySelector('[data-action="cmd-end"]'),
+            return: this.toolbar.querySelector('[data-action="cmd-return"]'),
+        };
+        this.cmdOffBtn = this.toolbar.querySelector('[data-action="cmd-off"]');
         this.undoBtn = this.toolbar.querySelector('[data-action="undo"]');
         container.appendChild(this.toolbar);
+
+        this.statusEl = document.createElement("p");
+        this.statusEl.className = "label-graph-status";
+        this.statusEl.setAttribute("aria-live", "polite");
+        container.appendChild(this.statusEl);
 
         this.viewport = document.createElement("div");
         this.viewport.className = "label-graph-viewport";
@@ -86,8 +106,12 @@ class LabelGraphView {
             const action = btn.getAttribute("data-action");
             if (action === "zoom-in") this.zoomBy(1.2);
             else if (action === "zoom-out") this.zoomBy(1 / 1.2);
-            else if (action === "fit") this.fitToContent();
-            else if (action === "connect") this.toggleConnectMode();
+            else if (action === "fit") this.fitToContent(null, { user: true });
+            else if (action === "cmd-goto") this.setCommandMode("goto");
+            else if (action === "cmd-call") this.setCommandMode("call");
+            else if (action === "cmd-end") this.setCommandMode("end");
+            else if (action === "cmd-return") this.setCommandMode("return");
+            else if (action === "cmd-off") this.clearCommandMode();
             else if (action === "undo") this.onUndo?.();
             this.updateUndoButton();
         });
@@ -100,12 +124,58 @@ class LabelGraphView {
         this.viewport.addEventListener("keydown", (e) => this.onKeyDown(e));
     }
 
-    toggleConnectMode() {
-        this._connectMode = !this._connectMode;
+    setCommandMode(mode) {
+        this._commandMode = this._commandMode === mode ? null : mode;
         this._connectFrom = null;
         this.clearConnectHighlight();
-        this.connectBtn?.classList.toggle("is-active", this._connectMode);
-        this.viewport.classList.toggle("is-connect-mode", this._connectMode);
+        this.updateCommandModeUI();
+    }
+
+    clearCommandMode() {
+        this._commandMode = null;
+        this._connectFrom = null;
+        this.clearConnectHighlight();
+        this.updateCommandModeUI();
+    }
+
+    commandModeHint() {
+        const m = this._commandMode;
+        if (!m) {
+            return "ツールを選び、次にタップするラベルへ反映。矢印・スタブのタップはいつでも切断";
+        }
+        if (m === "end") return "選択中: @end → ラベルを1つタップ";
+        if (m === "return") return "選択中: @return → ラベルを1つタップ";
+        if (m === "goto") {
+            if (this._connectFrom) {
+                return `選択中: @goto → 行き先をタップ（起点: ${this._connectFrom}）`;
+            }
+            return "選択中: @goto → 起点ラベルをタップ（既存は差し替え）";
+        }
+        if (m === "call") {
+            if (this._connectFrom) {
+                return `選択中: @call → 行き先をタップ（起点: ${this._connectFrom}・都度1行追加）`;
+            }
+            return "選択中: @call → 起点ラベルをタップ（都度1行追加）";
+        }
+        return "";
+    }
+
+    updateCommandModeUI() {
+        const m = this._commandMode;
+        for (const [key, btn] of Object.entries(this.cmdBtns)) {
+            const on = m === key;
+            btn?.classList.toggle("is-active", on);
+            btn?.setAttribute("aria-pressed", on ? "true" : "false");
+        }
+        this.cmdOffBtn?.classList.toggle("is-active", !m);
+        this.cmdOffBtn?.setAttribute("aria-pressed", !m ? "true" : "false");
+        if (this.statusEl) {
+            this.statusEl.textContent = this.commandModeHint();
+        }
+        const twoStep = m === "goto" || m === "call";
+        this.viewport.classList.toggle("is-connect-mode", twoStep);
+        this.viewport.classList.toggle("is-exit-mode", m === "end" || m === "return");
+        this.viewport.classList.toggle("is-tool-mode", !!m);
     }
 
     onKeyDown(e) {
@@ -115,7 +185,7 @@ class LabelGraphView {
             return;
         }
         if (e.key === "Escape") {
-            if (this._connectMode) this.toggleConnectMode();
+            this.clearCommandMode();
             this.cancelLinkDrag();
             this._nodePointerDown = null;
             this._pendingEdgeAction = null;
@@ -139,18 +209,28 @@ class LabelGraphView {
             return;
         }
 
-        const stopPan = (e) => {
-            e.stopPropagation();
-        };
-
-        const clickRemove = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            if (this._connectMode) return;
-            if (this.onRemoveEdge) {
-                this.onRemoveEdge(edge);
-                this.updateUndoButton();
-            }
+        const bindTapRemove = (el) => {
+            let down = null;
+            el.addEventListener("pointerdown", (e) => {
+                e.stopPropagation();
+                if (e.button !== 0) return;
+                down = { x: e.clientX, y: e.clientY };
+            });
+            el.addEventListener("pointerup", (e) => {
+                if (!down || e.button !== 0) return;
+                e.stopPropagation();
+                const dx = e.clientX - down.x;
+                const dy = e.clientY - down.y;
+                down = null;
+                if (dx * dx + dy * dy > 28 * 28) return;
+                if (this.onRemoveEdge) {
+                    this.onRemoveEdge(edge);
+                    this.updateUndoButton();
+                }
+            });
+            el.addEventListener("pointercancel", () => {
+                down = null;
+            });
         };
 
         if (
@@ -160,17 +240,16 @@ class LabelGraphView {
             (edge.kind === "choice" && !edge.disconnected)
         ) {
             hitEl.style.cursor = "pointer";
-            hitEl.addEventListener("pointerdown", stopPan);
-            hitEl.addEventListener("click", clickRemove);
+            bindTapRemove(hitEl);
             return;
         }
 
         if (edge.kind === "choice" && edge.disconnected) {
             hitEl.style.cursor = "pointer";
-            hitEl.addEventListener("click", clickRemove);
+            bindTapRemove(hitEl);
             hitEl.addEventListener("pointerdown", (e) => {
                 e.stopPropagation();
-                if (this._connectMode || e.button !== 0) return;
+                if (e.button !== 0) return;
                 this.cancelLinkDrag();
                 this._pendingEdgeAction = {
                     edge,
@@ -192,18 +271,38 @@ class LabelGraphView {
         };
     }
 
-    handleConnectNode(name) {
-        if (!this.onConnect || !this.isRealTargetNode(name)) return;
+    handleCommandNodeClick(name) {
+        if (!this.isRealTargetNode(name)) return;
+
+        if (this._commandMode === "end" || this._commandMode === "return") {
+            if (this.onAddExit) this.onAddExit(name, this._commandMode);
+            this.updateUndoButton();
+            this.clearCommandMode();
+            return;
+        }
+
+        if (this._commandMode !== "goto" && this._commandMode !== "call") return;
+
+        const connectFn =
+            this._commandMode === "call" ? this.onConnectCall : this.onConnect;
+        if (!connectFn) return;
+
         if (!this._connectFrom) {
             this._connectFrom = name;
             this.highlightConnectFrom(name);
+            this.updateCommandModeUI();
             return;
         }
         const from = this._connectFrom;
         this._connectFrom = null;
         this.clearConnectHighlight();
-        if (from === name) return;
-        this.onConnect(from, name);
+        if (from === name) {
+            this.updateCommandModeUI();
+            return;
+        }
+        connectFn(from, name);
+        this.updateUndoButton();
+        this.updateCommandModeUI();
     }
 
     highlightConnectFrom(name) {
@@ -280,16 +379,16 @@ class LabelGraphView {
         if (edge) {
             if (edge.kind === "choice" && this.onConnectChoice) {
                 this.onConnectChoice(edge, targetName);
-            } else if (
-                (edge.kind === "goto" || edge.kind === "call") &&
-                this.onReconnectEdge
-            ) {
-                this.onReconnectEdge(edge, targetName);
             }
             return;
         }
-        if (!from || from === targetName || !this.onConnect) return;
-        this.onConnect(from, targetName);
+        if (!from || from === targetName) return;
+        if (this._commandMode === "call" && this.onConnectCall) {
+            this.onConnectCall(from, targetName);
+        } else if (this.onConnect) {
+            this.onConnect(from, targetName);
+        }
+        this.updateUndoButton();
     }
 
     render(data, state = {}) {
@@ -299,6 +398,7 @@ class LabelGraphView {
             currentLabel: state.currentLabel ?? null,
         };
         if (state.fit) this._needsFit = true;
+        else if (state.fitIfNeeded && !this._viewCustomized) this._needsFit = true;
 
         const nodes = data?.nodes || [];
         const edges = data?.edges || [];
@@ -308,11 +408,14 @@ class LabelGraphView {
             this.emptyEl.hidden = true;
             this.viewport.hidden = true;
             this.toolbar.hidden = true;
+            if (this.statusEl) this.statusEl.hidden = true;
             return;
         }
         this.missingLibEl.hidden = true;
         this.toolbar.hidden = false;
+        if (this.statusEl) this.statusEl.hidden = false;
         this.viewport.hidden = false;
+        this.updateCommandModeUI();
 
         if (nodes.length === 0) {
             this.emptyEl.hidden = false;
@@ -439,6 +542,7 @@ class LabelGraphView {
         this.gEdges.replaceChildren();
         this.gNodes.replaceChildren();
 
+        const nodeByName = new Map(nodes.map((n) => [n.name, n]));
         const stubEdges = [];
         for (const edge of edges) {
             const dimmed = !this.edgeMatchesFilter(edge);
@@ -455,16 +559,25 @@ class LabelGraphView {
             const lay = graph.edge(edge.from, edge.to, edgeName);
             if (!lay || !lay.points || lay.points.length < 2) continue;
 
-            this.appendEdgePaths(edge, lay.points, dimmed);
+            const fromLay = graph.node(edge.from);
+            const fromNode = nodeByName.get(edge.from);
+            const points = adjustDagreEdgePoints(
+                lay.points,
+                edge,
+                fromLay,
+                fromNode
+            );
+            this.appendEdgePaths(edge, points, dimmed);
         }
 
         for (const { edge, dimmed } of stubEdges) {
             const fromLay = graph.node(edge.from);
+            const fromNode = nodeByName.get(edge.from);
             if (!fromLay) continue;
             const stubPoints =
                 edge.kind === "exit"
-                    ? computeExitStubPoints(edge, fromLay)
-                    : computeChoiceStubPoints(edge, fromLay);
+                    ? computeExitStubPoints(edge, fromLay, fromNode)
+                    : computeChoiceStubPoints(edge, fromLay, fromNode);
             this.appendEdgePaths(edge, stubPoints, dimmed);
         }
 
@@ -475,6 +588,10 @@ class LabelGraphView {
             if (!lay) continue;
             this._nodeCenters.set(node.name, { x: lay.x, y: lay.y });
 
+            const padBottom = node.layoutPadBottom || 0;
+            const displayH = Math.max(36, lay.height - padBottom);
+            const box = { width: lay.width, height: displayH };
+
             const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
             g.setAttribute("class", "label-graph-node");
             g.setAttribute("data-name", node.name);
@@ -483,19 +600,19 @@ class LabelGraphView {
             if (node.ghost) g.classList.add("is-ghost");
             if (!this.nodeMatchesFilter(node.name)) g.classList.add("is-dimmed");
 
-            const clipId = this.ensureNodeClip(lay, sanitizeClipKey(node.name) + clipKey++);
+            const clipId = this.ensureNodeClip(box, sanitizeClipKey(node.name) + clipKey++);
             g.setAttribute("clip-path", `url(#${clipId})`);
 
             const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            rect.setAttribute("width", lay.width);
-            rect.setAttribute("height", lay.height);
+            rect.setAttribute("width", box.width);
+            rect.setAttribute("height", box.height);
             rect.setAttribute("rx", "6");
             g.appendChild(rect);
 
             const nameText = document.createElementNS("http://www.w3.org/2000/svg", "text");
             nameText.setAttribute("class", "label-graph-node__name");
-            nameText.setAttribute("x", lay.width / 2);
-            nameText.setAttribute("y", node.preview ? lay.height * 0.36 : lay.height / 2);
+            nameText.setAttribute("x", box.width / 2);
+            nameText.setAttribute("y", node.preview ? displayH * 0.36 : displayH / 2);
             nameText.setAttribute("text-anchor", "middle");
             nameText.setAttribute("dominant-baseline", "central");
             const displayName = node.displayName || node.name;
@@ -505,8 +622,8 @@ class LabelGraphView {
             if (node.preview) {
                 const prev = document.createElementNS("http://www.w3.org/2000/svg", "text");
                 prev.setAttribute("class", "label-graph-node__preview");
-                prev.setAttribute("x", lay.width / 2);
-                prev.setAttribute("y", lay.height * 0.72);
+                prev.setAttribute("x", box.width / 2);
+                prev.setAttribute("y", displayH * 0.72);
                 prev.setAttribute("text-anchor", "middle");
                 prev.setAttribute("dominant-baseline", "central");
                 prev.textContent = node.preview;
@@ -521,8 +638,8 @@ class LabelGraphView {
             g.addEventListener("pointerdown", (e) => {
                 if (node.ghost || e.button !== 0) return;
                 e.stopPropagation();
-                if (this._connectMode) {
-                    this.handleConnectNode(node.name);
+                if (this._commandMode) {
+                    this.handleCommandNodeClick(node.name);
                     return;
                 }
                 this._nodePointerDown = {
@@ -534,6 +651,14 @@ class LabelGraphView {
 
             this.gNodes.appendChild(g);
         }
+    }
+
+    isViewCustomized() {
+        return this._viewCustomized;
+    }
+
+    markViewCustomized() {
+        this._viewCustomized = true;
     }
 
     applyTransform() {
@@ -562,6 +687,7 @@ class LabelGraphView {
         this.transform.x = mx - (mx - this.transform.x) * ratio;
         this.transform.y = my - (my - this.transform.y) * ratio;
         this.transform.k = k1;
+        this.markViewCustomized();
         this.applyTransform();
     }
 
@@ -617,13 +743,14 @@ class LabelGraphView {
             this._panStart.tx + (e.clientX - this._panStart.x);
         this.transform.y =
             this._panStart.ty + (e.clientY - this._panStart.y);
+        this.markViewCustomized();
         this.applyTransform();
     }
 
     handleNodeTap(nodeName) {
         if (!nodeName || nodeName.startsWith("__open__")) return;
-        if (this._connectMode) {
-            this.handleConnectNode(nodeName);
+        if (this._commandMode) {
+            this.handleCommandNodeClick(nodeName);
             return;
         }
         if (this.onNodeClick) this.onNodeClick(nodeName);
@@ -685,15 +812,15 @@ class LabelGraphView {
         }
     }
 
-    fitToContent(focusLabel) {
+    fitToContent(focusLabel, options = {}) {
         const bbox = this.gRoot.getBBox();
-        if (!bbox.width && !bbox.height) return;
+        if (!bbox.width && !bbox.height) return false;
 
         const rect = this.viewport.getBoundingClientRect();
         const pad = 48;
         const w = rect.width - pad * 2;
         const h = rect.height - pad * 2;
-        if (w <= 0 || h <= 0) return;
+        if (w <= 0 || h <= 0) return false;
 
         let k = Math.min(w / bbox.width, h / bbox.height, 1.25);
         k = Math.max(0.2, Math.min(2, k));
@@ -711,7 +838,9 @@ class LabelGraphView {
         this.transform.k = k;
         this.transform.x = rect.width / 2 - cx * k;
         this.transform.y = rect.height / 2 - cy * k;
+        if (options.user) this.markViewCustomized();
         this.applyTransform();
+        return true;
     }
 
     appendEdgePaths(edge, points, dimmed) {
@@ -758,7 +887,7 @@ class LabelGraphView {
             if (edge.kind === "exit") {
                 hint = "（クリックで行を削除）";
             } else if (edge.kind === "goto" || edge.kind === "call") {
-                hint = "（クリックで削除）";
+                hint = "（クリックで行削除）";
             } else if (edge.disconnected) {
                 hint = "（クリックで行削除・ドラッグでつなぐ）";
             } else if (edge.kind === "choice") {
@@ -796,39 +925,66 @@ function sanitizeClipKey(name) {
 }
 
 /** 未接続の選択肢: ノード下端から別々の縦線（重ならないよう間隔を確保） */
-function computeChoiceStubPoints(edge, fromLay) {
+function nodeContentBottomY(fromLay, fromNode) {
+    const pad = fromNode?.layoutPadBottom || 0;
+    const displayH = Math.max(36, fromLay.height - pad);
+    return fromLay.y - fromLay.height / 2 + displayH;
+}
+
+function choiceAttachX(edge, fromLay, fromNode) {
     const n = Math.max(1, edge.choiceGroupSize || 1);
     const i = edge.choiceIndex ?? 0;
-    const w = fromLay.width || 88;
-    const minSpacing = 62;
+    const w = Math.max(fromLay.width || 88, fromNode?.layoutMinWidth || 0);
+    const minSpacing = 64;
     const span = n <= 1 ? w : Math.max(w, (n - 1) * minSpacing);
-    const attachX =
-        n <= 1
-            ? fromLay.x
-            : fromLay.x - span / 2 + (span * i) / (n - 1);
-    const y0 = fromLay.y + fromLay.height / 2;
-    const y1 = y0 + 48 + i * 14;
+    return n <= 1
+        ? fromLay.x
+        : fromLay.x - span / 2 + (span * i) / (n - 1);
+}
 
+/** 下余白付きノードでは dagre の始点が箱の最下端になるのを、見た目のラベル下端に合わせる */
+function adjustDagreEdgePoints(points, edge, fromLay, fromNode) {
+    if (!points?.length || !fromLay || !fromNode?.layoutPadBottom) {
+        return points;
+    }
+    const pts = points.map((p) => ({ x: p.x, y: p.y }));
+    const y = nodeContentBottomY(fromLay, fromNode);
+    const x =
+        edge.kind === "choice"
+            ? choiceAttachX(edge, fromLay, fromNode)
+            : fromLay.x;
+    pts[0] = { x, y };
+    if (pts.length > 1 && pts[1].y < y + 12) {
+        pts[1] = { x: pts[1].x, y: y + 12 };
+    }
+    return pts;
+}
+
+function computeChoiceStubPoints(edge, fromLay, fromNode) {
+    const attachX = choiceAttachX(edge, fromLay, fromNode);
+    const i = edge.choiceIndex ?? 0;
+    const y0 = nodeContentBottomY(fromLay, fromNode);
+    const y1 = y0 + 44 + i * 16;
     return [
         { x: attachX, y: y0 },
-        { x: attachX, y: y0 + 16 },
+        { x: attachX, y: y0 + 14 },
         { x: attachX, y: y1 },
     ];
 }
 
 /** @end / @return: ノード下端から短いスタブ（共有ノードにしない） */
-function computeExitStubPoints(edge, fromLay) {
+function computeExitStubPoints(edge, fromLay, fromNode) {
     const n = Math.max(1, edge.exitGroupSize || 1);
     const i = edge.exitIndex ?? 0;
-    const w = fromLay.width || 88;
-    const minSpacing = 48;
-    const span = n <= 1 ? w * 0.5 : Math.max(w * 0.5, (n - 1) * minSpacing);
+    const w = Math.max(fromLay.width || 88, fromNode?.layoutMinWidth || 0);
+    const minSpacing = 50;
+    const span = n <= 1 ? w * 0.55 : Math.max(w * 0.55, (n - 1) * minSpacing);
     const attachX =
         n <= 1
             ? fromLay.x
             : fromLay.x - span / 2 + (span * i) / (n - 1);
-    const y0 = fromLay.y + fromLay.height / 2;
-    const y1 = y0 + 26 + i * 4;
+    const y0 = nodeContentBottomY(fromLay, fromNode);
+    const y1 = y0 + 28 + i * 8;
     return [
         { x: attachX, y: y0 },
         { x: attachX, y: y1 },
@@ -852,19 +1008,23 @@ function choiceStubLabelPoint(points) {
 function measureLabelNode(node) {
     const name = node.displayName || node.name || "";
     const NODE_H = node.preview ? 50 : 36;
-    const w = measureNodeWidth(name, node.preview);
-    return { width: w, height: NODE_H };
+    const w = Math.max(
+        measureNodeWidth(name, node.preview),
+        node.layoutMinWidth || 0
+    );
+    const padBottom = node.layoutPadBottom || 0;
+    return { width: w, height: NODE_H + padBottom };
 }
 
 function layoutLabelGraphWithDagre(nodes, edges) {
     const g = new dagre.graphlib.Graph({ multigraph: true, compound: false });
     g.setGraph({
         rankdir: "TB",
-        nodesep: 44,
-        ranksep: 64,
-        edgesep: 16,
-        marginx: 32,
-        marginy: 32,
+        nodesep: 56,
+        ranksep: 96,
+        edgesep: 20,
+        marginx: 40,
+        marginy: 40,
         ranker: "network-simplex",
     });
     g.setDefaultEdgeLabel(() => ({}));
@@ -882,7 +1042,12 @@ function layoutLabelGraphWithDagre(nodes, edges) {
         const edgeName = edge.id || `${edge.from}\0${edge.to}\0${edge.kind}`;
         if (seen.has(edgeName)) continue;
         seen.add(edgeName);
-        g.setEdge(edge.from, edge.to, { id: edge.id, kind: edge.kind }, edgeName);
+        const label = { id: edge.id, kind: edge.kind };
+        const fromNode = nodes.find((n) => n.name === edge.from);
+        if (fromNode?.layoutPadBottom > 0 && edge.kind === "fallthrough") {
+            label.minlen = Math.max(1, Math.ceil(fromNode.layoutPadBottom / 48));
+        }
+        g.setEdge(edge.from, edge.to, label, edgeName);
         edgeKeys.set(edge, edgeName);
     }
 

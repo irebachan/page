@@ -10,15 +10,23 @@ function getLabelBlockRange(labelSourceLines, labelName, lineCount) {
     return { start, end };
 }
 
-function listGotosInBlock(lines, range) {
-    const gotos = [];
+function listJumpLinesInBlock(lines, range, kind) {
+    const expected = kind === "call" ? "@call" : "@goto";
+    const out = [];
     for (let i = range.start + 1; i < range.end; i++) {
         const t = lines[i].trim();
-        if (t.startsWith("@goto ")) {
-            gotos.push({ lineIndex: i, target: t.split(/\s+/).slice(1).join(" ").trim() });
+        if (t === expected || t.startsWith(expected + " ")) {
+            out.push({
+                lineIndex: i,
+                target: parseJumpLineTarget(t, kind) || "",
+            });
         }
     }
-    return gotos;
+    return out;
+}
+
+function listGotosInBlock(lines, range) {
+    return listJumpLinesInBlock(lines, range, "goto");
 }
 
 function appendLabelStub(lines, labelName) {
@@ -32,7 +40,19 @@ function appendLabelStub(lines, labelName) {
 /**
  * fromLabel ブロックに @goto toLabel を追加、または既存 @goto の先を差し替え
  */
-function patchLabelGoto(text, _script, labels, labelSourceLines, fromLabel, toLabel) {
+function patchLabelGoto(text, script, labels, labelSourceLines, fromLabel, toLabel) {
+    return patchLabelJump(
+        text,
+        script,
+        labels,
+        labelSourceLines,
+        fromLabel,
+        toLabel,
+        "goto"
+    );
+}
+
+function patchLabelJump(text, _script, labels, labelSourceLines, fromLabel, toLabel, kind) {
     if (!fromLabel || !toLabel) {
         return { ok: false, error: "接続元・先のラベルが必要です", text };
     }
@@ -53,15 +73,77 @@ function patchLabelGoto(text, _script, labels, labelSourceLines, fromLabel, toLa
         return { ok: false, error: `ラベル「${fromLabel}」が見つかりません`, text };
     }
 
-    const gotos = listGotosInBlock(lines, range);
-    if (gotos.length > 0) {
-        const g = gotos[gotos.length - 1];
-        lines[g.lineIndex] = `@goto ${toLabel}`;
+    const cmd = kind === "call" ? "@call" : "@goto";
+
+    if (kind === "call") {
+        lines.splice(range.end, 0, `${cmd} ${toLabel}`);
+        return { ok: true, text: lines.join("\n") };
+    }
+
+    const existing = listJumpLinesInBlock(lines, range, "goto");
+    if (existing.length > 0) {
+        const g = existing[existing.length - 1];
+        lines[g.lineIndex] = `${cmd} ${toLabel}`;
     } else {
-        lines.splice(range.end, 0, `@goto ${toLabel}`);
+        lines.splice(range.end, 0, `${cmd} ${toLabel}`);
     }
 
     return { ok: true, text: lines.join("\n") };
+}
+
+/** fromLabel ブロックに @call 行を都度追加（差し替えしない） */
+function patchLabelCall(text, script, labels, labelSourceLines, fromLabel, toLabel) {
+    return patchLabelJump(
+        text,
+        script,
+        labels,
+        labelSourceLines,
+        fromLabel,
+        toLabel,
+        "call"
+    );
+}
+
+/** ラベルブロック末尾に @end または @return を追加 */
+function patchLabelExit(text, _script, labels, labelSourceLines, labelName, exitKind) {
+    if (!labelName) {
+        return { ok: false, error: "ラベルが指定されていません", text };
+    }
+    const line = exitKind === "end" ? "@end" : "@return";
+    if (line !== "@end" && line !== "@return") {
+        return { ok: false, error: "不明な終了種別です", text };
+    }
+
+    const lines = text.split("\n");
+    const range = getLabelBlockRange(labelSourceLines, labelName, lines.length);
+    if (!range) {
+        return { ok: false, error: `ラベル「${labelName}」が見つかりません`, text };
+    }
+
+    lines.splice(range.end, 0, line);
+    return { ok: true, text: lines.join("\n") };
+}
+
+function removeExitLineFromText(lines, labelSourceLines, edge) {
+    const expected = edge.exitKind === "end" ? "@end" : "@return";
+
+    const tryRemoveAt = (i) => {
+        if (i == null || i < 0 || i >= lines.length) return false;
+        if (lines[i].trim() !== expected) return false;
+        lines.splice(i, 1);
+        return true;
+    };
+
+    if (tryRemoveAt(edge.sourceLine)) return true;
+
+    const from = edge.from;
+    if (!from || labelSourceLines[from] == null) return false;
+    const range = getLabelBlockRange(labelSourceLines, from, lines.length);
+    if (!range) return false;
+    for (let i = range.start + 1; i < range.end; i++) {
+        if (tryRemoveAt(i)) return true;
+    }
+    return false;
 }
 
 function findChoiceLineIndex(lines, startLine, choiceIndex) {
@@ -215,19 +297,13 @@ function removeGraphEdgeFromText(text, script, labels, labelSourceLines, edge) {
     }
 
     if (edge.kind === "exit") {
-        const i = edge.sourceLine;
-        if (i == null || i < 0 || i >= lines.length) {
-            return { ok: false, error: "行が見つかりません", text };
-        }
-        const expected = edge.exitKind === "end" ? "@end" : "@return";
-        if (lines[i].trim() !== expected) {
+        if (!removeExitLineFromText(lines, labelSourceLines, edge)) {
             return {
                 ok: false,
-                error: "脚本が変更されています。再読み込みしてください",
+                error: "命令行が見つかりません。再読み込みしてください",
                 text,
             };
         }
-        lines.splice(i, 1);
         return { ok: true, text: lines.join("\n") };
     }
 
