@@ -1014,6 +1014,7 @@ body.node-graph-open {
 }
 
 .node-graph-panel__inner {
+    position: relative;
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
@@ -1034,9 +1035,37 @@ body.node-graph-open {
     justify-content: space-between;
     gap: 0.75em;
     flex: 0 0 auto;
-    margin-bottom: 0.5em;
-    padding-bottom: 0.5em;
+    margin-bottom: 0.35em;
+    padding-bottom: 0.35em;
     border-bottom: 1px solid #333;
+}
+
+.node-graph-panel__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    flex: 0 0 auto;
+}
+
+.node-graph-panel__icon-btn {
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    font-size: 1.1rem;
+    line-height: 1;
+    color: #ccc;
+    background: #2a2a2a;
+    border: 1px solid #555;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.node-graph-panel__icon-btn:hover,
+.node-graph-panel__icon-btn[aria-expanded="true"] {
+    background: #383838;
+    color: #fff;
+    border-color: #6af;
 }
 
 .node-graph-panel__title {
@@ -1064,36 +1093,71 @@ body.node-graph-open {
     color: #fff;
 }
 
-.node-graph-panel__hint {
+.node-graph-panel__filter-row {
     flex: 0 0 auto;
-    margin: 0 0 0.65em;
-    font-size: 0.9em;
-    color: #aaa;
+    margin-bottom: 0.5em;
 }
 
-.node-graph-help {
-    flex: 0 0 auto;
-    margin: 0 0 0.65em;
+@media (max-width: 640px) {
+    .node-graph-panel__filter-row:not(.is-open) {
+        display: none;
+    }
+}
+
+@media (min-width: 641px) {
+    #nodeGraphFilterToggle {
+        display: none;
+    }
+}
+
+.node-graph-help-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0.75em;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.node-graph-help-overlay[hidden] {
+    display: none !important;
+}
+
+.node-graph-help-overlay__panel {
+    width: min(100%, 28rem);
+    max-height: min(70vh, 24rem);
+    overflow: auto;
     font-size: 0.88em;
     color: #bbb;
-    border: 1px solid #444;
-    border-radius: 6px;
+    background: #1e1e1e;
+    border: 1px solid #555;
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.node-graph-help-overlay__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5em;
+    padding: 0.5em 0.65em;
+    border-bottom: 1px solid #444;
+    position: sticky;
+    top: 0;
     background: #1e1e1e;
 }
 
-.node-graph-help summary {
-    cursor: pointer;
-    padding: 0.45em 0.6em;
-    color: #ccc;
-    user-select: none;
-}
-
-.node-graph-help summary:hover {
-    color: #fff;
+.node-graph-help-overlay__head h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: #eee;
 }
 
 .node-graph-help__body {
-    padding: 0 0.65em 0.65em;
+    padding: 0.65em;
     line-height: 1.45;
 }
 
@@ -1106,11 +1170,10 @@ body.node-graph-open {
 }
 
 .node-graph-panel__filter {
-    flex: 0 0 auto;
     display: block;
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 0.75em;
+    margin: 0;
     padding: 0.5em 0.6em;
     font-size: 1em;
     background: #2a2a2a;
@@ -1134,35 +1197,110 @@ body.node-graph-open {
 .label-graph-view {
     flex: 1 1 auto;
     min-height: 0;
+    position: relative;
     display: flex;
     flex-direction: column;
+}
+
+.label-graph-float-ui {
+    position: absolute;
+    z-index: 3;
+    right: max(0.35rem, env(safe-area-inset-right, 0px));
+    bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 0.35em;
+    max-width: calc(100% - 0.7rem);
+    pointer-events: none;
+}
+
+.label-graph-float-ui[hidden] {
+    display: none !important;
+}
+
+.label-graph-float-ui > * {
+    pointer-events: auto;
+}
+
+.label-graph-float-toggle {
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    font-size: 1.15rem;
+    line-height: 1;
+    color: #ddd;
+    background: rgba(40, 40, 40, 0.92);
+    border: 1px solid #555;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(8px);
+}
+
+.label-graph-float-toggle:hover,
+.label-graph-view.is-float-expanded .label-graph-float-toggle {
+    background: #3a4a5a;
+    border-color: #6af;
+    color: #fff;
+}
+
+.label-graph-float-ui__tools {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    max-width: min(calc(100vw - 2rem), 36rem);
+    padding: 0.45em;
+    background: rgba(28, 28, 28, 0.94);
+    border: 1px solid #444;
+    border-radius: 10px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+}
+
+.label-graph-view.is-float-expanded .label-graph-float-ui__tools {
+    display: flex;
 }
 
 .label-graph-toolbar {
     flex: 0 0 auto;
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.4em;
-    margin-bottom: 0.35em;
+    flex-wrap: nowrap;
+    gap: 0.35em;
+    margin: 0;
     align-items: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
 }
 
-.label-graph-status {
-    flex: 0 0 auto;
-    margin: 0 0 0.5em;
+.label-graph-float-ui > .label-graph-status {
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    width: min(calc(100vw - 2rem), 36rem);
+    margin: 0 0 0.35em;
     padding: 0.45em 0.55em;
+    box-sizing: border-box;
     font-size: 0.88em;
     line-height: 1.4;
     color: #9ab;
-    background: #252a30;
-    border-radius: 4px;
+    background: rgba(37, 42, 48, 0.96);
+    border-radius: 6px;
     border: 1px solid #3a4550;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
 }
 
-.label-graph-view.is-tool-mode .label-graph-status {
+.label-graph-status[hidden],
+.label-graph-view:not(.is-float-expanded) .label-graph-float-ui > .label-graph-status {
+    display: none !important;
+}
+
+.label-graph-view.is-tool-mode .label-graph-float-ui > .label-graph-status {
     color: #cef;
     border-color: #4a6a8a;
-    background: #1e2a34;
+    background: rgba(30, 42, 52, 0.96);
 }
 
 .label-graph-toolbar button {
@@ -1250,6 +1388,15 @@ body.node-graph-open {
     cursor: grab;
     touch-action: none;
     outline: none;
+}
+
+@media (max-width: 640px) {
+    .label-graph-toolbar button {
+        min-width: 2.25rem;
+        min-height: 2.25rem;
+        padding: 0.35em 0.5em;
+        font-size: 0.9rem;
+    }
 }
 
 .label-graph-viewport:active {

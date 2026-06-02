@@ -40,29 +40,31 @@ class LabelGraphView {
 
         container.innerHTML = "";
         container.classList.add("label-graph-view");
+        if (!window.matchMedia("(max-width: 640px)").matches) {
+            container.classList.add("is-float-expanded");
+        }
 
         this.toolbar = document.createElement("div");
         this.toolbar.className = "label-graph-toolbar";
         this.toolbar.innerHTML = `
-            <button type="button" data-action="zoom-in" title="拡大">＋</button>
-            <button type="button" data-action="zoom-out" title="縮小">－</button>
-            <button type="button" data-action="fit" title="全体を表示">全体</button>
+            <button type="button" data-action="zoom-in" aria-label="拡大">＋</button>
+            <button type="button" data-action="zoom-out" aria-label="縮小">－</button>
+            <button type="button" data-action="fit" aria-label="全体を表示">全体</button>
             <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
             <span class="label-graph-toolbar__group" role="group" aria-label="ラベル">
-                <button type="button" data-action="label-add" title="脚本末尾に @ラベル を追加">＋ラベル</button>
-                <button type="button" data-action="cmd-rename" title="ラベル1つタップで名前変更（参照も更新）">改名</button>
-                <button type="button" data-action="cmd-delete" title="ラベル1つタップで削除（確認あり）">削除</button>
+                <button type="button" data-action="label-add" aria-label="脚本末尾にラベルを追加">＋ラベル</button>
+                <button type="button" data-action="cmd-rename" aria-label="ラベルをタップして改名">改名</button>
+                <button type="button" data-action="cmd-delete" aria-label="ラベルをタップして削除">削除</button>
             </span>
             <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
             <span class="label-graph-toolbar__group" role="group" aria-label="接続">
-                <button type="button" data-action="cmd-goto" title="2つのラベルをタップ（@goto は1本だけ・差し替え）">goto</button>
-                <button type="button" data-action="cmd-call" title="2つのラベルをタップ（@call は都度1行追加）">call</button>
-                <button type="button" data-action="cmd-end" title="ラベル1つタップで @end を追加">end</button>
-                <button type="button" data-action="cmd-return" title="ラベル1つタップで @return を追加">return</button>
-                <button type="button" data-action="cmd-off" title="ツール解除">解除</button>
+                <button type="button" data-action="cmd-goto" aria-label="2つのラベルをタップして goto">goto</button>
+                <button type="button" data-action="cmd-call" aria-label="2つのラベルをタップして call">call</button>
+                <button type="button" data-action="cmd-end" aria-label="ラベルをタップして end">end</button>
+                <button type="button" data-action="cmd-return" aria-label="ラベルをタップして return">return</button>
             </span>
             <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
-            <button type="button" data-action="undo" title="直前のグラフ操作を戻す" disabled>戻す</button>
+            <button type="button" data-action="undo" aria-label="直前のグラフ操作を戻す" disabled>戻す</button>
         `;
         this.cmdBtns = {
             goto: this.toolbar.querySelector('[data-action="cmd-goto"]'),
@@ -72,14 +74,12 @@ class LabelGraphView {
             rename: this.toolbar.querySelector('[data-action="cmd-rename"]'),
             delete: this.toolbar.querySelector('[data-action="cmd-delete"]'),
         };
-        this.cmdOffBtn = this.toolbar.querySelector('[data-action="cmd-off"]');
         this.undoBtn = this.toolbar.querySelector('[data-action="undo"]');
-        container.appendChild(this.toolbar);
 
         this.statusEl = document.createElement("p");
         this.statusEl.className = "label-graph-status";
         this.statusEl.setAttribute("aria-live", "polite");
-        container.appendChild(this.statusEl);
+        this.statusEl.hidden = true;
 
         this.viewport = document.createElement("div");
         this.viewport.className = "label-graph-viewport";
@@ -113,6 +113,28 @@ class LabelGraphView {
             "グラフレイアウト用ライブラリが未配置です。README の手順で dagre を取得してください。";
         container.appendChild(this.missingLibEl);
 
+        this.floatUI = document.createElement("div");
+        this.floatUI.className = "label-graph-float-ui";
+        this.floatToggle = document.createElement("button");
+        this.floatToggle.type = "button";
+        this.floatToggle.className = "label-graph-float-toggle";
+        this.floatToggle.setAttribute("aria-label", "ツールバー");
+        this.floatToggle.setAttribute("aria-expanded", "false");
+        this.floatToggle.textContent = "⚙";
+        this.floatTools = document.createElement("div");
+        this.floatTools.className = "label-graph-float-ui__tools";
+        this.floatTools.appendChild(this.toolbar);
+        this.floatUI.appendChild(this.floatToggle);
+        this.floatUI.appendChild(this.floatTools);
+        this.floatUI.appendChild(this.statusEl);
+        container.appendChild(this.floatUI);
+
+        this.syncFloatUI();
+        this.floatToggle.addEventListener("click", () => {
+            container.classList.toggle("is-float-expanded");
+            this.syncFloatUI();
+        });
+
         this.toolbar.addEventListener("click", (e) => {
             const btn = e.target.closest("button[data-action]");
             if (!btn) return;
@@ -127,7 +149,6 @@ class LabelGraphView {
             else if (action === "cmd-return") this.setCommandMode("return");
             else if (action === "cmd-rename") this.setCommandMode("rename");
             else if (action === "cmd-delete") this.setCommandMode("delete");
-            else if (action === "cmd-off") this.clearCommandMode();
             else if (action === "undo") this.onUndo?.();
             this.updateUndoButton();
         });
@@ -156,24 +177,23 @@ class LabelGraphView {
 
     commandModeHint() {
         const m = this._commandMode;
-        if (!m) {
-            return "ノードタップで移動（グラフは開いたまま）。ツール選択時は接続・改名など。線タップは切断";
-        }
-        if (m === "end") return "選択中: @end → ラベルを1つタップ";
-        if (m === "return") return "選択中: @return → ラベルを1つタップ";
-        if (m === "rename") return "選択中: 改名 → ラベルを1つタップ";
-        if (m === "delete") return "選択中: 削除 → ラベルを1つタップ（確認あり）";
+        const cancel = "（同じボタンか Esc でやめる）";
+        if (!m) return "";
+        if (m === "end") return `選択中: @end → ラベルを1つタップ ${cancel}`;
+        if (m === "return") return `選択中: @return → ラベルを1つタップ ${cancel}`;
+        if (m === "rename") return `選択中: 改名 → ラベルを1つタップ ${cancel}`;
+        if (m === "delete") return `選択中: 削除 → ラベルを1つタップ（確認あり） ${cancel}`;
         if (m === "goto") {
             if (this._connectFrom) {
-                return `選択中: @goto → 行き先をタップ（起点: ${this._connectFrom}）`;
+                return `選択中: @goto → 行き先をタップ（起点: ${this._connectFrom}） ${cancel}`;
             }
-            return "選択中: @goto → 起点ラベルをタップ（既存は差し替え）";
+            return `選択中: @goto → 起点ラベルをタップ（既存は差し替え） ${cancel}`;
         }
         if (m === "call") {
             if (this._connectFrom) {
-                return `選択中: @call → 行き先をタップ（起点: ${this._connectFrom}・都度1行追加）`;
+                return `選択中: @call → 行き先をタップ（起点: ${this._connectFrom}・都度1行追加） ${cancel}`;
             }
-            return "選択中: @call → 起点ラベルをタップ（都度1行追加）";
+            return `選択中: @call → 起点ラベルをタップ（都度1行追加） ${cancel}`;
         }
         return "";
     }
@@ -185,11 +205,13 @@ class LabelGraphView {
             btn?.classList.toggle("is-active", on);
             btn?.setAttribute("aria-pressed", on ? "true" : "false");
         }
-        this.cmdOffBtn?.classList.toggle("is-active", !m);
-        this.cmdOffBtn?.setAttribute("aria-pressed", !m ? "true" : "false");
         if (this.statusEl) {
             this.statusEl.textContent = this.commandModeHint();
         }
+        if (m) {
+            this.container.classList.add("is-float-expanded");
+        }
+        this.syncFloatUI();
         const twoStep = m === "goto" || m === "call";
         this.viewport.classList.toggle("is-connect-mode", twoStep);
         this.viewport.classList.toggle(
@@ -217,6 +239,20 @@ class LabelGraphView {
         if (!this.undoBtn) return;
         const ok = this.canUndo?.() ?? false;
         this.undoBtn.disabled = !ok;
+    }
+
+    syncFloatUI() {
+        const expanded = this.container.classList.contains("is-float-expanded");
+        this.floatToggle?.setAttribute("aria-expanded", expanded ? "true" : "false");
+        this.updateStatusVisibility();
+    }
+
+    updateStatusVisibility() {
+        if (!this.statusEl) return;
+        const show =
+            !!this._commandMode &&
+            this.container.classList.contains("is-float-expanded");
+        this.statusEl.hidden = !show;
     }
 
     isRealTargetNode(name) {
@@ -440,13 +476,12 @@ class LabelGraphView {
             this.missingLibEl.hidden = false;
             this.emptyEl.hidden = true;
             this.viewport.hidden = true;
-            this.toolbar.hidden = true;
+            this.floatUI.hidden = true;
             if (this.statusEl) this.statusEl.hidden = true;
             return;
         }
         this.missingLibEl.hidden = true;
-        this.toolbar.hidden = false;
-        if (this.statusEl) this.statusEl.hidden = false;
+        this.floatUI.hidden = false;
         this.viewport.hidden = false;
         this.updateCommandModeUI();
 

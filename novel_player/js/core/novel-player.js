@@ -1152,8 +1152,9 @@ class NovelPlayer {
                 : null;
             this.labelGraphView.fitToContent(current);
         });
-        if (this.nodeGraphFilter) {
-            this.nodeGraphFilter.focus();
+        const vp = this.labelGraphView?.viewport;
+        if (vp) {
+            vp.focus({ preventScroll: true });
         }
     }
 
@@ -1165,6 +1166,14 @@ class NovelPlayer {
         if (this.nodeGraphButton) {
             this.nodeGraphButton.setAttribute("aria-expanded", "false");
         }
+        const helpOverlay = document.getElementById("nodeGraphHelpOverlay");
+        if (helpOverlay) helpOverlay.hidden = true;
+        const helpToggle = document.getElementById("nodeGraphHelpToggle");
+        helpToggle?.setAttribute("aria-expanded", "false");
+        const filterRow = document.getElementById("nodeGraphFilterRow");
+        filterRow?.classList.remove("is-open");
+        const filterToggle = document.getElementById("nodeGraphFilterToggle");
+        filterToggle?.setAttribute("aria-expanded", "false");
     }
 
     refreshNodeGraphIfOpen() {

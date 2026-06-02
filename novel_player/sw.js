@@ -1,7 +1,7 @@
 /**
  * 静的アセットのオフライン用キャッシュ（作品データは IndexedDB）。
  */
-const CACHE_NAME = "novel-player-shell-v39";
+const CACHE_NAME = "novel-player-shell-v45";
 
 const SHELL_FILES = [
     "./",

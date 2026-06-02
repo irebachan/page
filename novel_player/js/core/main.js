@@ -294,4 +294,41 @@ document.addEventListener("DOMContentLoaded", () => {
             novelPlayer.closeNodeGraph();
         });
     }
+
+    const nodeGraphFilterToggle = document.getElementById("nodeGraphFilterToggle");
+    const nodeGraphFilterRow = document.getElementById("nodeGraphFilterRow");
+    const nodeGraphFilter = document.getElementById("nodeGraphFilter");
+    if (nodeGraphFilterToggle && nodeGraphFilterRow) {
+        nodeGraphFilterToggle.addEventListener("click", () => {
+            const open = nodeGraphFilterRow.classList.toggle("is-open");
+            nodeGraphFilterToggle.setAttribute("aria-expanded", open ? "true" : "false");
+            if (open) nodeGraphFilter?.focus({ preventScroll: true });
+        });
+    }
+
+    const nodeGraphHelpToggle = document.getElementById("nodeGraphHelpToggle");
+    const nodeGraphHelpOverlay = document.getElementById("nodeGraphHelpOverlay");
+    const nodeGraphHelpClose = document.getElementById("nodeGraphHelpClose");
+    const setNodeGraphHelpOpen = (open) => {
+        if (!nodeGraphHelpOverlay) return;
+        nodeGraphHelpOverlay.hidden = !open;
+        nodeGraphHelpToggle?.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+    if (nodeGraphHelpToggle && nodeGraphHelpOverlay) {
+        nodeGraphHelpToggle.addEventListener("click", () => {
+            setNodeGraphHelpOpen(nodeGraphHelpOverlay.hidden);
+        });
+        nodeGraphHelpClose?.addEventListener("click", () => setNodeGraphHelpOpen(false));
+        nodeGraphHelpOverlay.addEventListener("click", (e) => {
+            if (e.target === nodeGraphHelpOverlay) setNodeGraphHelpOpen(false);
+        });
+    }
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape") return;
+        if (nodeGraphHelpOverlay && !nodeGraphHelpOverlay.hidden) {
+            setNodeGraphHelpOpen(false);
+            e.preventDefault();
+        }
+    });
 });
