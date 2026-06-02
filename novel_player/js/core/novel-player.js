@@ -147,6 +147,7 @@ class NovelPlayer {
                 onNodeClick: (name) => this.jumpToLabelByName(name),
                 onConnect: (from, to) => this.graphConnectLabels(from, to),
                 onConnectChoice: (edge, to) => this.graphConnectChoice(edge, to),
+                onReconnectEdge: (edge, to) => this.graphReconnectEdge(edge, to),
                 onRemoveEdge: (edge) => this.graphRemoveEdge(edge),
                 onUndo: () => this.graphUndo(),
                 canUndo: () => this.graphUndoStack.length > 0,
@@ -702,7 +703,13 @@ class NovelPlayer {
     }
 
     graphRemoveEdge(edge) {
-        return this.applyGraphTextPatch(removeGraphEdgeFromText, edge);
+        const ok = this.applyGraphTextPatch(removeGraphEdgeFromText, edge);
+        if (ok) this.refreshNodeGraphIfOpen();
+        return ok;
+    }
+
+    graphReconnectEdge(edge, toLabel) {
+        return this.applyGraphTextPatch(patchJumpEdgeTarget, edge, toLabel);
     }
 
     parsePreviewMeta(rawScript) {

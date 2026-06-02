@@ -7,6 +7,7 @@ class LabelGraphView {
         this.onNodeClick = options.onNodeClick || null;
         this.onConnect = options.onConnect || null;
         this.onConnectChoice = options.onConnectChoice || null;
+        this.onReconnectEdge = options.onReconnectEdge || null;
         this.onRemoveEdge = options.onRemoveEdge || null;
         this.onUndo = options.onUndo || null;
         this.canUndo = options.canUndo || null;
@@ -26,6 +27,9 @@ class LabelGraphView {
         this._nodeCenters = new Map();
         this._suppressNextNodeClick = false;
         this._nodePointerDown = null;
+        this._pendingEdgeAction = null;
+        /** これ未満の移動はクリック（削除）、超えたらドラッグ（付け替え） */
+        this._edgeDragSlopPx = 14;
 
         container.innerHTML = "";
         container.classList.add("label-graph-view");
@@ -114,6 +118,7 @@ class LabelGraphView {
             if (this._connectMode) this.toggleConnectMode();
             this.cancelLinkDrag();
             this._nodePointerDown = null;
+            this._pendingEdgeAction = null;
         }
     }
 
@@ -127,27 +132,55 @@ class LabelGraphView {
         return name && !String(name).startsWith("__open__");
     }
 
-    /** 線: ドラッグで接続、静止クリックで削除 */
+    /** 線: クリックで削除（@goto/@call/選択肢）。未接続選択肢のみドラッグでつなぐ */
     bindEdgeInteractions(edge, hitEl, points) {
         if (edge.kind === "fallthrough") {
             hitEl.style.cursor = "default";
             return;
         }
-        if (edge.kind === "exit") {
+
+        const stopPan = (e) => {
+            e.stopPropagation();
+        };
+
+        const clickRemove = (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (this._connectMode) return;
+            if (this.onRemoveEdge) {
+                this.onRemoveEdge(edge);
+                this.updateUndoButton();
+            }
+        };
+
+        if (
+            edge.kind === "exit" ||
+            edge.kind === "goto" ||
+            edge.kind === "call" ||
+            (edge.kind === "choice" && !edge.disconnected)
+        ) {
             hitEl.style.cursor = "pointer";
-            hitEl.addEventListener("click", (e) => {
-                e.stopPropagation();
-                if (this.onRemoveEdge) this.onRemoveEdge(edge);
-            });
+            hitEl.addEventListener("pointerdown", stopPan);
+            hitEl.addEventListener("click", clickRemove);
             return;
         }
-        hitEl.style.cursor = "grab";
-        hitEl.addEventListener("pointerdown", (e) => {
-            e.stopPropagation();
-            if (this._connectMode || e.button !== 0) return;
-            this._linkDragMoved = false;
-            this.startLinkDragFromEdge(edge, points, e);
-        });
+
+        if (edge.kind === "choice" && edge.disconnected) {
+            hitEl.style.cursor = "pointer";
+            hitEl.addEventListener("click", clickRemove);
+            hitEl.addEventListener("pointerdown", (e) => {
+                e.stopPropagation();
+                if (this._connectMode || e.button !== 0) return;
+                this.cancelLinkDrag();
+                this._pendingEdgeAction = {
+                    edge,
+                    points,
+                    x: e.clientX,
+                    y: e.clientY,
+                    pointerId: e.pointerId,
+                };
+            });
+        }
     }
 
     clientToGraph(clientX, clientY) {
@@ -233,6 +266,7 @@ class LabelGraphView {
         this._linkDragFrom = null;
         this._linkDragEdge = null;
         this._linkDragMoved = false;
+        this._pendingEdgeAction = null;
         this._nodePointerDown = null;
         this._dragLine?.remove();
         this._dragLine = null;
@@ -246,6 +280,11 @@ class LabelGraphView {
         if (edge) {
             if (edge.kind === "choice" && this.onConnectChoice) {
                 this.onConnectChoice(edge, targetName);
+            } else if (
+                (edge.kind === "goto" || edge.kind === "call") &&
+                this.onReconnectEdge
+            ) {
+                this.onReconnectEdge(edge, targetName);
             }
             return;
         }
@@ -530,6 +569,7 @@ class LabelGraphView {
         if (e.button !== 0) return;
         if (e.target.closest(".label-graph-node")) return;
         if (e.target.closest(".label-graph-edge-hit")) return;
+        this._pendingEdgeAction = null;
         this._panning = true;
         this._panStart = {
             x: e.clientX,
@@ -541,6 +581,19 @@ class LabelGraphView {
     }
 
     onPointerMove(e) {
+        if (this._pendingEdgeAction && !this._linkDragEdge && !this._linkDragFrom) {
+            const p = this._pendingEdgeAction;
+            if (e.pointerId !== p.pointerId) return;
+            const dx = e.clientX - p.x;
+            const dy = e.clientY - p.y;
+            const slop = this._edgeDragSlopPx;
+            if (dx * dx + dy * dy > slop * slop) {
+                this._pendingEdgeAction = null;
+                this._linkDragMoved = false;
+                this.startLinkDragFromEdge(p.edge, p.points, e);
+            }
+            return;
+        }
         if (this._nodePointerDown && !this._linkDragFrom && !this._linkDragEdge) {
             const dx = e.clientX - this._nodePointerDown.x;
             const dy = e.clientY - this._nodePointerDown.y;
@@ -577,6 +630,20 @@ class LabelGraphView {
     }
 
     onPointerUp(e) {
+        if (this._pendingEdgeAction) {
+            const p = this._pendingEdgeAction;
+            this._pendingEdgeAction = null;
+            if (e.pointerId === p.pointerId) {
+                const dx = e.clientX - p.x;
+                const dy = e.clientY - p.y;
+                const slop = this._edgeDragSlopPx;
+                if (dx * dx + dy * dy <= slop * slop && this.onRemoveEdge) {
+                    this.onRemoveEdge(p.edge);
+                }
+            }
+            this.updateUndoButton();
+            return;
+        }
         if (this._nodePointerDown) {
             const pending = this._nodePointerDown;
             this._nodePointerDown = null;
@@ -594,9 +661,7 @@ class LabelGraphView {
             const nodeG = targetEl?.closest?.(".label-graph-node");
             const targetName = nodeG?.getAttribute("data-name");
 
-            if (!moved && edge && this.onRemoveEdge) {
-                this.onRemoveEdge(edge);
-            } else if (moved && targetName && this.isRealTargetNode(targetName)) {
+            if (moved && targetName && this.isRealTargetNode(targetName)) {
                 this._suppressNextNodeClick = true;
                 this.finishLinkDrag(targetName);
             } else {
@@ -689,17 +754,17 @@ class LabelGraphView {
         const title = edgeTitle(edge);
         if (title) {
             const t = document.createElementNS("http://www.w3.org/2000/svg", "title");
-            if (edge.kind === "fallthrough" || edge.kind === "exit") {
-                t.textContent =
-                    title +
-                    (edge.kind === "exit" ? "（クリックで行を削除）" : "");
-            } else {
-                t.textContent =
-                    title +
-                    (edge.disconnected
-                        ? "（ドラッグでつなぐ・クリックで選択肢行を削除）"
-                        : "（ドラッグで付け替え・クリックで接続を切る）");
+            let hint = "";
+            if (edge.kind === "exit") {
+                hint = "（クリックで行を削除）";
+            } else if (edge.kind === "goto" || edge.kind === "call") {
+                hint = "（クリックで削除）";
+            } else if (edge.disconnected) {
+                hint = "（クリックで行削除・ドラッグでつなぐ）";
+            } else if (edge.kind === "choice") {
+                hint = "（クリックで接続を切る）";
             }
+            t.textContent = title + hint;
             hit.appendChild(t);
         }
         this.bindEdgeInteractions(edge, hit, points);

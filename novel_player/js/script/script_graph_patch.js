@@ -121,6 +121,72 @@ function disconnectChoiceTarget(text, _script, _labels, _labelSourceLines, edge)
     return { ok: true, text: lines.join("\n") };
 }
 
+function parseJumpLineTarget(trimmedLine, kind) {
+    const expected = kind === "call" ? "@call" : "@goto";
+    if (trimmedLine === expected) return "";
+    if (!trimmedLine.startsWith(expected + " ")) return null;
+    return trimmedLine.slice(expected.length + 1).trim();
+}
+
+function removeJumpLineFromText(lines, labels, labelSourceLines, edge) {
+    const kind = edge.kind;
+    const expected = kind === "call" ? "@call" : "@goto";
+    const want = (edge.to || "").trim();
+
+    const tryRemoveAt = (i) => {
+        if (i == null || i < 0 || i >= lines.length) return false;
+        const t = lines[i].trim();
+        if (t !== expected && !t.startsWith(expected + " ")) return false;
+        if (want) {
+            const target = parseJumpLineTarget(t, kind);
+            if (target !== want) return false;
+        }
+        lines.splice(i, 1);
+        return true;
+    };
+
+    if (tryRemoveAt(edge.sourceLine)) return true;
+
+    const from = edge.from;
+    if (!from || labelSourceLines[from] == null) return false;
+    const range = getLabelBlockRange(labelSourceLines, from, lines.length);
+    if (!range) return false;
+    for (let i = range.start + 1; i < range.end; i++) {
+        if (tryRemoveAt(i)) return true;
+    }
+    return false;
+}
+
+/** @goto / @call 行の行き先だけ差し替え */
+function patchJumpEdgeTarget(text, _script, labels, labelSourceLines, edge, toLabel) {
+    if (!edge || (edge.kind !== "goto" && edge.kind !== "call")) {
+        return { ok: false, error: "この辺は付け替えできません", text };
+    }
+    if (!toLabel) {
+        return { ok: false, error: "行き先ラベルが必要です", text };
+    }
+
+    let lines = text.split("\n");
+    let sourceLines = { ...labelSourceLines };
+
+    if (!sourceLines.hasOwnProperty(toLabel)) {
+        lines = appendLabelStub(lines, toLabel);
+        sourceLines[toLabel] = lines.length - 2;
+    }
+
+    const i = edge.sourceLine;
+    if (i == null || i < 0 || i >= lines.length) {
+        return { ok: false, error: "行が見つかりません", text };
+    }
+    const t = lines[i].trim();
+    const expected = edge.kind === "call" ? "@call" : "@goto";
+    if (t !== expected && !t.startsWith(expected + " ")) {
+        return { ok: false, error: "脚本が変更されています。再読み込みしてください", text };
+    }
+    lines[i] = `${expected} ${toLabel}`;
+    return { ok: true, text: lines.join("\n") };
+}
+
 /** グラフ上の辺 1 本に対応する行を削除 */
 function removeGraphEdgeFromText(text, script, labels, labelSourceLines, edge) {
     if (!edge) return { ok: false, error: "辺が指定されていません", text };
@@ -128,16 +194,19 @@ function removeGraphEdgeFromText(text, script, labels, labelSourceLines, edge) {
     const lines = text.split("\n");
 
     if (edge.kind === "goto" || edge.kind === "call") {
-        const i = edge.sourceLine;
-        if (i == null || i < 0 || i >= lines.length) {
-            return { ok: false, error: "行が見つかりません", text };
+        const removed = removeJumpLineFromText(
+            lines,
+            labels,
+            labelSourceLines,
+            edge
+        );
+        if (!removed) {
+            return {
+                ok: false,
+                error: "接続行が見つかりません。再読み込みしてください",
+                text,
+            };
         }
-        const t = lines[i].trim();
-        const expected = edge.kind === "call" ? "@call" : "@goto";
-        if (t !== expected && !t.startsWith(expected + " ")) {
-            return { ok: false, error: "脚本が変更されています。再読み込みしてください", text };
-        }
-        lines.splice(i, 1);
         return { ok: true, text: lines.join("\n") };
     }
 
