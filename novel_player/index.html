@@ -235,12 +235,17 @@
                             aria-label="閉じる">&times;</button>
                     </header>
                     <div class="node-graph-help__body">
-                        <p><strong>表示</strong> … 空白ドラッグでパン、ホイールでズーム。「全体」でフィット。灰点線は定義順の続き（fallthrough）、黄褐破線は @call。</p>
-                        <p><strong>移動</strong> … ノードをタップするとプレビュー・エディタがそのラベルへ（設定でエディタ同期）。グラフは閉じません。</p>
-                        <p><strong>ラベル</strong> … ＋ラベルは末尾に追加。改名・削除はツールをオンにしてからノードを1回タップ（削除は確認あり）。戻すはメニューと共有。</p>
-                        <p><strong>接続</strong> … goto／call は起点→行き先の2タップ（goto は1本だけ差し替え、call は行を増やす）。end／return は1タップ。ツールは同じボタンをもう一度、または Esc でやめる。</p>
-                        <p><strong>線</strong> … 矢印・スタブをタップで切断（ツール未選択でも可）。未接続の選択肢の線はドラッグで接続。</p>
-                        <p>行き先が無いラベルへつなぐと、末尾に @ラベル が足されます。操作はすべて脚本テキストを書き換えます（エディタの元に戻すとは別）。</p>
+                        <ul class="node-graph-help__list">
+                            <li><strong>ジャンプ</strong> … ノードをタップでそのラベルへ（グラフは閉じない）</li>
+                            <li><strong>表示</strong> … ドラッグ＝パン、ホイール＝ズーム、「全体」でフィット</li>
+                            <li><strong>＋ラベル</strong> … 脚本の末尾に追加</li>
+                            <li><strong>改名・削除</strong> … ボタンを押してからノードをタップ</li>
+                            <li><strong>goto / call</strong> … 2タップ（出発→行き先）</li>
+                            <li><strong>end / return</strong> … 1タップ</li>
+                            <li><strong>線</strong> … タップで切断（選択肢の未接続はドラッグでつなぐ）</li>
+                        </ul>
+                        <p class="node-graph-help__foot">灰線＝そのまま次へ続く　黄褐破線＝call<br>
+                            ツールをやめる … 同じボタン／Esc　｜　戻す … ⚙内またはプレビューメニュー</p>
                     </div>
                 </div>
             </div>
@@ -379,7 +384,7 @@ preview.overflow=wrap
                     <h3>ノードグラフ</h3>
                     <p>画面上部の <strong>ノードグラフ</strong> で分岐を俯瞰します。変更は脚本テキストへの反映です（正本はエディタの記法のまま）。</p>
                     <ul class="help-compact">
-                        <li><strong>移動</strong> … ノードタップでプレビュー・エディタへ。グラフは閉じない（× / Esc で閉じる）</li>
+                        <li><strong>ジャンプ</strong> … ノードタップでそのラベルへ（プレビュー・エディタ）。グラフは閉じない</li>
                         <li><strong>表示</strong> … パン・ズーム・「全体」。ラベル名フィルタ</li>
                         <li><strong>＋ラベル</strong> … 脚本末尾に空ブロックを追加</li>
                         <li><strong>改名・削除</strong> … ツールオン → ノード1タップ（削除は確認あり。参照も整理）</li>
