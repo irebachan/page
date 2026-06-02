@@ -299,6 +299,36 @@ function buildLabelGraphData(script, labels, labelSourceLines) {
         }
     }
 
+    const exitsByLabel = new Map();
+    for (let i = 0; i < script.length; i++) {
+        const item = script[i];
+        if (item.type !== "end" && item.type !== "return") continue;
+        const from = getContainingLabel(labels, i);
+        if (!from) continue;
+        if (!exitsByLabel.has(from)) exitsByLabel.set(from, []);
+        exitsByLabel.get(from).push({
+            exitKind: item.type,
+            sourceLine: item.sourceLine,
+        });
+    }
+    for (const [from, exits] of exitsByLabel) {
+        const groupSize = exits.length;
+        exits.forEach((ex, exitIndex) => {
+            edges.push({
+                id: `exit-${ex.exitKind}-${ex.sourceLine}`,
+                from,
+                to: null,
+                kind: "exit",
+                exitKind: ex.exitKind,
+                sourceLine: ex.sourceLine,
+                disconnected: true,
+                detail: ex.exitKind === "end" ? "@end" : "@return",
+                exitIndex,
+                exitGroupSize: groupSize,
+            });
+        });
+    }
+
     // 選択肢の分岐先かどうかは不問。定義順で隣り合うラベル同士だけ。
     const ordered = labelNamesInScriptOrder(labels);
     for (let i = 0; i + 1 < ordered.length; i++) {

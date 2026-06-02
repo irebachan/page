@@ -133,6 +133,14 @@ class LabelGraphView {
             hitEl.style.cursor = "default";
             return;
         }
+        if (edge.kind === "exit") {
+            hitEl.style.cursor = "pointer";
+            hitEl.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (this.onRemoveEdge) this.onRemoveEdge(edge);
+            });
+            return;
+        }
         hitEl.style.cursor = "grab";
         hitEl.addEventListener("pointerdown", (e) => {
             e.stopPropagation();
@@ -346,6 +354,14 @@ class LabelGraphView {
                 markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                 <path d="M 0 0 L 10 5 L 0 10 z" class="label-graph-arrowhead-fallthrough"/>
             </marker>
+            <marker id="label-graph-dot-exit-end" viewBox="0 0 8 8" refX="4" refY="4"
+                markerWidth="5" markerHeight="5" orient="auto">
+                <circle cx="4" cy="4" r="3" class="label-graph-exit-dot-end"/>
+            </marker>
+            <marker id="label-graph-dot-exit-return" viewBox="0 0 8 8" refX="4" refY="4"
+                markerWidth="5" markerHeight="5" orient="auto">
+                <circle cx="4" cy="4" r="3" class="label-graph-exit-dot-return"/>
+            </marker>
         `;
         this.svg.insertBefore(defs, this.gRoot);
     }
@@ -388,7 +404,10 @@ class LabelGraphView {
         for (const edge of edges) {
             const dimmed = !this.edgeMatchesFilter(edge);
 
-            if (edge.kind === "choice" && edge.disconnected) {
+            if (
+                (edge.kind === "choice" && edge.disconnected) ||
+                edge.kind === "exit"
+            ) {
                 stubEdges.push({ edge, dimmed });
                 continue;
             }
@@ -403,7 +422,10 @@ class LabelGraphView {
         for (const { edge, dimmed } of stubEdges) {
             const fromLay = graph.node(edge.from);
             if (!fromLay) continue;
-            const stubPoints = computeChoiceStubPoints(edge, fromLay);
+            const stubPoints =
+                edge.kind === "exit"
+                    ? computeExitStubPoints(edge, fromLay)
+                    : computeChoiceStubPoints(edge, fromLay);
             this.appendEdgePaths(edge, stubPoints, dimmed);
         }
 
@@ -643,9 +665,18 @@ class LabelGraphView {
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("class", "label-graph-edge");
         path.setAttribute("data-kind", edge.kind);
+        if (edge.exitKind) {
+            path.setAttribute("data-exit-kind", edge.exitKind);
+        }
         path.setAttribute("d", d);
         if (edge.disconnected) path.classList.add("is-stub");
-        if (edge.kind === "call") {
+        if (edge.kind === "exit") {
+            const dotId =
+                edge.exitKind === "return"
+                    ? "label-graph-dot-exit-return"
+                    : "label-graph-dot-exit-end";
+            path.setAttribute("marker-end", `url(#${dotId})`);
+        } else if (edge.kind === "call") {
             path.setAttribute("marker-end", "url(#label-graph-arrow-call)");
         } else if (edge.kind === "fallthrough") {
             path.setAttribute("marker-end", "url(#label-graph-arrow-fallthrough)");
@@ -658,8 +689,10 @@ class LabelGraphView {
         const title = edgeTitle(edge);
         if (title) {
             const t = document.createElementNS("http://www.w3.org/2000/svg", "title");
-            if (edge.kind === "fallthrough") {
-                t.textContent = title;
+            if (edge.kind === "fallthrough" || edge.kind === "exit") {
+                t.textContent =
+                    title +
+                    (edge.kind === "exit" ? "（クリックで行を削除）" : "");
             } else {
                 t.textContent =
                     title +
@@ -675,16 +708,19 @@ class LabelGraphView {
 
         const labelText = edgeDisplayLabel(edge);
         if (labelText) {
-            const labelPt = edge.disconnected
-                ? choiceStubLabelPoint(points)
-                : null;
+            let labelPt = null;
+            if (edge.kind === "exit") {
+                labelPt = exitStubLabelPoint(points);
+            } else if (edge.disconnected) {
+                labelPt = choiceStubLabelPoint(points);
+            }
             appendEdgeLabel(
                 this.gEdges,
                 labelText,
                 points,
                 dimmed,
                 labelPt,
-                edge.kind
+                edge.kind === "exit" ? `exit-${edge.exitKind}` : edge.kind
             );
         }
     }
@@ -713,6 +749,30 @@ function computeChoiceStubPoints(edge, fromLay) {
         { x: attachX, y: y0 + 16 },
         { x: attachX, y: y1 },
     ];
+}
+
+/** @end / @return: ノード下端から短いスタブ（共有ノードにしない） */
+function computeExitStubPoints(edge, fromLay) {
+    const n = Math.max(1, edge.exitGroupSize || 1);
+    const i = edge.exitIndex ?? 0;
+    const w = fromLay.width || 88;
+    const minSpacing = 48;
+    const span = n <= 1 ? w * 0.5 : Math.max(w * 0.5, (n - 1) * minSpacing);
+    const attachX =
+        n <= 1
+            ? fromLay.x
+            : fromLay.x - span / 2 + (span * i) / (n - 1);
+    const y0 = fromLay.y + fromLay.height / 2;
+    const y1 = y0 + 26 + i * 4;
+    return [
+        { x: attachX, y: y0 },
+        { x: attachX, y: y1 },
+    ];
+}
+
+function exitStubLabelPoint(points) {
+    const b = points[points.length - 1];
+    return { x: b.x, y: b.y + 2 };
 }
 
 function choiceStubLabelPoint(points) {
@@ -786,6 +846,11 @@ function edgeTitle(edge) {
     if (edge.kind === "fallthrough") {
         return `「${edge.from}」の次の定義「${edge.to}」へ（@goto なし）`;
     }
+    if (edge.kind === "exit") {
+        return edge.exitKind === "end"
+            ? "@end（このラベルで終了）"
+            : "@return（呼び出し元へ戻る）";
+    }
     return "";
 }
 
@@ -793,6 +858,9 @@ function edgeTitle(edge) {
 function edgeDisplayLabel(edge) {
     if (edge.kind === "choice" && edge.detail) {
         if (edge.mode === "call") return `call: ${edge.detail}`;
+        return String(edge.detail);
+    }
+    if (edge.kind === "exit" && edge.detail) {
         return String(edge.detail);
     }
     return null;

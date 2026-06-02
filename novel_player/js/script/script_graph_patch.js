@@ -145,6 +145,23 @@ function removeGraphEdgeFromText(text, script, labels, labelSourceLines, edge) {
         return { ok: false, error: "順番の流れはグラフから削除できません", text };
     }
 
+    if (edge.kind === "exit") {
+        const i = edge.sourceLine;
+        if (i == null || i < 0 || i >= lines.length) {
+            return { ok: false, error: "行が見つかりません", text };
+        }
+        const expected = edge.exitKind === "end" ? "@end" : "@return";
+        if (lines[i].trim() !== expected) {
+            return {
+                ok: false,
+                error: "脚本が変更されています。再読み込みしてください",
+                text,
+            };
+        }
+        lines.splice(i, 1);
+        return { ok: true, text: lines.join("\n") };
+    }
+
     if (edge.kind === "choice") {
         const lineIdx = findChoiceLineIndex(lines, edge.sourceLine, edge.choiceIndex ?? 0);
         if (lineIdx == null) {

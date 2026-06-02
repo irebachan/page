@@ -1157,6 +1157,30 @@ body.node-graph-open {
     opacity: 0.9;
 }
 
+.label-graph-edge[data-kind="exit"] {
+    stroke-width: 1.25;
+}
+
+.label-graph-edge[data-kind="exit"][data-exit-kind="end"] {
+    stroke: #a87878;
+    stroke-dasharray: 3 4;
+}
+
+.label-graph-edge[data-kind="exit"][data-exit-kind="return"] {
+    stroke: #8888b8;
+    stroke-dasharray: 5 3;
+}
+
+.label-graph-exit-dot-end {
+    fill: #a87878;
+    stroke: none;
+}
+
+.label-graph-exit-dot-return {
+    fill: #8888b8;
+    stroke: none;
+}
+
 .label-graph-node__name {
     fill: #e8f0ff;
     font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
@@ -1231,6 +1255,30 @@ body.node-graph-open {
 
 .label-graph-edge-label[data-kind="call"] text {
     fill: #e8dcb8;
+}
+
+.label-graph-edge-label[data-kind="exit-end"] rect {
+    fill: #2a2222;
+    stroke: #a87878;
+    stroke-width: 1;
+}
+
+.label-graph-edge-label[data-kind="exit-end"] text {
+    fill: #e8c0c0;
+    font-family: ui-monospace, "Cascadia Code", monospace;
+    font-size: 10px;
+}
+
+.label-graph-edge-label[data-kind="exit-return"] rect {
+    fill: #222228;
+    stroke: #8888b8;
+    stroke-width: 1;
+}
+
+.label-graph-edge-label[data-kind="exit-return"] text {
+    fill: #c8c8e8;
+    font-family: ui-monospace, "Cascadia Code", monospace;
+    font-size: 10px;
 }
 
 .label-graph-edge-label.is-dimmed {
