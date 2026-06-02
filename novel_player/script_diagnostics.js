@@ -1,16 +1,70 @@
-// シナリオの参照エラー（未定義ラベル）を収集
+// シナリオの参照エラー・変数・条件式を収集
 function collectReferenceErrors(script, labels) {
     const errors = [];
     const hasLabel = (name) => name && labels.hasOwnProperty(name);
+    const declaredVars = new Set();
 
     for (const item of script) {
+        if (item.type === "var_init") {
+            declaredVars.add(item.name);
+        }
+        if (item.type === "parse_error") {
+            errors.push({
+                sourceLine: item.sourceLine,
+                message: item.message,
+            });
+        }
+        if (item.type === "set") {
+            if (!declaredVars.has(item.name)) {
+                errors.push({
+                    sourceLine: item.sourceLine,
+                    message: `@set ${item.name} — @var で宣言されていません`,
+                });
+            }
+        }
+        if (item.type === "if_chain") {
+            item.branches.forEach((b, bi) => {
+                if (b.condition != null && window.ScriptExpr) {
+                    try {
+                        ScriptExpr.parseCondition(b.condition);
+                    } catch (e) {
+                        errors.push({
+                            sourceLine: item.sourceLine,
+                            message: `@if/@elseif の式: ${e.message}`,
+                        });
+                    }
+                }
+                if (b.from == null || b.to == null || b.from >= b.to) {
+                    errors.push({
+                        sourceLine: item.sourceLine,
+                        message: `条件分岐の枝 ${bi + 1} が空です`,
+                    });
+                }
+            });
+        }
         if (item.type === "choice") {
             for (const c of item.choices) {
+                if (c.parseError) {
+                    errors.push({
+                        sourceLine: item.sourceLine,
+                        message: `選択肢: ${c.parseError}`,
+                    });
+                }
                 if (!hasLabel(c.target)) {
                     errors.push({
                         sourceLine: item.sourceLine,
                         message: `選択肢「${c.text}」→ 未定義「${c.target}」`,
                     });
+                }
+                if (c.condition && window.ScriptExpr) {
+                    try {
+                        ScriptExpr.parseCondition(c.condition);
+                    } catch (e) {
+                        errors.push({
+                            sourceLine: item.sourceLine,
+                            message: `選択肢「${c.text}」の条件: ${e.message}`,
+                        });
+                    }
                 }
             }
         } else if (item.type === "goto" || item.type === "call") {
@@ -78,69 +132,21 @@ function buildLabelFlow(script, labels) {
         const start = labels[name];
         const end = getNextLabelBlockEnd(labels, script.length, start);
         const outgoing = [];
-
         for (let i = start; i < end; i++) {
             const item = script[i];
             if (item.type === "choice") {
                 for (const c of item.choices) {
                     outgoing.push({
+                        to: c.target,
                         kind: "choice",
-                        target: c.target,
                         detail: c.text,
                         mode: c.mode || "goto",
                     });
                 }
-            } else if (item.type === "goto") {
-                outgoing.push({ kind: "goto", target: item.target });
-            } else if (item.type === "call") {
-                outgoing.push({ kind: "call", target: item.target });
-            } else if (item.type === "end") {
-                outgoing.push({ kind: "end" });
+            } else if (item.type === "goto" || item.type === "call") {
+                outgoing.push({ to: item.target, kind: item.type });
             }
         }
-
-        return { name, incoming: incoming[name] || [], outgoing };
+        return { name, start, end, incoming: incoming[name] || [], outgoing };
     });
-}
-
-function formatLabelFlowRef(ref, direction) {
-    return getLabelFlowRefParts(ref, direction)
-        .map((p) => p.value)
-        .join("");
-}
-
-/** ラベル名だけリンク化するためのセグメント列 */
-function getLabelFlowRefParts(ref, direction) {
-    const parts = [];
-    if (ref.kind === "choice") {
-        if (direction === "out") {
-            parts.push({ type: "text", value: `選択「${ref.detail}」→ ` });
-            if (ref.mode === "call") parts.push({ type: "text", value: "call " });
-            parts.push({ type: "label", value: ref.target });
-        } else {
-            parts.push({ type: "text", value: `「${ref.detail}」` });
-            if (ref.from) {
-                parts.push({ type: "text", value: " ← " });
-                parts.push({ type: "label", value: ref.from });
-            } else {
-                parts.push({ type: "text", value: " ← （冒頭）" });
-            }
-        }
-    } else if (ref.kind === "goto" || ref.kind === "call") {
-        if (direction === "out") {
-            parts.push({ type: "text", value: `@${ref.kind} ` });
-            parts.push({ type: "label", value: ref.target });
-        } else {
-            parts.push({ type: "text", value: `@${ref.kind} ` });
-            if (ref.from) {
-                parts.push({ type: "text", value: "← " });
-                parts.push({ type: "label", value: ref.from });
-            } else {
-                parts.push({ type: "text", value: "← （冒頭）" });
-            }
-        }
-    } else if (ref.kind === "end") {
-        parts.push({ type: "text", value: "@end" });
-    }
-    return parts;
 }

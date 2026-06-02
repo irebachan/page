@@ -63,6 +63,9 @@ class NovelPlayer {
         this.lastJumpLabel = "";
         /** @call の戻り先 */
         this.callStack = [];
+        this.ifSkipStack = [];
+        this.previewVars = {};
+        this.previewVarsList = document.getElementById("previewVarsList");
         this.previewMeta = {};
 
         // イベントリスナーの設定
@@ -174,6 +177,8 @@ class NovelPlayer {
 
         // 初期スクリプト
         this.defaultScript = `
+@var 好感度 0
+
 @morning
 
 // この行はプレビューに表示されず、エクスポート後もコメントとして残ります
@@ -213,7 +218,13 @@ class NovelPlayer {
 
 #ユウ
 へえ、また教えて。
+@set 好感度 += 1
 @return
+
+@if 好感度 >= 2
+#
+（ミナと仲良くなれた気がする）
+@endif
 
 @feed_birds
 #ユウ
@@ -602,7 +613,130 @@ class NovelPlayer {
         this.viewLineUnit = 0;
         this.lastJumpLabel = "";
         this.callStack = [];
+        this.ifSkipStack = [];
+        this.initPreviewVars();
         this.updatePrevButton();
+    }
+
+    initPreviewVars() {
+        this.previewVars = {};
+        for (const item of this.script) {
+            if (item.type === "var_init") {
+                this.previewVars[item.name] = item.value;
+            }
+        }
+        this.refreshPreviewVarsUI();
+    }
+
+    refreshPreviewVarsUI() {
+        if (!this.previewVarsList) return;
+        const names = Object.keys(this.previewVars).sort();
+        this.previewVarsList.innerHTML = "";
+        if (!names.length) {
+            const li = document.createElement("li");
+            li.className = "preview-vars-empty";
+            li.textContent = "（@var で宣言）";
+            this.previewVarsList.appendChild(li);
+            return;
+        }
+        names.forEach((name) => {
+            const li = document.createElement("li");
+            li.textContent = `${name} = ${this.previewVars[name]}`;
+            this.previewVarsList.appendChild(li);
+        });
+    }
+
+    evalPreviewCondition(condition) {
+        if (condition == null || condition === "") return true;
+        if (!window.ScriptExpr) return true;
+        try {
+            return ScriptExpr.evaluateCondition(condition, this.previewVars);
+        } catch (err) {
+            console.warn("条件の評価に失敗:", condition, err);
+            return false;
+        }
+    }
+
+    applyPreviewSet(item) {
+        const cur = Number(this.previewVars[item.name]) || 0;
+        if (item.op === "=") {
+            this.previewVars[item.name] = item.value;
+        } else if (item.op === "+=") {
+            this.previewVars[item.name] = cur + item.value;
+        } else if (item.op === "-=") {
+            this.previewVars[item.name] = cur - item.value;
+        }
+        this.refreshPreviewVarsUI();
+    }
+
+    resolveIfChain(chain) {
+        for (const b of chain.branches) {
+            if (b.from == null || b.to == null || b.from >= b.to) continue;
+            if (b.condition == null || this.evalPreviewCondition(b.condition)) {
+                this.ifSkipStack.push({ end: b.to, endifAt: chain.endifAt });
+                return b.from;
+            }
+        }
+        return chain.endifAt;
+    }
+
+    consumeIfSkipForIndex(indexRef) {
+        let idx = indexRef;
+        while (
+            this.ifSkipStack.length &&
+            idx >= this.ifSkipStack[this.ifSkipStack.length - 1].end
+        ) {
+            const frame = this.ifSkipStack.pop();
+            idx = frame.endifAt;
+        }
+        return idx;
+    }
+
+    skipPreviewControlLines(idx) {
+        let i = idx;
+        while (i < this.script.length) {
+            const line = this.script[i];
+            if (line.type === "if_chain") {
+                i = this.resolveIfChain(line);
+                continue;
+            }
+            if (line.type === "var_init") {
+                i++;
+                continue;
+            }
+            if (line.type === "set") {
+                this.applyPreviewSet(line);
+                i++;
+                continue;
+            }
+            if (line.type === "parse_error") {
+                i++;
+                continue;
+            }
+            if (line.type === "goto" || line.type === "call") {
+                if (this.labels.hasOwnProperty(line.target)) {
+                    i = this.labels[line.target];
+                    continue;
+                }
+                i++;
+                continue;
+            }
+            if (line.type === "return") {
+                const frame = this.callStack.pop();
+                if (frame) {
+                    i = frame.index;
+                    continue;
+                }
+                i++;
+                continue;
+            }
+            if (line.type === "blank" || line.type === "comment") {
+                i++;
+                continue;
+            }
+            break;
+        }
+        return this.consumeIfSkipForIndex(i);
     }
 
     updateScript(options = {}) {
@@ -617,6 +751,8 @@ class NovelPlayer {
         this.labels = parseResult.labels;
         this.labelSourceLines = parseResult.labelSourceLines || {};
         this.callStack = [];
+        this.ifSkipStack = [];
+        this.initPreviewVars();
 
         const resolved =
             preservePosition && anchor
@@ -732,6 +868,7 @@ class NovelPlayer {
     refreshLabelUI() {
         this.refreshLabelList();
         this.refreshLabelFlowIfOpen();
+        this.refreshPreviewVarsUI();
         this.updatePreviewStatusBar();
         this.updateEditorStatusBar();
     }
@@ -1434,9 +1571,20 @@ class NovelPlayer {
             this.nameBox.textContent = "";
             this.textBox.textContent = line.description || "";
 
-            line.choices.forEach((choice) => {
+            const visibleChoices = line.choices.filter(
+                (c) => !c.condition || this.evalPreviewCondition(c.condition)
+            );
+            if (!visibleChoices.length && line.choices.length > 0) {
+                this.textBox.textContent =
+                    (line.description ? line.description + "\n" : "") +
+                    "（条件を満たす選択肢がありません）";
+            }
+            visibleChoices.forEach((choice) => {
                 const btn = document.createElement("button");
                 btn.textContent = choice.text;
+                if (choice.condition && window.ScriptExpr) {
+                    btn.title = `表示条件: ${ScriptExpr.describeCondition(choice.condition)}`;
+                }
                 btn.onclick = () => {
                     this.pushPreviewHistory({
                         viewIndex: this.viewIndex,
@@ -1514,9 +1662,29 @@ class NovelPlayer {
 
         let idx = this.clampScriptIndex(this.viewIndex);
         let lu = this.viewLineUnit || 0;
+        idx = this.skipPreviewControlLines(idx);
+        lu = idx === this.viewIndex ? lu : 0;
 
         while (idx < this.script.length) {
             const line = this.script[idx];
+            if (line.type === "if_chain") {
+                idx = this.resolveIfChain(line);
+                lu = 0;
+                continue;
+            }
+            if (line.type === "var_init") {
+                idx++;
+                continue;
+            }
+            if (line.type === "set") {
+                this.applyPreviewSet(line);
+                idx++;
+                continue;
+            }
+            if (line.type === "parse_error") {
+                idx++;
+                continue;
+            }
             if (line.type === "goto" || line.type === "call") {
                 if (this.labels.hasOwnProperty(line.target)) {
                     idx = this.labels[line.target];
@@ -1576,12 +1744,34 @@ class NovelPlayer {
     }
 
     showLine() {
+        this.index = this.consumeIfSkipForIndex(this.index);
         if (this.index >= this.script.length) {
             this.showEndState();
             return;
         }
 
         const line = this.script[this.index];
+        if (line.type === "if_chain") {
+            this.index = this.resolveIfChain(line);
+            this.showLine();
+            return;
+        }
+        if (line.type === "var_init") {
+            this.index++;
+            this.showLine();
+            return;
+        }
+        if (line.type === "set") {
+            this.applyPreviewSet(line);
+            this.index++;
+            this.showLine();
+            return;
+        }
+        if (line.type === "parse_error") {
+            this.index++;
+            this.showLine();
+            return;
+        }
         if (line.type === "goto") {
             if (this.labels.hasOwnProperty(line.target)) {
                 this.index = this.labels[line.target];
@@ -1655,6 +1845,8 @@ class NovelPlayer {
         this.viewIndex = 0;
         this.viewLineUnit = 0;
         this.callStack = [];
+        this.ifSkipStack = [];
+        this.initPreviewVars();
         this.renderCurrentView();
         this.updatePrevButton();
     }
@@ -1676,6 +1868,7 @@ class NovelPlayer {
             viewLineUnit: this.viewLineUnit,
         });
         this.callStack = [];
+        this.ifSkipStack = [];
         this.lastJumpLabel = labelName;
         this.viewIndex = this.labels[labelName];
         this.viewLineUnit = 0;

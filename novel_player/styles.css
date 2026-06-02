@@ -830,6 +830,33 @@ body.menu-drawer-open {
     cursor: pointer;
 }
 
+.preview-vars-panel {
+    margin-top: 0.75em;
+    padding: 0.4em 0.5em;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+}
+
+.preview-vars-summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+.preview-vars-list {
+    margin: 0.5em 0 0;
+    padding-left: 1.2em;
+    font-size: 0.85rem;
+    color: #aaa;
+    line-height: 1.4;
+}
+
+.preview-vars-empty {
+    list-style: none;
+    margin-left: -1.2em;
+    color: #666;
+}
+
 .menu-drawer--novel .label-flow-open-btn:hover {
     background: #555;
 }

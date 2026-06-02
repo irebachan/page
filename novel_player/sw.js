@@ -20,6 +20,7 @@ const SHELL_FILES = [
     "./export_format_custom.js",
     "./export_render_tyrano.js",
     "./export_render_renpy.js",
+    "./script_expr.js",
     "./script-parser.js",
     "./script_diagnostics.js",
     "./export_settings.js",

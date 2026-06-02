@@ -136,6 +136,10 @@
                     <div id="labelList" class="label-list" role="list"></div>
                 </div>
                 <button type="button" id="labelFlowOpenButton" class="label-flow-open-btn">🗺️ ラベルの流れ</button>
+                <details class="preview-vars-panel" id="previewVarsPanel">
+                    <summary class="preview-vars-summary">📊 変数（プレビュー）</summary>
+                    <ul id="previewVarsList" class="preview-vars-list" aria-live="polite"></ul>
+                </details>
             </div>
         </div>
     </div>
@@ -230,10 +234,35 @@
 セリフ内容（複数行可能）
                 </pre>
 
+                <h3>変数</h3>
+                <pre>
+@var 好感度 0
+@set 好感度 += 1
+@set フラグ = 1
+                </pre>
+                <p>プレビュー内だけ有効。エクスポート時はそのままテキストとして残ります。</p>
+
+                <h3>条件分岐（@if）</h3>
+                <p><strong>上から順に、最初に当てはまった枝だけ</strong>実行されます。</p>
+                <pre>
+@if 好感度 >= 5
+#ユウ
+仲良し会話
+@elseif 好感度 >= 2
+#ユウ
+ふつうの会話
+@else
+#ユウ
+よそよそしい
+@endif
+                </pre>
+                <p><code>@elseif 好感度 >= 2</code> は「<code>@if</code> もその前の <code>@elseif</code> も外れたとき、さらに好感度が2以上なら」という意味です。並べ替え注意（数値が大きい条件を上に）。</p>
+
                 <h3>選択肢</h3>
                 <pre>
 - 選択肢テキスト => ジャンプ先ラベル
 - 選択肢テキスト => call ジャンプ先ラベル
+- 秘密ルート => secret if 好感度 >= 10
                 </pre>
 
                 <h3>ラベル定義</h3>
@@ -364,7 +393,7 @@ preview.overflow=wrap
                 <p>ブラウザでシナリオを書きながらプレビューするエディタ。作品は端末内に保存、共有はテキスト想定。</p>
                 <ul class="help-compact">
                     <li>即時プレビュー（分割 / 全画面切替は右上 □）</li>
-                    <li>作品の自動保存・エクスポート / インポート・コピー / 共有、ティラノ / Ren'Py 向け出力</li>
+                    <li>変数・@if 分岐（プレビュー）、エクスポート / インポート・コピー / 共有、ティラノ / Ren'Py 向け出力</li>
                     <li>HTTPS 配信時は PWA（ホーム画面に追加・オフラインで UI 表示）</li>
                 </ul>
                 <p>操作・記法は <strong>ヘルプ</strong> を参照。</p>
@@ -478,6 +507,7 @@ preview.overflow=wrap
     <script src="export_format_custom.js"></script>
     <script src="export_render_tyrano.js"></script>
     <script src="export_render_renpy.js"></script>
+    <script src="script_expr.js"></script>
     <script src="script-parser.js"></script>
     <script src="script_diagnostics.js"></script>
     <script src="export_settings.js"></script>
