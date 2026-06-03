@@ -76,6 +76,8 @@ class NovelPlayer {
         this._graphUnlockDeferred = false;
         this._afterGraphUnlock = null;
         this._pendingGraphEditorJump = null;
+        this._graphUnlockFallbackTimer = null;
+        this._graphUnlockRetry = 0;
         /** @call の戻り先 */
         this.callStack = [];
         this._previewAtEnd = false;
@@ -191,7 +193,10 @@ class NovelPlayer {
                         keepNodeGraphOpen: true,
                         fromGraphTap: true,
                     }),
-                onNodeDoubleClick: (name) => this.jumpToLabelByName(name),
+                onNodeDoubleClick: (name) => {
+                    this.labelGraphView?.clearNodeClickTimer?.();
+                    this.jumpToLabelByName(name);
+                },
                 onConnect: (from, to) => this.graphConnectLabels(from, to),
                 onConnectCall: (from, to) => this.graphConnectCall(from, to),
                 onConnectChoice: (edge, to) => this.graphConnectChoice(edge, to),
@@ -1242,15 +1247,38 @@ class NovelPlayer {
         }
     }
 
+    armGraphUnlockFallback() {
+        clearTimeout(this._graphUnlockFallbackTimer);
+        this._graphUnlockFallbackTimer = setTimeout(() => {
+            this._graphUnlockFallbackTimer = null;
+            if (!this._graphUnlockDeferred) return;
+            this._graphPointers.clear();
+            this.finishCloseNodeGraph();
+        }, 450);
+    }
+
     scheduleGraphBackgroundUnlock() {
         requestAnimationFrame(() => {
-            if (this._graphPointers.size > 0) return;
+            if (!this._graphUnlockDeferred) return;
+            if (this._graphPointers.size > 0) {
+                this._graphUnlockRetry += 1;
+                if (this._graphUnlockRetry < 12) {
+                    this.scheduleGraphBackgroundUnlock();
+                    return;
+                }
+                this._graphPointers.clear();
+            }
+            this._graphUnlockRetry = 0;
             this.finishCloseNodeGraph();
         });
     }
 
     finishCloseNodeGraph() {
+        clearTimeout(this._graphUnlockFallbackTimer);
+        this._graphUnlockFallbackTimer = null;
+        this._graphUnlockRetry = 0;
         this._graphUnlockDeferred = false;
+        this._graphPointers.clear();
         this.setNodeGraphBackgroundInert(false);
         const after = this._afterGraphUnlock;
         this._afterGraphUnlock = null;
@@ -1305,14 +1333,10 @@ class NovelPlayer {
         const filterToggle = document.getElementById("nodeGraphFilterToggle");
         filterToggle?.setAttribute("aria-expanded", "false");
 
-        const deferUnlock =
-            options.deferUnlock &&
-            (this._graphPointers.size > 0 || this.isCoarsePointer());
-        if (deferUnlock) {
+        if (options.deferUnlock && this.isCoarsePointer()) {
             this._graphUnlockDeferred = true;
-            if (this._graphPointers.size === 0) {
-                this.scheduleGraphBackgroundUnlock();
-            }
+            this.scheduleGraphBackgroundUnlock();
+            this.armGraphUnlockFallback();
             return;
         }
         this.finishCloseNodeGraph();
@@ -2245,6 +2269,9 @@ class NovelPlayer {
             }
             this._lastGraphTapJumpAt = now;
             this._lastGraphTapJumpLabel = labelName;
+        }
+        if (!options.keepNodeGraphOpen) {
+            this.labelGraphView?.clearNodeClickTimer?.();
         }
         const closingGraph = !options.keepNodeGraphOpen;
         const deferGraphHighlight =

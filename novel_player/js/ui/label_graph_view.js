@@ -1001,6 +1001,8 @@ class LabelGraphView {
     handleNodeDoubleTap(nodeName) {
         if (!nodeName || nodeName.startsWith("__open__")) return;
         if (this._commandMode) return;
+        this.clearNodeClickTimer();
+        this._lastNodeTap = null;
         if (this.onNodeDoubleClick) {
             this.onNodeDoubleClick(nodeName);
         } else {
