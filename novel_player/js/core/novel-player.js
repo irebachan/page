@@ -168,6 +168,7 @@ class NovelPlayer {
             this.labelGraphView = new LabelGraphView(this.nodeGraphHost, {
                 onNodeClick: (name) =>
                     this.jumpToLabelByName(name, { keepNodeGraphOpen: true }),
+                onNodeDoubleClick: (name) => this.jumpToLabelByName(name),
                 onConnect: (from, to) => this.graphConnectLabels(from, to),
                 onConnectCall: (from, to) => this.graphConnectCall(from, to),
                 onConnectChoice: (edge, to) => this.graphConnectChoice(edge, to),

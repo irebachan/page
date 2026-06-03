@@ -5,6 +5,10 @@ class LabelGraphView {
     constructor(container, options = {}) {
         this.container = container;
         this.onNodeClick = options.onNodeClick || null;
+        this.onNodeDoubleClick = options.onNodeDoubleClick || null;
+        this._nodeClickTimer = null;
+        this._lastNodeTap = null;
+        this._nodeClickDelayMs = 280;
         this.onConnect = options.onConnect || null;
         this.onConnectCall = options.onConnectCall || null;
         this.onConnectChoice = options.onConnectChoice || null;
@@ -815,13 +819,49 @@ class LabelGraphView {
         this.applyTransform();
     }
 
+    clearNodeClickTimer() {
+        if (this._nodeClickTimer) {
+            clearTimeout(this._nodeClickTimer);
+            this._nodeClickTimer = null;
+        }
+    }
+
     handleNodeTap(nodeName) {
         if (!nodeName || nodeName.startsWith("__open__")) return;
         if (this._commandMode) {
             this.handleCommandNodeClick(nodeName);
             return;
         }
-        if (this.onNodeClick) this.onNodeClick(nodeName);
+
+        const now = Date.now();
+        if (
+            this._lastNodeTap &&
+            this._lastNodeTap.name === nodeName &&
+            now - this._lastNodeTap.time < this._nodeClickDelayMs
+        ) {
+            this.clearNodeClickTimer();
+            this._lastNodeTap = null;
+            this.handleNodeDoubleTap(nodeName);
+            return;
+        }
+
+        this._lastNodeTap = { name: nodeName, time: now };
+        this.clearNodeClickTimer();
+        this._nodeClickTimer = setTimeout(() => {
+            this._nodeClickTimer = null;
+            this._lastNodeTap = null;
+            this.onNodeClick?.(nodeName);
+        }, this._nodeClickDelayMs);
+    }
+
+    handleNodeDoubleTap(nodeName) {
+        if (!nodeName || nodeName.startsWith("__open__")) return;
+        if (this._commandMode) return;
+        if (this.onNodeDoubleClick) {
+            this.onNodeDoubleClick(nodeName);
+        } else {
+            this.onNodeClick?.(nodeName);
+        }
     }
 
     onPointerUp(e) {
