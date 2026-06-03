@@ -76,9 +76,15 @@ export function createScenarioEditor(parent, options = {}) {
             const lineCount = view.state.doc.lines;
             if (lineCount === 0) return;
             const line = view.state.doc.line(Math.min(lineNum + 1, lineCount));
+            const scrollY = options.scrollY ?? "center";
+            const yMargin =
+                options.yMargin ?? (scrollY === "start" ? 96 : 5);
             view.dispatch({
                 selection: { anchor: line.from, head: line.from },
-                effects: EditorView.scrollIntoView(line.from, { y: "center" }),
+                effects: EditorView.scrollIntoView(line.from, {
+                    y: scrollY,
+                    yMargin,
+                }),
             });
             if (options.focus !== false) {
                 view.focus();

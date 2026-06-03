@@ -1236,10 +1236,8 @@ class NovelPlayer {
 
     scheduleGraphBackgroundUnlock() {
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                if (this._graphPointers.size > 0) return;
-                this.finishCloseNodeGraph();
-            });
+            if (this._graphPointers.size > 0) return;
+            this.finishCloseNodeGraph();
         });
     }
 
@@ -1312,19 +1310,42 @@ class NovelPlayer {
         this.finishCloseNodeGraph();
     }
 
-    applyDeferredEditorSyncAfterGraph(labelName, jumpOptions = {}) {
-        const moveEditor =
-            jumpOptions.forceEditorMove ||
-            this.isSyncEditorOnLabelJumpEnabled();
-        const lineNum = this.labelSourceLines[labelName];
-        if (!moveEditor || lineNum === undefined) return;
-        this.moveEditorToSourceLine(lineNum, { focus: false });
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                if (this.isNodeGraphOpen()) return;
-                this.focusEditor();
-            });
-        });
+    /** ラベル定義行の次にある、実際に編集しやすい本文行（0-based） */
+    getEditorLineForLabelJump(labelName) {
+        const start = this.labelSourceLines[labelName];
+        if (start == null) return 0;
+        const lines = this.getScriptText().split("\n");
+        const lineCount = lines.length;
+        let end = lineCount;
+        if (typeof getLabelBlockRange === "function") {
+            const range = getLabelBlockRange(
+                this.labelSourceLines,
+                labelName,
+                lineCount
+            );
+            if (range) end = range.end;
+        }
+        for (let i = start + 1; i < end; i++) {
+            const t = lines[i].trim();
+            if (!t) continue;
+            if (t.startsWith("@goto") || t.startsWith("@call")) continue;
+            if (t === "@return" || t === "@end") continue;
+            if (t.startsWith("@")) break;
+            return i;
+        }
+        return Math.min(start + 1, lineCount - 1);
+    }
+
+    getEditorSyncOptionsForLabelJump(labelName, jumpOptions = {}) {
+        const touchLike =
+            !jumpOptions.keepNodeGraphOpen && this.isCoarsePointer();
+        return {
+            focus:
+                jumpOptions.editorFocus !== false &&
+                !touchLike,
+            scrollY: touchLike ? "start" : "center",
+            yMargin: touchLike ? 120 : 5,
+        };
     }
 
     refreshNodeGraphIfOpen() {
@@ -2194,10 +2215,18 @@ class NovelPlayer {
         }
         const closingGraph = !options.keepNodeGraphOpen;
         const touchLikeClose = closingGraph && this.isCoarsePointer();
+        const moveEditor =
+            closingGraph &&
+            (options.forceEditorMove ||
+                this.isSyncEditorOnLabelJumpEnabled());
         if (closingGraph) {
+            if (touchLikeClose && moveEditor) {
+                this.moveEditorToSourceLine(
+                    this.getEditorLineForLabelJump(labelName),
+                    this.getEditorSyncOptionsForLabelJump(labelName, options)
+                );
+            }
             if (touchLikeClose) {
-                this._afterGraphUnlock = () =>
-                    this.applyDeferredEditorSyncAfterGraph(labelName, options);
                 this.closeNodeGraph({ deferUnlock: true });
             } else {
                 this.closeNodeGraph();
@@ -2217,15 +2246,11 @@ class NovelPlayer {
         this.renderCurrentView();
         if (pinGraphLabel) this._pinnedGraphLabel = null;
 
-        if (closingGraph && !touchLikeClose) {
-            const moveEditor =
-                options.forceEditorMove ||
-                this.isSyncEditorOnLabelJumpEnabled();
-            if (moveEditor && this.labelSourceLines[labelName] !== undefined) {
-                this.moveEditorToSourceLine(this.labelSourceLines[labelName], {
-                    focus: options.editorFocus !== false,
-                });
-            }
+        if (closingGraph && !touchLikeClose && moveEditor) {
+            this.moveEditorToSourceLine(
+                this.getEditorLineForLabelJump(labelName),
+                this.getEditorSyncOptionsForLabelJump(labelName, options)
+            );
         }
     }
 
