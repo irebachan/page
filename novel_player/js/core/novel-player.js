@@ -1193,11 +1193,27 @@ class NovelPlayer {
         return this.nodeGraphPanel?.classList.contains("is-open") ?? false;
     }
 
+    setNodeGraphBackgroundInert(inert) {
+        const sel =
+            ".app-menu-bar, .app-main, #novelMenuPanel, #scenarioMenuPanel";
+        document.querySelectorAll(sel).forEach((el) => {
+            if (inert) el.setAttribute("inert", "");
+            else el.removeAttribute("inert");
+        });
+        if (inert && document.activeElement instanceof HTMLElement) {
+            const panel = this.nodeGraphPanel;
+            if (panel && !panel.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+        }
+    }
+
     openNodeGraph() {
         if (!this.nodeGraphPanel) return;
         if (this.nodeGraphFilter && this.labelFilterInput) {
             this.nodeGraphFilter.value = this.labelFilterInput.value;
         }
+        this.setNodeGraphBackgroundInert(true);
         this.nodeGraphPanel.classList.add("is-open");
         this.nodeGraphPanel.setAttribute("aria-hidden", "false");
         document.body.classList.add("node-graph-open");
@@ -1205,18 +1221,7 @@ class NovelPlayer {
             this.nodeGraphButton.setAttribute("aria-expanded", "true");
         }
         this.refreshNodeGraph();
-        requestAnimationFrame(() => {
-            if (!this.isNodeGraphOpen() || !this.labelGraphView) return;
-            if (this.labelGraphView.isViewCustomized()) return;
-            const current = this.script.length
-                ? this.getLabelForIndex(this.viewIndex)
-                : null;
-            this.labelGraphView.fitToContent(current);
-        });
-        const vp = this.labelGraphView?.viewport;
-        if (vp) {
-            vp.focus({ preventScroll: true });
-        }
+        // グラフ領域へのフォーカスはキーボードを出す端末があるため行わない
     }
 
     closeNodeGraph() {
@@ -1224,6 +1229,7 @@ class NovelPlayer {
         this.nodeGraphPanel.classList.remove("is-open");
         this.nodeGraphPanel.setAttribute("aria-hidden", "true");
         document.body.classList.remove("node-graph-open");
+        this.setNodeGraphBackgroundInert(false);
         if (this.nodeGraphButton) {
             this.nodeGraphButton.setAttribute("aria-expanded", "false");
         }
@@ -2091,9 +2097,9 @@ class NovelPlayer {
         this.updatePrevButton();
     }
 
-    moveEditorToSourceLine(lineNum) {
+    moveEditorToSourceLine(lineNum, options = {}) {
         if (this.scenarioEditor) {
-            this.scenarioEditor.goToLine(lineNum);
+            this.scenarioEditor.goToLine(lineNum, options);
         }
     }
 
@@ -2116,9 +2122,12 @@ class NovelPlayer {
         this.renderCurrentView();
 
         const moveEditor =
-            options.forceEditorMove || this.isSyncEditorOnLabelJumpEnabled();
+            !options.keepNodeGraphOpen &&
+            (options.forceEditorMove || this.isSyncEditorOnLabelJumpEnabled());
         if (moveEditor && this.labelSourceLines[labelName] !== undefined) {
-            this.moveEditorToSourceLine(this.labelSourceLines[labelName]);
+            this.moveEditorToSourceLine(this.labelSourceLines[labelName], {
+                focus: options.editorFocus !== false,
+            });
         }
         if (options.keepNodeGraphOpen && this.isNodeGraphOpen()) {
             this.labelGraphView?.setCurrentLabel(labelName);

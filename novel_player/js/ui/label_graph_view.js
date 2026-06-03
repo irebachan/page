@@ -8,7 +8,8 @@ class LabelGraphView {
         this.onNodeDoubleClick = options.onNodeDoubleClick || null;
         this._nodeClickTimer = null;
         this._lastNodeTap = null;
-        this._nodeClickDelayMs = 280;
+        /** タッチのシングル／ダブル判別（マウスは即時＋ dblclick） */
+        this._nodeClickDelayMs = 240;
         this.onConnect = options.onConnect || null;
         this.onConnectCall = options.onConnectCall || null;
         this.onConnectChoice = options.onConnectChoice || null;
@@ -28,6 +29,7 @@ class LabelGraphView {
         this._panning = false;
         this._panStart = null;
         this._needsFit = false;
+        this._fitRaf = 0;
         /** null | goto | call | end | return */
         this._commandMode = null;
         this._connectFrom = null;
@@ -90,7 +92,7 @@ class LabelGraphView {
 
         this.viewport = document.createElement("div");
         this.viewport.className = "label-graph-viewport";
-        this.viewport.setAttribute("tabindex", "0");
+        this.viewport.setAttribute("tabindex", "-1");
         container.appendChild(this.viewport);
 
         this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -548,8 +550,7 @@ class LabelGraphView {
         this.drawGraph();
         this.updateUndoButton();
         if (this._needsFit) {
-            this._needsFit = false;
-            this.fitToContent(this.state.currentLabel);
+            this.scheduleFitToContent(this.state.currentLabel);
         }
         this.applyTransform();
     }
@@ -746,6 +747,17 @@ class LabelGraphView {
                 };
             });
 
+            g.addEventListener("dblclick", (e) => {
+                if (node.ghost || e.button !== 0) return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (this._commandMode) return;
+                this.clearNodeClickTimer();
+                this._lastNodeTap = null;
+                this._nodePointerDown = null;
+                this.handleNodeDoubleTap(node.name);
+            });
+
             this.gNodes.appendChild(g);
         }
     }
@@ -938,10 +950,17 @@ class LabelGraphView {
         }
     }
 
-    handleNodeTap(nodeName) {
+    handleNodeTap(nodeName, pointerType) {
         if (!nodeName || nodeName.startsWith("__open__")) return;
         if (this._commandMode) {
             this.handleCommandNodeClick(nodeName);
+            return;
+        }
+
+        if (pointerType === "mouse") {
+            this.clearNodeClickTimer();
+            this._lastNodeTap = null;
+            this.onNodeClick?.(nodeName);
             return;
         }
 
@@ -997,7 +1016,7 @@ class LabelGraphView {
             const dx = e.clientX - pending.x;
             const dy = e.clientY - pending.y;
             if (dx * dx + dy * dy <= 64) {
-                this.handleNodeTap(pending.name);
+                this.handleNodeTap(pending.name, e.pointerType);
             }
             return;
         }
@@ -1030,6 +1049,39 @@ class LabelGraphView {
         } catch (_) {
             /* ignore */
         }
+    }
+
+    cancelScheduledFit() {
+        if (this._fitRaf) {
+            cancelAnimationFrame(this._fitRaf);
+            this._fitRaf = 0;
+        }
+    }
+
+    /** display:none→表示直後は viewport サイズが 0 のことがあるため数フレーム再試行 */
+    scheduleFitToContent(focusLabel, options = {}) {
+        this.cancelScheduledFit();
+        let attempts = 0;
+        const maxAttempts = 12;
+        const step = () => {
+            this._fitRaf = 0;
+            if (!this.layout) {
+                this._needsFit = false;
+                return;
+            }
+            if (this.fitToContent(focusLabel, options)) {
+                this._needsFit = false;
+                return;
+            }
+            if (++attempts < maxAttempts) {
+                this._fitRaf = requestAnimationFrame(step);
+            } else {
+                this._needsFit = false;
+            }
+        };
+        requestAnimationFrame(() => {
+            this._fitRaf = requestAnimationFrame(step);
+        });
     }
 
     fitToContent(focusLabel, options = {}) {

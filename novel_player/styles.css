@@ -1001,6 +1001,13 @@ body.node-graph-open {
     overflow: hidden;
 }
 
+/* モーダル背面（プレビュー・エディタ・メニュー）への触れ込みを防ぐ */
+body.node-graph-open .app-menu-bar,
+body.node-graph-open .app-main {
+    pointer-events: none;
+    user-select: none;
+}
+
 .node-graph-panel {
     display: none;
     position: fixed;
@@ -1008,6 +1015,7 @@ body.node-graph-open {
     z-index: 1100;
     background: #141414;
     box-sizing: border-box;
+    pointer-events: auto;
 }
 
 .node-graph-panel.is-open {

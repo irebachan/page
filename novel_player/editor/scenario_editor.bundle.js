@@ -23140,8 +23140,8 @@ var ScenarioEditorModule = (() => {
       getCursorLine() {
         return view.state.doc.lineAt(view.state.selection.main.head).number - 1;
       },
-      /** 0-based 行へ移動 */
-      goToLine(lineNum) {
+      /** 0-based 行へ移動（focus: false ならカーソルだけ動かしキーボードは出さない） */
+      goToLine(lineNum, options2 = {}) {
         if (lineNum < 0) return;
         const lineCount = view.state.doc.lines;
         if (lineCount === 0) return;
@@ -23150,7 +23150,9 @@ var ScenarioEditorModule = (() => {
           selection: { anchor: line.from },
           effects: EditorView.scrollIntoView(line.from, { y: "center" })
         });
-        view.focus();
+        if (options2.focus !== false) {
+          view.focus();
+        }
       },
       isFocused() {
         return view.hasFocus;
