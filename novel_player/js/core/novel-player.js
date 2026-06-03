@@ -195,7 +195,7 @@ class NovelPlayer {
                     }),
                 onNodeDoubleClick: (name) => {
                     this.labelGraphView?.clearNodeClickTimer?.();
-                    this.jumpToLabelByName(name);
+                    this.jumpToLabelByName(name, { closeGraphExplicit: true });
                 },
                 onConnect: (from, to) => this.graphConnectLabels(from, to),
                 onConnectCall: (from, to) => this.graphConnectCall(from, to),
@@ -2272,6 +2272,9 @@ class NovelPlayer {
         }
         if (!options.keepNodeGraphOpen) {
             this.labelGraphView?.clearNodeClickTimer?.();
+        }
+        if (options.fromGraphTap && !options.closeGraphExplicit) {
+            options = { ...options, keepNodeGraphOpen: true };
         }
         const closingGraph = !options.keepNodeGraphOpen;
         const deferGraphHighlight =

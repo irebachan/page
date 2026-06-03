@@ -8,8 +8,14 @@ class LabelGraphView {
         this.onNodeDoubleClick = options.onNodeDoubleClick || null;
         this._nodeClickTimer = null;
         this._lastNodeTap = null;
-        /** タッチのシングル／ダブル判別（マウスは即時＋ dblclick） */
-        this._nodeClickDelayMs = 240;
+        /** タッチのシングル待ち（ダブル判別のため） */
+        this._nodeClickDelayMs = 300;
+        /** タッチのダブルタップ: この間隔未満はバウンス、超えたら別操作 */
+        this._doubleTapMinMs = 120;
+        this._doubleTapMaxMs = 500;
+        this._doubleTapSlopPx = 40;
+        /** パン・ピンチ直後の dblclick で閉じない */
+        this._suppressGraphDblClickUntil = 0;
         this.onConnect = options.onConnect || null;
         this.onConnectCall = options.onConnectCall || null;
         this.onConnectChoice = options.onConnectChoice || null;
@@ -761,6 +767,7 @@ class LabelGraphView {
                 e.preventDefault();
                 e.stopPropagation();
                 if (this._commandMode) return;
+                if (this.shouldSuppressGraphDblClick()) return;
                 this.clearNodeClickTimer();
                 this._lastNodeTap = null;
                 this._nodePointerDown = null;
@@ -784,8 +791,17 @@ class LabelGraphView {
         this.gRoot.setAttribute("transform", `translate(${x},${y}) scale(${k})`);
     }
 
+    noteGraphGesture() {
+        this._suppressGraphDblClickUntil = Date.now() + 500;
+    }
+
+    shouldSuppressGraphDblClick() {
+        return Date.now() < this._suppressGraphDblClickUntil;
+    }
+
     onWheel(e) {
         e.preventDefault();
+        this.noteGraphGesture();
         const rect = this.viewport.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
@@ -820,6 +836,7 @@ class LabelGraphView {
         if (!m) return;
         const rect = this.viewport.getBoundingClientRect();
         this.cancelPanForPinch();
+        this.noteGraphGesture();
         this._pinchStart = {
             dist: m.dist,
             k: this.transform.k,
@@ -844,6 +861,7 @@ class LabelGraphView {
         this.transform.x = mx - (mx - s.x) * ratio;
         this.transform.y = my - (my - s.y) * ratio;
         this.markViewCustomized();
+        this.noteGraphGesture();
         this.applyTransform();
     }
 
@@ -901,6 +919,7 @@ class LabelGraphView {
         if (e.target.closest(".label-graph-edge-hit")) return;
         this._pendingEdgeAction = null;
         this._panning = true;
+        this.noteGraphGesture();
         this._panStart = {
             x: e.clientX,
             y: e.clientY,
@@ -978,18 +997,29 @@ class LabelGraphView {
         }
 
         const now = Date.now();
-        if (
-            this._lastNodeTap &&
-            this._lastNodeTap.name === nodeName &&
-            now - this._lastNodeTap.time < this._nodeClickDelayMs
-        ) {
-            this.clearNodeClickTimer();
-            this._lastNodeTap = null;
-            this.handleNodeDoubleTap(nodeName);
-            return;
+        const px = pointerEvent?.clientX ?? 0;
+        const py = pointerEvent?.clientY ?? 0;
+        if (this._lastNodeTap && this._lastNodeTap.name === nodeName) {
+            const gap = now - this._lastNodeTap.time;
+            const dx = px - this._lastNodeTap.x;
+            const dy = py - this._lastNodeTap.y;
+            const slop = this._doubleTapSlopPx;
+            if (gap < this._doubleTapMinMs) {
+                return;
+            }
+            if (
+                gap < this._doubleTapMaxMs &&
+                dx * dx + dy * dy <= slop * slop &&
+                !this.shouldSuppressGraphDblClick()
+            ) {
+                this.clearNodeClickTimer();
+                this._lastNodeTap = null;
+                this.handleNodeDoubleTap(nodeName);
+                return;
+            }
         }
 
-        this._lastNodeTap = { name: nodeName, time: now };
+        this._lastNodeTap = { name: nodeName, time: now, x: px, y: py };
         this.clearNodeClickTimer();
         this._nodeClickTimer = setTimeout(() => {
             this._nodeClickTimer = null;
@@ -1001,6 +1031,7 @@ class LabelGraphView {
     handleNodeDoubleTap(nodeName) {
         if (!nodeName || nodeName.startsWith("__open__")) return;
         if (this._commandMode) return;
+        if (this.shouldSuppressGraphDblClick()) return;
         this.clearNodeClickTimer();
         this._lastNodeTap = null;
         if (this.onNodeDoubleClick) {
@@ -1042,6 +1073,7 @@ class LabelGraphView {
             const nodeG = targetEl?.closest?.(".label-graph-node");
             const targetName = nodeG?.getAttribute("data-name");
 
+            if (moved) this.noteGraphGesture();
             if (moved && targetName && this.isRealTargetNode(targetName)) {
                 this._suppressNextNodeClick = true;
                 this.finishLinkDrag(targetName);
@@ -1057,8 +1089,10 @@ class LabelGraphView {
             return;
         }
         if (!this._panning) return;
+        const wasPanning = this._panning;
         this._panning = false;
         this._panStart = null;
+        if (wasPanning) this.noteGraphGesture();
         try {
             this.viewport.releasePointerCapture(e.pointerId);
         } catch (_) {
