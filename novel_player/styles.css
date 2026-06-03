@@ -582,7 +582,8 @@ body.menu-drawer-open {
 }
 
 .menu-drawer--novel .menu-drawer-body #restart,
-.menu-drawer--novel .menu-drawer-body #previewFromCursorButton {
+.menu-drawer--novel .menu-drawer-body #previewFromCursorButton,
+.menu-drawer--novel .menu-drawer-body #syncEditorToPreviewButton {
     width: 100%;
     margin-bottom: 0.25em;
     font-size: 1.05em;
@@ -595,7 +596,8 @@ body.menu-drawer-open {
 }
 
 .menu-drawer--novel .menu-drawer-body #restart:hover,
-.menu-drawer--novel .menu-drawer-body #previewFromCursorButton:hover {
+.menu-drawer--novel .menu-drawer-body #previewFromCursorButton:hover,
+.menu-drawer--novel .menu-drawer-body #syncEditorToPreviewButton:hover {
     background: #555;
 }
 

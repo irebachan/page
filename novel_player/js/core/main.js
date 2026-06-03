@@ -265,7 +265,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const restartBtn = document.getElementById("restart");
     const prevChoiceBtn = document.getElementById("prevChoice");
     const previewFromCursorBtn = document.getElementById("previewFromCursorButton");
-    [restartBtn, prevChoiceBtn, previewFromCursorBtn].forEach((btn) => {
+    const syncEditorToPreviewBtn = document.getElementById("syncEditorToPreviewButton");
+    [restartBtn, prevChoiceBtn, previewFromCursorBtn, syncEditorToPreviewBtn].forEach((btn) => {
         if (!btn) return;
         btn.addEventListener("click", () => closeNovelMenu());
     });

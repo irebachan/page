@@ -6,16 +6,23 @@ import { novelEditorTheme, novelSyntaxHighlighting } from "./novel_theme.mjs";
 /**
  * シナリオエディタ（CodeMirror 6）を初期化する。
  * @param {HTMLElement} parent
- * @param {{ onChange?: () => void, onPreviewShortcut?: () => void }} options
+ * @param {{ onChange?: () => void, onPreviewShortcut?: () => void, onSyncEditorShortcut?: () => void }} options
  */
 export function createScenarioEditor(parent, options = {}) {
-    const { onChange, onPreviewShortcut, onCursorChange } = options;
+    const { onChange, onPreviewShortcut, onSyncEditorShortcut, onCursorChange } = options;
 
     const previewKeymap = keymap.of([
         {
             key: "Mod-Enter",
             run: () => {
                 onPreviewShortcut?.();
+                return true;
+            },
+        },
+        {
+            key: "Mod-Shift-Enter",
+            run: () => {
+                onSyncEditorShortcut?.();
                 return true;
             },
         },

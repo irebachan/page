@@ -23,6 +23,7 @@ class NovelPlayer {
         this.labelList = document.getElementById("labelList");
         this.labelFilterInput = document.getElementById("labelFilter");
         this.previewFromCursorBtn = document.getElementById("previewFromCursorButton");
+        this.syncEditorToPreviewBtn = document.getElementById("syncEditorToPreviewButton");
         this.scriptDiagnostics = document.getElementById("scriptDiagnostics");
         this.refErrorBadge = document.getElementById("refErrorBadge");
         this.refErrorList = document.getElementById("refErrorList");
@@ -137,6 +138,9 @@ class NovelPlayer {
         if (this.previewFromCursorBtn) {
             this.previewFromCursorBtn.addEventListener("click", () => this.previewFromEditorLine());
         }
+        if (this.syncEditorToPreviewBtn) {
+            this.syncEditorToPreviewBtn.addEventListener("click", () => this.syncEditorToPreview());
+        }
 
         if (this.labelFilterInput) {
             this.labelFilterInput.addEventListener("input", () => this.refreshLabelList());
@@ -219,6 +223,13 @@ class NovelPlayer {
             } else if (e.key === "ArrowLeft" && this.previewHistory.length > 0) {
                 e.preventDefault();
                 this.showPrev();
+            } else if (
+                e.key === "Enter" &&
+                (e.ctrlKey || e.metaKey) &&
+                e.shiftKey
+            ) {
+                e.preventDefault();
+                this.syncEditorToPreview();
             }
         });
 
@@ -410,6 +421,7 @@ class NovelPlayer {
                 this.scheduleProjectSave();
             },
             onPreviewShortcut: () => this.previewFromEditorLine(),
+            onSyncEditorShortcut: () => this.syncEditorToPreview(),
             onCursorChange: () => this.updateEditorStatusBar(),
         });
     }
@@ -1455,6 +1467,67 @@ class NovelPlayer {
         this.viewIndex = pos.viewIndex;
         this.viewLineUnit = pos.viewLineUnit;
         this.renderCurrentView();
+    }
+
+    getSourceLineForLineUnit(lineItem, lineUnit) {
+        const rawLines = this.getScriptText().split("\n");
+        const start = lineItem.sourceLine;
+        if (start === undefined) return null;
+        if (!lineUnit) return start;
+
+        let unit = 0;
+        let i = start + 1;
+        while (i < rawLines.length) {
+            const t = rawLines[i].trim();
+            if (
+                t === "" ||
+                t.startsWith("#") ||
+                t.startsWith("@") ||
+                t.startsWith("//") ||
+                t.startsWith("-")
+            ) {
+                break;
+            }
+            if (unit === lineUnit) return i;
+            unit++;
+            i++;
+        }
+        return start;
+    }
+
+    findSourceLineForPreviewPosition(viewIndex, viewLineUnit) {
+        if (!this.script.length) return null;
+        const idx = this.clampScriptIndex(viewIndex);
+        const line = this.script[idx];
+        if (!line) return null;
+
+        if (line.type === "line") {
+            return this.getSourceLineForLineUnit(line, viewLineUnit || 0);
+        }
+        if (line.sourceLine !== undefined) {
+            return line.sourceLine;
+        }
+        const label = this.getLabelForIndex(idx);
+        if (label && this.labelSourceLines[label] !== undefined) {
+            return this.labelSourceLines[label];
+        }
+        return null;
+    }
+
+    syncEditorToPreview() {
+        if (!this.script.length) return false;
+        const sourceLine = this.findSourceLineForPreviewPosition(
+            this.viewIndex,
+            this.viewLineUnit
+        );
+        if (sourceLine == null) return false;
+
+        if (window.PanelLayout?.getLayout?.() === "preview") {
+            window.PanelLayout.setLayout("split");
+        }
+        this.moveEditorToSourceLine(sourceLine);
+        this.focusEditor();
+        return true;
     }
 
     refreshReferenceErrors() {
