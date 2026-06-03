@@ -23085,6 +23085,10 @@ var ScenarioEditorModule = (() => {
   var novelSyntaxHighlighting = syntaxHighlighting(novelHighlightStyle);
 
   // editor/scenario_editor.mjs
+  function clearDomTextSelection() {
+    const sel = window.getSelection?.();
+    if (sel?.rangeCount) sel.removeAllRanges();
+  }
   function createScenarioEditor(parent, options = {}) {
     const { onChange, onPreviewShortcut, onSyncEditorShortcut, onCursorChange } = options;
     const previewKeymap = keymap.of([
@@ -23157,6 +23161,10 @@ var ScenarioEditorModule = (() => {
         });
         if (options2.focus !== false) {
           view.focus();
+          if (options2.clearNativeSelection) {
+            clearDomTextSelection();
+            requestAnimationFrame(clearDomTextSelection);
+          }
         }
       },
       isFocused() {
@@ -23164,6 +23172,9 @@ var ScenarioEditorModule = (() => {
       },
       focus() {
         view.focus();
+      },
+      clearNativeSelection() {
+        clearDomTextSelection();
       },
       selectAll() {
         view.dispatch({

@@ -1637,6 +1637,10 @@ body.node-graph-open .cm-scroller {
     opacity: 0.12;
 }
 
+.label-graph-node {
+    -webkit-tap-highlight-color: transparent;
+}
+
 .label-graph-node rect {
     fill: #2e3a48;
     stroke: #557;

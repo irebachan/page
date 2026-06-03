@@ -556,13 +556,21 @@ class LabelGraphView {
     }
 
     setCurrentLabel(name) {
-        if (this.state.currentLabel === name) return;
+        const prev = this.state.currentLabel;
+        if (prev === name) {
+            const cur = this.gNodes?.querySelector(
+                ".label-graph-node.is-current"
+            );
+            if ((cur?.getAttribute("data-name") ?? null) === name) return;
+        }
         this.state.currentLabel = name;
-        if (!this.layout) return;
-        this.gNodes.querySelectorAll(".label-graph-node").forEach((g) => {
-            const n = g.getAttribute("data-name");
-            g.classList.toggle("is-current", n === name);
-        });
+        if (!this.layout || !this.gNodes) return;
+        const q = (label) =>
+            this.gNodes.querySelector(
+                `[data-name="${typeof CSS !== "undefined" && CSS.escape ? CSS.escape(label) : label}"]`
+            );
+        if (prev && prev !== name) q(prev)?.classList.remove("is-current");
+        if (name) q(name)?.classList.add("is-current");
     }
 
     nodeMatchesFilter(name) {

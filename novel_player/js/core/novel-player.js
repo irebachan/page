@@ -67,12 +67,15 @@ class NovelPlayer {
         this.viewLineUnit = 0;
         /** ラベルジャンプで最後に移動したラベル（「移動」で再テスト用） */
         this.lastJumpLabel = "";
-        /** ノードグラフからジャンプ中はタップしたラベルでハイライトを固定 */
-        this._pinnedGraphLabel = null;
+        /** グラフ表示中のジャンプ時、refreshLabelUI ではノードを光らせない */
+        this._deferGraphHighlight = false;
+        this._lastGraphTapJumpAt = 0;
+        this._lastGraphTapJumpLabel = "";
         /** グラフパネル上の未解放ポインタ（タッチ終了まで背面を触れさせない） */
         this._graphPointers = new Set();
         this._graphUnlockDeferred = false;
         this._afterGraphUnlock = null;
+        this._pendingGraphEditorJump = null;
         /** @call の戻り先 */
         this.callStack = [];
         this._previewAtEnd = false;
@@ -184,7 +187,10 @@ class NovelPlayer {
         if (this.nodeGraphHost && typeof LabelGraphView === "function") {
             this.labelGraphView = new LabelGraphView(this.nodeGraphHost, {
                 onNodeClick: (name) =>
-                    this.jumpToLabelByName(name, { keepNodeGraphOpen: true }),
+                    this.jumpToLabelByName(name, {
+                        keepNodeGraphOpen: true,
+                        fromGraphTap: true,
+                    }),
                 onNodeDoubleClick: (name) => this.jumpToLabelByName(name),
                 onConnect: (from, to) => this.graphConnectLabels(from, to),
                 onConnectCall: (from, to) => this.graphConnectCall(from, to),
@@ -1114,7 +1120,9 @@ class NovelPlayer {
 
     refreshLabelUI() {
         this.refreshLabelList();
-        this.updateNodeGraphHighlight();
+        if (!this._deferGraphHighlight) {
+            this.updateNodeGraphHighlight();
+        }
         this.updatePreviewStatusBar();
         this.updateEditorStatusBar();
         this.updatePreviewEndNav();
@@ -1340,12 +1348,27 @@ class NovelPlayer {
         const touchLike =
             !jumpOptions.keepNodeGraphOpen && this.isCoarsePointer();
         return {
-            focus:
-                jumpOptions.editorFocus !== false &&
-                !touchLike,
+            focus: jumpOptions.editorFocus !== false,
             scrollY: touchLike ? "start" : "center",
             yMargin: touchLike ? 120 : 5,
+            clearNativeSelection: touchLike,
         };
+    }
+
+    applyEditorSyncAfterGraphUnlock() {
+        const pending = this._pendingGraphEditorJump;
+        this._pendingGraphEditorJump = null;
+        if (!pending) return;
+        const line = this.getEditorLineForLabelJump(pending.labelName);
+        const opts = this.getEditorSyncOptionsForLabelJump(
+            pending.labelName,
+            pending.options
+        );
+        if (this.scenarioEditor) {
+            this.scenarioEditor.goToLine(line, opts);
+            return;
+        }
+        this.moveEditorToSourceLine(line, opts);
     }
 
     refreshNodeGraphIfOpen() {
@@ -1759,7 +1782,6 @@ class NovelPlayer {
     }
 
     getHighlightLabelName() {
-        if (this._pinnedGraphLabel) return this._pinnedGraphLabel;
         return this.script.length ? this.getLabelForIndex(this.viewIndex) : null;
     }
 
@@ -2213,7 +2235,20 @@ class NovelPlayer {
             alert(`ラベル "${labelName}" が見つかりません`);
             return;
         }
+        if (options.fromGraphTap) {
+            const now = Date.now();
+            if (
+                this._lastGraphTapJumpLabel === labelName &&
+                now - this._lastGraphTapJumpAt < 400
+            ) {
+                return;
+            }
+            this._lastGraphTapJumpAt = now;
+            this._lastGraphTapJumpLabel = labelName;
+        }
         const closingGraph = !options.keepNodeGraphOpen;
+        const deferGraphHighlight =
+            options.keepNodeGraphOpen && this.isNodeGraphOpen();
         const touchLikeClose = closingGraph && this.isCoarsePointer();
         const moveEditor =
             closingGraph &&
@@ -2221,10 +2256,15 @@ class NovelPlayer {
                 this.isSyncEditorOnLabelJumpEnabled());
         if (closingGraph) {
             if (touchLikeClose && moveEditor) {
-                this.moveEditorToSourceLine(
-                    this.getEditorLineForLabelJump(labelName),
-                    this.getEditorSyncOptionsForLabelJump(labelName, options)
-                );
+                const line = this.getEditorLineForLabelJump(labelName);
+                this.moveEditorToSourceLine(line, {
+                    focus: false,
+                    scrollY: "start",
+                    yMargin: 120,
+                });
+                this._pendingGraphEditorJump = { labelName, options };
+                this._afterGraphUnlock = () =>
+                    this.applyEditorSyncAfterGraphUnlock();
             }
             if (touchLikeClose) {
                 this.closeNodeGraph({ deferUnlock: true });
@@ -2240,11 +2280,12 @@ class NovelPlayer {
         this.lastJumpLabel = labelName;
         this.viewIndex = this.labels[labelName];
         this.viewLineUnit = 0;
-        const pinGraphLabel =
-            options.keepNodeGraphOpen && this.isNodeGraphOpen();
-        if (pinGraphLabel) this._pinnedGraphLabel = labelName;
+        if (deferGraphHighlight) this._deferGraphHighlight = true;
         this.renderCurrentView();
-        if (pinGraphLabel) this._pinnedGraphLabel = null;
+        if (deferGraphHighlight) {
+            this._deferGraphHighlight = false;
+            this.labelGraphView?.setCurrentLabel(labelName);
+        }
 
         if (closingGraph && !touchLikeClose && moveEditor) {
             this.moveEditorToSourceLine(

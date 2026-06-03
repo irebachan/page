@@ -8,6 +8,11 @@ import { novelEditorTheme, novelSyntaxHighlighting } from "./novel_theme.mjs";
  * @param {HTMLElement} parent
  * @param {{ onChange?: () => void, onPreviewShortcut?: () => void, onSyncEditorShortcut?: () => void }} options
  */
+function clearDomTextSelection() {
+    const sel = window.getSelection?.();
+    if (sel?.rangeCount) sel.removeAllRanges();
+}
+
 export function createScenarioEditor(parent, options = {}) {
     const { onChange, onPreviewShortcut, onSyncEditorShortcut, onCursorChange } = options;
 
@@ -88,6 +93,10 @@ export function createScenarioEditor(parent, options = {}) {
             });
             if (options.focus !== false) {
                 view.focus();
+                if (options.clearNativeSelection) {
+                    clearDomTextSelection();
+                    requestAnimationFrame(clearDomTextSelection);
+                }
             }
         },
 
@@ -97,6 +106,10 @@ export function createScenarioEditor(parent, options = {}) {
 
         focus() {
             view.focus();
+        },
+
+        clearNativeSelection() {
+            clearDomTextSelection();
         },
 
         selectAll() {
