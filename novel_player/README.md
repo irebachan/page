@@ -93,7 +93,7 @@ curl -fsSL -o js/lib/dagre.min.js "https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist
 - **Chrome / Edge（Android 含む）**: メニュー → 「アプリをインストール」／「ホーム画面に追加」
 - **Safari（iOS）**: 共有 → 「ホーム画面に追加」
 
-オフラインでも編集画面は開けます（作品データは IndexedDB に保存された分）。更新時は `sw.js` の `CACHE_NAME` バージョンを上げて再デプロイしてください。
+オフラインでも編集画面は開けます（作品データは IndexedDB に保存された分）。**オンライン時はサーバーから最新の HTML/JS を読みます**（古いキャッシュに張り付かない方針）。`SHELL_FILES` の構成を変えたときだけ `sw.js` の `CACHE_NAME` を上げてください。
 
 アイコンを作り直す場合（要 Pillow）:
 
@@ -131,11 +131,3 @@ novel_player/
 - `@call ラベル名` と `@return` で呼び出し・戻り
 - `@end` でシナリオ終了
 - 詳細はツール内の「ヘルプ」を参照してください。
-
-## call / return の確認（3分）
-
-1. **選択肢** … 公園で「ミナに話しかける」→ 会話 → 次へで `@return` → **3つの選択肢が再表示**されれば OK
-2. **本文 @call** … `@call` の直後に `@ラベル` が続いても、`@return` 後に **本編の続き**（別枝のラベルに吸われない）なら OK
-3. 迷ったらブラウザコンソールで `novelPlayer.getPreviewDebugState()` … `callStack` が空なのに return した等を確認
-
-ラベルチップでジャンプすると call スタックはリセットされます（意図どおり）。

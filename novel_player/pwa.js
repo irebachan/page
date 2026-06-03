@@ -7,7 +7,15 @@
         return;
     }
 
+    let reloadOnControllerChange = false;
+
     window.addEventListener("load", () => {
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+            if (reloadOnControllerChange) return;
+            reloadOnControllerChange = true;
+            window.location.reload();
+        });
+
         navigator.serviceWorker
             .register("sw.js")
             .then((reg) => {

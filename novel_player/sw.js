@@ -1,7 +1,8 @@
 /**
  * 静的アセットのオフライン用キャッシュ（作品データは IndexedDB）。
+ * オンライン時はネットワーク優先（デプロイ後も最新を表示）。オフライン時のみキャッシュ。
  */
-const CACHE_NAME = "novel-player-shell-v47";
+const CACHE_NAME = "novel-player-shell-v48";
 
 const SHELL_FILES = [
     "./",
@@ -34,6 +35,30 @@ const SHELL_FILES = [
 
 function assetUrl(path) {
     return new URL(path, self.location).href;
+}
+
+function isCacheableResponse(response) {
+    return response && response.status === 200 && response.type === "basic";
+}
+
+async function putInCache(request, response) {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, response);
+}
+
+/** オンライン: 常にサーバーから取得し、成功分だけオフライン用に保存 */
+async function networkFirstWithCache(request) {
+    try {
+        const response = await fetch(request);
+        if (isCacheableResponse(response)) {
+            await putInCache(request, response.clone());
+        }
+        return response;
+    } catch (err) {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        throw err;
+    }
 }
 
 self.addEventListener("install", (event) => {
@@ -70,26 +95,29 @@ self.addEventListener("fetch", (event) => {
     const scopePath = new URL("./", self.location).pathname;
     if (!url.pathname.startsWith(scopePath)) return;
 
+    // SW 自身は常にネットワーク（更新検知のためキャッシュしない）
+    if (url.pathname.endsWith("/sw.js")) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
     if (event.request.mode === "navigate") {
         event.respondWith(
-            fetch(event.request).catch(() =>
-                caches.match(assetUrl("./index.html")).then((r) => r || caches.match(assetUrl("./")))
-            )
+            fetch(event.request)
+                .then(async (response) => {
+                    if (isCacheableResponse(response)) {
+                        await putInCache(event.request, response.clone());
+                    }
+                    return response;
+                })
+                .catch(() =>
+                    caches
+                        .match(assetUrl("./index.html"))
+                        .then((r) => r || caches.match(assetUrl("./")))
+                )
         );
         return;
     }
 
-    event.respondWith(
-        caches.match(event.request).then((cached) => {
-            if (cached) return cached;
-            return fetch(event.request).then((response) => {
-                if (!response || response.status !== 200 || response.type !== "basic") {
-                    return response;
-                }
-                const copy = response.clone();
-                caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-                return response;
-            });
-        })
-    );
+    event.respondWith(networkFirstWithCache(event.request));
 });
