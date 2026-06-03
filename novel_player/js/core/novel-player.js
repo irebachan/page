@@ -69,6 +69,10 @@ class NovelPlayer {
         this.lastJumpLabel = "";
         /** ノードグラフからジャンプ中はタップしたラベルでハイライトを固定 */
         this._pinnedGraphLabel = null;
+        /** グラフパネル上の未解放ポインタ（タッチ終了まで背面を触れさせない） */
+        this._graphPointers = new Set();
+        this._graphUnlockDeferred = false;
+        this._afterGraphUnlock = null;
         /** @call の戻り先 */
         this.callStack = [];
         this._previewAtEnd = false;
@@ -174,6 +178,8 @@ class NovelPlayer {
         if (this.nodeGraphFilter) {
             this.nodeGraphFilter.addEventListener("input", () => this.refreshNodeGraph());
         }
+
+        this.bindGraphPanelPointerTracking();
 
         if (this.nodeGraphHost && typeof LabelGraphView === "function") {
             this.labelGraphView = new LabelGraphView(this.nodeGraphHost, {
@@ -1195,6 +1201,56 @@ class NovelPlayer {
         return this.nodeGraphPanel?.classList.contains("is-open") ?? false;
     }
 
+    isCoarsePointer() {
+        return window.matchMedia("(pointer: coarse)").matches;
+    }
+
+    bindGraphPanelPointerTracking() {
+        const panel = this.nodeGraphPanel;
+        if (!panel || panel.dataset.graphPointerBound) return;
+        panel.dataset.graphPointerBound = "1";
+        panel.addEventListener(
+            "pointerdown",
+            (e) => {
+                if (!this.isNodeGraphOpen()) return;
+                if (e.pointerType === "mouse" && e.button !== 0) return;
+                this._graphPointers.add(e.pointerId);
+            },
+            true
+        );
+        const release = (e) => {
+            if (!this._graphPointers.delete(e.pointerId)) return;
+            if (this._graphPointers.size === 0) {
+                this.onGraphPointersReleased();
+            }
+        };
+        panel.addEventListener("pointerup", release);
+        panel.addEventListener("pointercancel", release);
+    }
+
+    onGraphPointersReleased() {
+        if (this._graphUnlockDeferred) {
+            this.scheduleGraphBackgroundUnlock();
+        }
+    }
+
+    scheduleGraphBackgroundUnlock() {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (this._graphPointers.size > 0) return;
+                this.finishCloseNodeGraph();
+            });
+        });
+    }
+
+    finishCloseNodeGraph() {
+        this._graphUnlockDeferred = false;
+        this.setNodeGraphBackgroundInert(false);
+        const after = this._afterGraphUnlock;
+        this._afterGraphUnlock = null;
+        if (after) after();
+    }
+
     setNodeGraphBackgroundInert(inert) {
         const sel =
             ".app-menu-bar, .app-main, #novelMenuPanel, #scenarioMenuPanel";
@@ -1226,12 +1282,11 @@ class NovelPlayer {
         // グラフ領域へのフォーカスはキーボードを出す端末があるため行わない
     }
 
-    closeNodeGraph() {
+    closeNodeGraph(options = {}) {
         if (!this.nodeGraphPanel) return;
         this.nodeGraphPanel.classList.remove("is-open");
         this.nodeGraphPanel.setAttribute("aria-hidden", "true");
         document.body.classList.remove("node-graph-open");
-        this.setNodeGraphBackgroundInert(false);
         if (this.nodeGraphButton) {
             this.nodeGraphButton.setAttribute("aria-expanded", "false");
         }
@@ -1243,6 +1298,33 @@ class NovelPlayer {
         filterRow?.classList.remove("is-open");
         const filterToggle = document.getElementById("nodeGraphFilterToggle");
         filterToggle?.setAttribute("aria-expanded", "false");
+
+        const deferUnlock =
+            options.deferUnlock &&
+            (this._graphPointers.size > 0 || this.isCoarsePointer());
+        if (deferUnlock) {
+            this._graphUnlockDeferred = true;
+            if (this._graphPointers.size === 0) {
+                this.scheduleGraphBackgroundUnlock();
+            }
+            return;
+        }
+        this.finishCloseNodeGraph();
+    }
+
+    applyDeferredEditorSyncAfterGraph(labelName, jumpOptions = {}) {
+        const moveEditor =
+            jumpOptions.forceEditorMove ||
+            this.isSyncEditorOnLabelJumpEnabled();
+        const lineNum = this.labelSourceLines[labelName];
+        if (!moveEditor || lineNum === undefined) return;
+        this.moveEditorToSourceLine(lineNum, { focus: false });
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (this.isNodeGraphOpen()) return;
+                this.focusEditor();
+            });
+        });
     }
 
     refreshNodeGraphIfOpen() {
@@ -2110,8 +2192,16 @@ class NovelPlayer {
             alert(`ラベル "${labelName}" が見つかりません`);
             return;
         }
-        if (!options.keepNodeGraphOpen) {
-            this.closeNodeGraph();
+        const closingGraph = !options.keepNodeGraphOpen;
+        const touchLikeClose = closingGraph && this.isCoarsePointer();
+        if (closingGraph) {
+            if (touchLikeClose) {
+                this._afterGraphUnlock = () =>
+                    this.applyDeferredEditorSyncAfterGraph(labelName, options);
+                this.closeNodeGraph({ deferUnlock: true });
+            } else {
+                this.closeNodeGraph();
+            }
         }
         this.pushPreviewHistory({
             viewIndex: this.viewIndex,
@@ -2127,13 +2217,15 @@ class NovelPlayer {
         this.renderCurrentView();
         if (pinGraphLabel) this._pinnedGraphLabel = null;
 
-        const moveEditor =
-            !options.keepNodeGraphOpen &&
-            (options.forceEditorMove || this.isSyncEditorOnLabelJumpEnabled());
-        if (moveEditor && this.labelSourceLines[labelName] !== undefined) {
-            this.moveEditorToSourceLine(this.labelSourceLines[labelName], {
-                focus: options.editorFocus !== false,
-            });
+        if (closingGraph && !touchLikeClose) {
+            const moveEditor =
+                options.forceEditorMove ||
+                this.isSyncEditorOnLabelJumpEnabled();
+            if (moveEditor && this.labelSourceLines[labelName] !== undefined) {
+                this.moveEditorToSourceLine(this.labelSourceLines[labelName], {
+                    focus: options.editorFocus !== false,
+                });
+            }
         }
     }
 

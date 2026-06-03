@@ -23147,7 +23147,7 @@ var ScenarioEditorModule = (() => {
         if (lineCount === 0) return;
         const line = view.state.doc.line(Math.min(lineNum + 1, lineCount));
         view.dispatch({
-          selection: { anchor: line.from },
+          selection: { anchor: line.from, head: line.from },
           effects: EditorView.scrollIntoView(line.from, { y: "center" })
         });
         if (options2.focus !== false) {

@@ -736,6 +736,7 @@ class LabelGraphView {
             g.addEventListener("pointerdown", (e) => {
                 if (node.ghost || e.button !== 0) return;
                 e.stopPropagation();
+                if (e.pointerType !== "mouse") e.preventDefault();
                 if (this._commandMode) {
                     this.handleCommandNodeClick(node.name);
                     return;
@@ -950,11 +951,15 @@ class LabelGraphView {
         }
     }
 
-    handleNodeTap(nodeName, pointerType) {
+    handleNodeTap(nodeName, pointerType, pointerEvent) {
         if (!nodeName || nodeName.startsWith("__open__")) return;
         if (this._commandMode) {
             this.handleCommandNodeClick(nodeName);
             return;
+        }
+
+        if (pointerType !== "mouse" && pointerEvent) {
+            pointerEvent.preventDefault();
         }
 
         if (pointerType === "mouse") {
@@ -1016,7 +1021,7 @@ class LabelGraphView {
             const dx = e.clientX - pending.x;
             const dy = e.clientY - pending.y;
             if (dx * dx + dy * dy <= 64) {
-                this.handleNodeTap(pending.name, e.pointerType);
+                this.handleNodeTap(pending.name, e.pointerType, e);
             }
             return;
         }

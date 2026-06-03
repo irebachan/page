@@ -1006,6 +1006,13 @@ body.node-graph-open .app-menu-bar,
 body.node-graph-open .app-main {
     pointer-events: none;
     user-select: none;
+    -webkit-user-select: none;
+}
+
+body.node-graph-open .cm-editor,
+body.node-graph-open .cm-scroller {
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .node-graph-panel {
