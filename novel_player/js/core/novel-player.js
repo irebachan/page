@@ -11,8 +11,9 @@ class NovelPlayer {
         this.nameBox = document.getElementById("name");
         this.textBox = document.getElementById("text");
         this.textContainer = document.querySelector(".text-container");
-        this.nextBtn = document.getElementById("next");
         this.prevBtn = document.getElementById("prev");
+        this.previewRestartBtn = document.getElementById("previewRestart");
+        this.nextBtn = document.getElementById("next");
         this.previewHistory = [];
         this.choicesBox = document.getElementById("choices");
         this.scriptEditorHost = document.getElementById("scriptEditorHost");
@@ -67,13 +68,17 @@ class NovelPlayer {
         this.lastJumpLabel = "";
         /** @call の戻り先 */
         this.callStack = [];
+        this._previewAtEnd = false;
         this.previewMeta = {};
 
         // イベントリスナーの設定
-        this.nextBtn.addEventListener("click", () => this.showLine());
         if (this.prevBtn) {
             this.prevBtn.addEventListener("click", () => this.showPrev());
         }
+        if (this.previewRestartBtn) {
+            this.previewRestartBtn.addEventListener("click", () => this.restart());
+        }
+        this.nextBtn.addEventListener("click", () => this.showLine());
         if (this.prevChoiceBtn) {
             this.prevChoiceBtn.addEventListener("click", () => this.jumpToLastChoice());
         }
@@ -1050,6 +1055,7 @@ class NovelPlayer {
         this.updateNodeGraphHighlight();
         this.updatePreviewStatusBar();
         this.updateEditorStatusBar();
+        this.updatePreviewEndNav();
     }
 
     updatePreviewStatusBar() {
@@ -1356,6 +1362,12 @@ class NovelPlayer {
             this.prevBtn.disabled = this.previewHistory.length === 0;
         }
         this.updateLastChoiceButton();
+        this.updatePreviewEndNav();
+    }
+
+    updatePreviewEndNav() {
+        if (!this.previewRestartBtn) return;
+        this.previewRestartBtn.style.display = this._previewAtEnd ? "block" : "none";
     }
 
     hasChoiceInHistory() {
@@ -1664,6 +1676,8 @@ class NovelPlayer {
         const line = this.script[index];
         if (!line) return false;
 
+        this._previewAtEnd = false;
+
         if (line.type === "line") {
             const rawText = line.text != null ? line.text : "";
             const parts = rawText.split("\n");
@@ -1726,6 +1740,7 @@ class NovelPlayer {
             this.textBox.textContent = "（終わり）";
             this.nextBtn.style.display = "none";
             this.choicesBox.innerHTML = "";
+            this._previewAtEnd = true;
             return true;
         }
 
@@ -1775,6 +1790,7 @@ class NovelPlayer {
         this.textBox.textContent = "（終わり）";
         this.nextBtn.style.display = "none";
         this.choicesBox.innerHTML = "";
+        this._previewAtEnd = this.script.length > 0;
     }
 
     renderCurrentView() {
@@ -1873,6 +1889,7 @@ class NovelPlayer {
     showLine() {
         if (this.index >= this.script.length) {
             this.showEndState();
+            this.refreshLabelUI();
             return;
         }
 
@@ -1929,6 +1946,7 @@ class NovelPlayer {
                 viewLineUnit: this.viewLineUnit,
             });
             this.syncPlaybackIndexAfterView(this.index, lu);
+            this.refreshLabelUI();
         } else {
             this.index++;
             this.showLine();
