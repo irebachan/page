@@ -1459,6 +1459,10 @@ class NovelPlayer {
         const pos = this.findPreviewIndexForSourceLine(lineNum);
         if (!pos || !this.script.length) return;
 
+        if (window.PanelLayout?.getLayout?.() === "editor") {
+            window.PanelLayout.setLayout("split");
+        }
+
         this.pushPreviewHistory({
             viewIndex: this.viewIndex,
             viewLineUnit: this.viewLineUnit,
