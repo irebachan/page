@@ -774,6 +774,48 @@ class NovelPlayer {
         return ok;
     }
 
+    promptReorderScriptByFlow() {
+        if (!Object.keys(this.labels).length) {
+            window.alert("ラベルがありません");
+            return;
+        }
+        if (typeof reorderScriptByFlow !== "function") {
+            window.alert("整列機能を読み込めません");
+            return;
+        }
+        const preview = reorderScriptByFlow(
+            this.getScriptText(),
+            this.script,
+            this.labels,
+            this.labelSourceLines
+        );
+        if (!preview?.ok) {
+            window.alert(preview?.error || "整列できません");
+            return;
+        }
+        if (preview.unchanged) {
+            window.alert("すでに流れどおりの並びです");
+            return;
+        }
+        const orderPreview = (preview.order || []).slice(0, 8).join(" → ");
+        const more =
+            (preview.order || []).length > 8
+                ? ` …他${preview.order.length - 8}件`
+                : "";
+        const ok = window.confirm(
+            `@ラベル ブロックを goto / 選択肢 / call / 定義順の流れに沿って並べ替えます。\n\n` +
+                `並び: ${orderPreview}${more}\n\n` +
+                `脚本の元の並びは自動では戻せません（「戻す」で直前の1状態のみ復元可能）。\n` +
+                `続行しますか？`
+        );
+        if (!ok) return;
+
+        const result = this.applyLabelTextPatch(reorderScriptByFlow);
+        if (result && !result.unchanged) {
+            window.alert("脚本を流れに沿って整列しました");
+        }
+    }
+
     promptForLabelName(title, defaultValue, excludeName) {
         let value = defaultValue ?? "";
         for (;;) {

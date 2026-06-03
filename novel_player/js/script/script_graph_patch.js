@@ -588,3 +588,160 @@ function patchDeleteLabel(text, script, labels, _labelSourceLines, labelName) {
         refsCleared: countLabelReferences(script, labelName).total,
     };
 }
+
+const FLOW_EDGE_KIND_RANK = { goto: 0, choice: 1, call: 2, fallthrough: 3 };
+
+/** goto / 選択肢 / call / 定義順の流れからラベルブロックの並べ順を決める */
+function computeFlowLabelOrder(script, labels, edges) {
+    const names =
+        typeof labelNamesInScriptOrder === "function"
+            ? labelNamesInScriptOrder(labels)
+            : Object.keys(labels).sort((a, b) => labels[a] - labels[b]);
+    if (names.length === 0) return [];
+
+    const succ = new Map();
+    const incoming = new Map();
+    for (const name of names) {
+        succ.set(name, []);
+        incoming.set(name, 0);
+    }
+
+    for (const edge of edges || []) {
+        if (!edge.from || !edge.to) continue;
+        if (edge.kind === "exit") continue;
+        if (edge.kind === "choice" && edge.disconnected) continue;
+        if (!labels.hasOwnProperty(edge.from) || !labels.hasOwnProperty(edge.to)) {
+            continue;
+        }
+        succ.get(edge.from).push({
+            to: edge.to,
+            kind: edge.kind,
+            choiceIndex: edge.choiceIndex ?? 0,
+        });
+        incoming.set(edge.to, (incoming.get(edge.to) || 0) + 1);
+    }
+
+    for (const [from, list] of succ) {
+        const byTo = new Map();
+        for (const item of list) {
+            const cur = byTo.get(item.to);
+            if (!cur) {
+                byTo.set(item.to, item);
+                continue;
+            }
+            const curRank = FLOW_EDGE_KIND_RANK[cur.kind] ?? 9;
+            const newRank = FLOW_EDGE_KIND_RANK[item.kind] ?? 9;
+            if (newRank < curRank) {
+                byTo.set(item.to, item);
+            } else if (
+                newRank === curRank &&
+                item.kind === "choice" &&
+                item.choiceIndex < cur.choiceIndex
+            ) {
+                byTo.set(item.to, item);
+            }
+        }
+        const merged = Array.from(byTo.values());
+        merged.sort((a, b) => {
+            const dr =
+                (FLOW_EDGE_KIND_RANK[a.kind] ?? 9) -
+                (FLOW_EDGE_KIND_RANK[b.kind] ?? 9);
+            if (dr !== 0) return dr;
+            return (a.choiceIndex ?? 0) - (b.choiceIndex ?? 0);
+        });
+        succ.set(from, merged);
+    }
+
+    const starts = names.filter((n) => (incoming.get(n) || 0) === 0);
+    const visitOrder = starts.length ? starts : [names[0]];
+    const visited = new Set();
+    const order = [];
+
+    function visit(name) {
+        if (!name || visited.has(name) || !labels.hasOwnProperty(name)) return;
+        visited.add(name);
+        order.push(name);
+        for (const { to } of succ.get(name) || []) {
+            visit(to);
+        }
+    }
+
+    for (const start of visitOrder) {
+        visit(start);
+    }
+    for (const name of names) {
+        if (!visited.has(name)) order.push(name);
+    }
+    return order;
+}
+
+/**
+ * @ラベル ブロックを goto / 選択肢 / call / 定義順の流れに沿って並べ替える（非可逆寄りの特殊操作）
+ */
+function reorderScriptByFlow(text, script, labels, labelSourceLines) {
+    const names = Object.keys(labels || {});
+    if (names.length === 0) {
+        return { ok: false, error: "ラベルがありません", text };
+    }
+    if (typeof buildLabelGraphData !== "function") {
+        return { ok: false, error: "グラフデータを構築できません", text };
+    }
+
+    const lines = text.split("\n");
+    const positions = Object.values(labelSourceLines || {});
+    if (!positions.length) {
+        return { ok: false, error: "ラベル位置を取得できません", text };
+    }
+
+    const data = buildLabelGraphData(script, labels, labelSourceLines);
+    const order = computeFlowLabelOrder(script, labels, data.edges);
+    const scriptOrder =
+        typeof labelNamesInScriptOrder === "function"
+            ? labelNamesInScriptOrder(labels)
+            : names.sort((a, b) => labels[a] - labels[b]);
+
+    if (order.join("\0") === scriptOrder.join("\0")) {
+        return {
+            ok: true,
+            text,
+            order,
+            unchanged: true,
+        };
+    }
+
+    const firstLabelLine = Math.min(...positions);
+    const preamble = lines.slice(0, firstLabelLine);
+    const blocks = [];
+
+    for (const name of order) {
+        const range = getLabelBlockRange(labelSourceLines, name, lines.length);
+        if (!range) {
+            return { ok: false, error: `ラベル「${name}」のブロックが見つかりません`, text };
+        }
+        blocks.push(lines.slice(range.start, range.end));
+    }
+
+    const out = [...preamble];
+    if (blocks.length) {
+        if (out.length && out[out.length - 1].trim() !== "") {
+            out.push("");
+        }
+        blocks.forEach((block, i) => {
+            if (i > 0 && out.length && out[out.length - 1].trim() !== "") {
+                out.push("");
+            }
+            out.push(...block);
+        });
+    }
+
+    while (out.length > 1 && out[out.length - 1] === "" && out[out.length - 2] === "") {
+        out.pop();
+    }
+
+    return {
+        ok: true,
+        text: out.join("\n"),
+        order,
+        unchanged: false,
+    };
+}

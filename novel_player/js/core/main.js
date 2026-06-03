@@ -158,6 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const saveBtn = document.getElementById("saveButton");
     const loadBtn = document.getElementById("loadButton");
     const clearBtn = document.getElementById("clearButton");
+    const reorderFlowBtn = document.getElementById("reorderFlowButton");
     const metaPreviewUnit = document.getElementById("metaPreviewUnit");
     const metaMaxCharsPerLine = document.getElementById("metaMaxCharsPerLine");
     const metaMaxLines = document.getElementById("metaMaxLines");
@@ -166,10 +167,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const metaApplyButton = document.getElementById("metaApplyButton");
     const pasteLoadBtn = document.getElementById("pasteLoadButton");
     const copyBtn = document.getElementById("copyButton");
-    [saveBtn, loadBtn, pasteLoadBtn, clearBtn, copyBtn].forEach((btn) => {
+    [saveBtn, loadBtn, pasteLoadBtn, clearBtn, copyBtn, reorderFlowBtn].forEach((btn) => {
         if (!btn) return;
         btn.addEventListener("click", () => closeScenarioMenu());
     });
+
+    if (reorderFlowBtn) {
+        reorderFlowBtn.addEventListener("click", () => {
+            novelPlayer.promptReorderScriptByFlow();
+        });
+    }
 
     function getMetaDefaults() {
         return {
