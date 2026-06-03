@@ -41,6 +41,9 @@ class LabelGraphView {
         this._pendingEdgeAction = null;
         /** これ未満の移動はクリック（削除）、超えたらドラッグ（付け替え） */
         this._edgeDragSlopPx = 14;
+        /** 2本指ピンチ（スマホ・タッチパネル） */
+        this._touchPointers = new Map();
+        this._pinchStart = null;
 
         container.innerHTML = "";
         container.classList.add("label-graph-view");
@@ -163,6 +166,28 @@ class LabelGraphView {
         this.viewport.addEventListener("pointerup", (e) => this.onPointerUp(e));
         this.viewport.addEventListener("pointercancel", (e) => this.onPointerUp(e));
         this.viewport.addEventListener("keydown", (e) => this.onKeyDown(e));
+
+        const pinchOpts = { capture: true, passive: false };
+        this.container.addEventListener(
+            "pointerdown",
+            (e) => this.onContainerPointerDown(e),
+            pinchOpts
+        );
+        this.container.addEventListener(
+            "pointermove",
+            (e) => this.onContainerPointerMove(e),
+            pinchOpts
+        );
+        this.container.addEventListener(
+            "pointerup",
+            (e) => this.onContainerPointerUp(e),
+            pinchOpts
+        );
+        this.container.addEventListener(
+            "pointercancel",
+            (e) => this.onContainerPointerUp(e),
+            pinchOpts
+        );
     }
 
     setCommandMode(mode) {
@@ -747,6 +772,91 @@ class LabelGraphView {
         this.zoomAt(mx, my, factor);
     }
 
+    getPinchMetrics() {
+        const pts = Array.from(this._touchPointers.values());
+        if (pts.length < 2) return null;
+        const dx = pts[1].x - pts[0].x;
+        const dy = pts[1].y - pts[0].y;
+        const dist = Math.hypot(dx, dy) || 1;
+        return {
+            dist,
+            cx: (pts[0].x + pts[1].x) / 2,
+            cy: (pts[0].y + pts[1].y) / 2,
+        };
+    }
+
+    cancelPanForPinch() {
+        this._panning = false;
+        this._panStart = null;
+        this._nodePointerDown = null;
+        this._pendingEdgeAction = null;
+        this.cancelLinkDrag();
+    }
+
+    beginPinchIfNeeded() {
+        if (this._touchPointers.size !== 2) return;
+        const m = this.getPinchMetrics();
+        if (!m) return;
+        const rect = this.viewport.getBoundingClientRect();
+        this.cancelPanForPinch();
+        this._pinchStart = {
+            dist: m.dist,
+            k: this.transform.k,
+            vx: m.cx - rect.left,
+            vy: m.cy - rect.top,
+            x: this.transform.x,
+            y: this.transform.y,
+        };
+    }
+
+    applyPinchTransform() {
+        const s = this._pinchStart;
+        const m = this.getPinchMetrics();
+        if (!s || !m) return;
+        const scale = m.dist / s.dist;
+        const k1 = Math.min(3, Math.max(0.15, s.k * scale));
+        const ratio = k1 / s.k;
+        const rect = this.viewport.getBoundingClientRect();
+        const mx = m.cx - rect.left;
+        const my = m.cy - rect.top;
+        this.transform.k = k1;
+        this.transform.x = mx - (mx - s.x) * ratio;
+        this.transform.y = my - (my - s.y) * ratio;
+        this.markViewCustomized();
+        this.applyTransform();
+    }
+
+    onContainerPointerDown(e) {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        if (!this.container.contains(e.target)) return;
+        this._touchPointers.set(e.pointerId, {
+            x: e.clientX,
+            y: e.clientY,
+        });
+        this.beginPinchIfNeeded();
+    }
+
+    onContainerPointerMove(e) {
+        if (!this._touchPointers.has(e.pointerId)) return;
+        this._touchPointers.set(e.pointerId, {
+            x: e.clientX,
+            y: e.clientY,
+        });
+        if (this._touchPointers.size >= 2 && this._pinchStart) {
+            e.preventDefault();
+            this.applyPinchTransform();
+        }
+    }
+
+    onContainerPointerUp(e) {
+        this._touchPointers.delete(e.pointerId);
+        if (this._touchPointers.size < 2) {
+            this._pinchStart = null;
+        } else if (this._touchPointers.size === 2) {
+            this.beginPinchIfNeeded();
+        }
+    }
+
     zoomBy(factor) {
         const rect = this.viewport.getBoundingClientRect();
         this.zoomAt(rect.width / 2, rect.height / 2, factor);
@@ -765,6 +875,7 @@ class LabelGraphView {
 
     onPointerDown(e) {
         if (e.button !== 0) return;
+        if (this._touchPointers.size >= 2 || this._pinchStart) return;
         if (e.target.closest(".label-graph-node")) return;
         if (e.target.closest(".label-graph-edge-hit")) return;
         this._pendingEdgeAction = null;
@@ -811,6 +922,7 @@ class LabelGraphView {
             return;
         }
         if (!this._panning || !this._panStart) return;
+        if (this._pinchStart) return;
         this.transform.x =
             this._panStart.tx + (e.clientX - this._panStart.x);
         this.transform.y =
