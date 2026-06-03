@@ -67,6 +67,8 @@ class NovelPlayer {
         this.viewLineUnit = 0;
         /** ラベルジャンプで最後に移動したラベル（「移動」で再テスト用） */
         this.lastJumpLabel = "";
+        /** ノードグラフからジャンプ中はタップしたラベルでハイライトを固定 */
+        this._pinnedGraphLabel = null;
         /** @call の戻り先 */
         this.callStack = [];
         this._previewAtEnd = false;
@@ -1653,6 +1655,11 @@ class NovelPlayer {
         return best;
     }
 
+    getHighlightLabelName() {
+        if (this._pinnedGraphLabel) return this._pinnedGraphLabel;
+        return this.script.length ? this.getLabelForIndex(this.viewIndex) : null;
+    }
+
     clampScriptIndex(idx) {
         if (!this.script.length) return 0;
         return Math.max(0, Math.min(idx, this.script.length - 1));
@@ -1665,9 +1672,7 @@ class NovelPlayer {
         if (filter) {
             names = names.filter((n) => n.toLowerCase().includes(filter));
         }
-        const current = this.script.length
-            ? this.getLabelForIndex(this.viewIndex)
-            : null;
+        const current = this.getHighlightLabelName();
 
         this.labelList.innerHTML = "";
         if (Object.keys(this.labels).length === 0) {
@@ -1709,10 +1714,7 @@ class NovelPlayer {
 
     updateNodeGraphHighlight() {
         if (!this.isNodeGraphOpen() || !this.labelGraphView) return;
-        const current = this.script.length
-            ? this.getLabelForIndex(this.viewIndex)
-            : null;
-        this.labelGraphView.setCurrentLabel(current);
+        this.labelGraphView.setCurrentLabel(this.getHighlightLabelName());
     }
 
     refreshNodeGraph() {
@@ -2119,7 +2121,11 @@ class NovelPlayer {
         this.lastJumpLabel = labelName;
         this.viewIndex = this.labels[labelName];
         this.viewLineUnit = 0;
+        const pinGraphLabel =
+            options.keepNodeGraphOpen && this.isNodeGraphOpen();
+        if (pinGraphLabel) this._pinnedGraphLabel = labelName;
         this.renderCurrentView();
+        if (pinGraphLabel) this._pinnedGraphLabel = null;
 
         const moveEditor =
             !options.keepNodeGraphOpen &&
@@ -2128,9 +2134,6 @@ class NovelPlayer {
             this.moveEditorToSourceLine(this.labelSourceLines[labelName], {
                 focus: options.editorFocus !== false,
             });
-        }
-        if (options.keepNodeGraphOpen && this.isNodeGraphOpen()) {
-            this.labelGraphView?.setCurrentLabel(labelName);
         }
     }
 

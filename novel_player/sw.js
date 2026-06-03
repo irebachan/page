@@ -2,7 +2,7 @@
  * 静的アセットのオフライン用キャッシュ（作品データは IndexedDB）。
  * オンライン時はネットワーク優先（デプロイ後も最新を表示）。オフライン時のみキャッシュ。
  */
-const CACHE_NAME = "novel-player-shell-v51";
+const CACHE_NAME = "novel-player-shell-v52";
 
 const SHELL_FILES = [
     "./",
