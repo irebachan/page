@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>plot_board</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <h1 class="app-title">plot_board</h1>
+            <select id="boardSelect" aria-label="シート"></select>
+            <button type="button" id="newBoardBtn" title="新しいシート">＋</button>
+            <button type="button" id="renameBoardBtn" title="シート名を変更">✎</button>
+            <button type="button" id="deleteBoardBtn" title="このシートを削除">🗑</button>
+            <button type="button" id="undoBtn" title="元に戻す (⌘Z)" disabled>↩</button>
+            <span id="savedAt" class="saved-at"></span>
+        </div>
+        <div class="header-right">
+            <span class="paint-label">塗り色</span>
+            <div id="paintColors" class="color-swatches"></div>
+            <span id="paintHint" class="paint-hint" aria-live="polite"></span>
+            <button type="button" id="addNoteBtn" title="余白メモを追加">＋メモ</button>
+            <button type="button" id="exportBtn">エクスポート</button>
+            <button type="button" id="importBtn">インポート</button>
+            <input type="file" id="importInput" accept=".json,application/json" hidden>
+        </div>
+    </header>
+
+    <section class="filter-bar">
+        <span class="filter-label">フィルタ</span>
+        <div id="filterTags" class="filter-tags"></div>
+    </section>
+
+    <main class="main-layout">
+        <div id="boardCanvas" class="board-canvas">
+            <div id="boardInner" class="board-inner">
+                <div id="gridRoot" class="grid-root"></div>
+                <div id="notesLayer" class="notes-layer"></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="cellPopup" class="edit-popup cell-popup" hidden>
+        <div class="edit-popup-head">
+            <span>セル</span>
+            <button type="button" id="cellPopupClose" class="popup-close" title="閉じる">×</button>
+        </div>
+        <div id="cellPopupColors" class="color-swatches popup-colors"></div>
+        <textarea id="cellPopupText" rows="4" placeholder="このセルへのメモ"></textarea>
+        <div class="popup-actions">
+            <button type="button" id="cellPopupTags" class="popup-action-btn">タグ</button>
+            <button type="button" id="cellPopupDelete" class="popup-action-btn popup-delete">削除</button>
+        </div>
+    </div>
+
+    <div id="notePopup" class="edit-popup note-popup" hidden>
+        <div class="edit-popup-head">
+            <span id="notePopupTitle">余白メモ</span>
+            <button type="button" id="notePopupClose" class="popup-close" title="閉じる">×</button>
+        </div>
+        <div id="notePopupColors" class="color-swatches popup-colors"></div>
+        <textarea id="notePopupText" rows="4" placeholder="表の外に置くメモ"></textarea>
+        <div id="noteDraftActions" class="popup-actions note-draft-actions" hidden>
+            <button type="button" id="notePopupOk" class="popup-action-btn note-popup-ok">確定</button>
+            <button type="button" id="notePopupCancel" class="popup-action-btn">キャンセル</button>
+        </div>
+        <button type="button" id="notePopupDelete" class="popup-action-btn popup-delete popup-delete-full">このメモを削除</button>
+    </div>
+
+    <script src="js/model.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/render.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
