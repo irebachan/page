@@ -38,10 +38,51 @@ body {
 
 .app-menu-bar__items {
     display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-end;
     gap: 0.35em;
+}
+
+/* 上部バー: プレビュー↔エディタ（ショートカット風・アイコンのみ） */
+.app-menu-bar__quick {
+    display: flex;
     flex: 0 0 auto;
+    align-items: center;
+    gap: 0.2em;
+}
+
+.app-menu-bar__quick-btn {
+    flex: 0 0 auto;
+    width: 1.85rem;
+    height: 1.85rem;
+    min-width: 1.85rem;
+    min-height: 1.85rem;
+    padding: 0;
+    font-size: 0.82rem;
+    line-height: 1;
+    color: #bbb;
+    background: rgba(35, 35, 35, 0.92);
+    border: 1px solid #555;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.app-menu-bar__quick-btn:hover {
+    background: rgba(55, 55, 55, 0.95);
+    border-color: #777;
+    color: #fff;
+}
+
+.app-menu-bar__quick-btn:focus-visible {
+    outline: 2px solid #9cf;
+    outline-offset: 2px;
 }
 
 .app-menu-bar__project {
@@ -581,9 +622,45 @@ body.menu-drawer-open {
     padding: 0.55em 0.45em;
 }
 
-.menu-drawer--novel .menu-drawer-body #restart,
-.menu-drawer--novel .menu-drawer-body #previewFromCursorButton,
-.menu-drawer--novel .menu-drawer-body #syncEditorToPreviewButton {
+.preview-sync-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+    margin-bottom: 0.5em;
+}
+
+.preview-sync-menu__btn {
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+    width: 100%;
+    margin: 0;
+    padding: 0.55em 0.7em;
+    font-size: 0.95em;
+    text-align: left;
+    color: #fff;
+    background: #444;
+    border: 1px solid #666;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.preview-sync-menu__btn:hover {
+    background: #555;
+}
+
+.preview-sync-menu__glyph {
+    flex: 0 0 auto;
+    width: 1.25em;
+    text-align: center;
+    opacity: 0.9;
+}
+
+.preview-sync-menu__label {
+    flex: 1 1 auto;
+}
+
+.menu-drawer--novel .menu-drawer-body #restart {
     width: 100%;
     margin-bottom: 0.25em;
     font-size: 1.05em;
@@ -595,9 +672,7 @@ body.menu-drawer-open {
     cursor: pointer;
 }
 
-.menu-drawer--novel .menu-drawer-body #restart:hover,
-.menu-drawer--novel .menu-drawer-body #previewFromCursorButton:hover,
-.menu-drawer--novel .menu-drawer-body #syncEditorToPreviewButton:hover {
+.menu-drawer--novel .menu-drawer-body #restart:hover {
     background: #555;
 }
 
@@ -2168,6 +2243,8 @@ body.node-graph-open .cm-scroller {
     }
 
     .app-menu-bar {
+        flex-wrap: wrap;
+        align-items: stretch;
         justify-content: stretch;
         gap: 0.25em;
         padding:
@@ -2177,38 +2254,43 @@ body.node-graph-open .cm-scroller {
             max(0.45em, env(safe-area-inset-left, 0px));
     }
 
-    .app-menu-bar__items {
-        flex: 1 1 auto;
-        gap: 0.25em;
-        justify-content: stretch;
-    }
-
-    .app-menu-bar__items .menu-toggle--compact {
-        flex: 1 1 0;
-        justify-content: center;
-        min-height: 2.35rem;
-        padding: 0.4em 0.35em;
-        font-size: 0.85rem;
-    }
-
-    .panel-layout-toggle {
-        width: 2rem;
-        height: 2rem;
-        min-width: 2rem;
-        min-height: 2rem;
-        border-radius: 6px;
-    }
-
-    .app-menu-bar {
-        flex-wrap: wrap;
-    }
-
     .app-menu-bar__project {
         flex: 1 1 100%;
         order: -1;
         margin-right: 0;
         margin-bottom: 0.15em;
         max-width: none;
+    }
+
+    .app-menu-bar__items {
+        flex: 1 1 100%;
+        flex-wrap: nowrap;
+        gap: 0.25em;
+        justify-content: flex-start;
+        order: 0;
+        min-width: 0;
+    }
+
+    .app-menu-bar__items .menu-toggle--compact {
+        flex: 1 1 0;
+        min-width: 0;
+        justify-content: center;
+        min-height: 2.35rem;
+        padding: 0.4em 0.3em;
+        font-size: 0.8rem;
+    }
+
+    .app-menu-bar__quick {
+        flex: 0 0 auto;
+    }
+
+    .panel-layout-toggle {
+        flex: 0 0 auto;
+        width: 2rem;
+        height: 2rem;
+        min-width: 2rem;
+        min-height: 2.35rem;
+        border-radius: 6px;
     }
 
     .app-menu-bar__project-select {

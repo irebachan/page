@@ -264,12 +264,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const restartBtn = document.getElementById("restart");
     const prevChoiceBtn = document.getElementById("prevChoice");
-    const previewFromCursorBtn = document.getElementById("previewFromCursorButton");
-    const syncEditorToPreviewBtn = document.getElementById("syncEditorToPreviewButton");
-    [restartBtn, prevChoiceBtn, previewFromCursorBtn, syncEditorToPreviewBtn].forEach((btn) => {
+    [restartBtn, prevChoiceBtn].forEach((btn) => {
         if (!btn) return;
         btn.addEventListener("click", () => closeNovelMenu());
     });
+    document
+        .querySelectorAll(".preview-sync-menu__btn[data-action]")
+        .forEach((btn) => {
+            btn.addEventListener("click", () => closeNovelMenu());
+        });
 
     if (nodeGraphButton) {
         nodeGraphButton.addEventListener("click", (e) => {

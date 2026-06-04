@@ -56,6 +56,14 @@
                 aria-controls="novelMenuPanel" aria-haspopup="true">プレビュー操作</button>
             <button type="button" id="nodeGraphButton" class="menu-toggle menu-toggle--text menu-toggle--compact"
                 aria-expanded="false" aria-controls="nodeGraphPanel" aria-haspopup="dialog">ノードグラフ</button>
+            <div class="app-menu-bar__quick" role="group" aria-label="プレビューとエディタの同期">
+                <button type="button" id="previewFromCursorButton" class="app-menu-bar__quick-btn"
+                    data-action="preview-from-cursor" aria-label="この行からプレビュー"
+                    title="この行からプレビュー（Ctrl+Enter / ⌘+Enter）">▶</button>
+                <button type="button" id="syncEditorToPreviewButton" class="app-menu-bar__quick-btn"
+                    data-action="sync-editor-to-preview" aria-label="この表示をエディタへ"
+                    title="この表示をエディタへ（Ctrl+Shift+Enter / ⌘+Shift+Enter）">✎</button>
+            </div>
             <button type="button" id="panelLayoutToggleButton" class="panel-layout-toggle" aria-pressed="false"
                 aria-label="表示を切り替え" title="表示を切り替え">
                 <svg class="panel-layout-toggle__icon panel-layout-toggle__icon--expand" width="16" height="16" viewBox="0 0 24 24"
@@ -130,10 +138,18 @@
                         ラベルジャンプでエディタも移動
                     </label>
                 </div>
-                <button type="button" id="previewFromCursorButton"
-                    title="エディタのカーソル行からプレビュー（Ctrl+Enter / ⌘+Enter）">▶ この行からプレビュー</button>
-                <button type="button" id="syncEditorToPreviewButton"
-                    title="プレビュー表示中の行へエディタを移動（Ctrl+Shift+Enter / ⌘+Shift+Enter）">📝 この表示をエディタへ</button>
+                <div class="preview-sync-menu" role="group" aria-label="プレビューとエディタの同期">
+                    <button type="button" class="preview-sync-menu__btn" data-action="preview-from-cursor"
+                        title="エディタのカーソル行からプレビュー（Ctrl+Enter / ⌘+Enter）">
+                        <span class="preview-sync-menu__glyph" aria-hidden="true">▶</span>
+                        <span class="preview-sync-menu__label">この行からプレビュー</span>
+                    </button>
+                    <button type="button" class="preview-sync-menu__btn" data-action="sync-editor-to-preview"
+                        title="プレビュー表示中の行へエディタを移動（Ctrl+Shift+Enter / ⌘+Shift+Enter）">
+                        <span class="preview-sync-menu__glyph" aria-hidden="true">✎</span>
+                        <span class="preview-sync-menu__label">この表示をエディタへ</span>
+                    </button>
+                </div>
                 <button type="button" id="restart">🔄 最初に戻る</button>
                 <button type="button" id="prevChoice" disabled title="履歴上の直近の選択肢画面へ">↩ 直前の選択肢へ</button>
                 <div class="label-quick" id="labelQuick" aria-label="ラベルへ移動">
@@ -413,8 +429,8 @@ preview.overflow=wrap
                         <li>メッセージ枠をタップ</li>
                         <li><kbd>→</kbd> / <kbd>←</kbd>（エディタに入力中でないとき）</li>
                     </ul>
-                    <p>エディタのカーソル行から始める：<kbd>Ctrl</kbd>+<kbd>Enter</kbd>（Mac は <kbd>⌘</kbd>+<kbd>Enter</kbd>）</p>
-                    <p>プレビュー表示中の行をエディタで開く：<strong>プレビュー操作</strong>の「この表示をエディタへ」、または <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd>（Mac は <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd>）。メッセージ枠タップで次へ進む操作は変わりません。</p>
+                    <p>エディタのカーソル行から始める：画面上部の <strong>▶</strong>（またはプレビュー操作メニュー内）、<kbd>Ctrl</kbd>+<kbd>Enter</kbd>（Mac は <kbd>⌘</kbd>+<kbd>Enter</kbd>）</p>
+                    <p>プレビュー表示中の行をエディタで開く：画面上部の <strong>✎</strong>（またはプレビュー操作メニュー内）、<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd>（Mac は <kbd>⌘</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd>）。メッセージ枠タップで次へ進む操作は変わりません。</p>
 
                     <h3>ノードグラフ</h3>
                     <p>画面上部の <strong>ノードグラフ</strong> で分岐を俯瞰します。変更は脚本テキストへの反映です（正本はエディタの記法のまま）。</p>

@@ -22,8 +22,6 @@ class NovelPlayer {
         this.prevChoiceBtn = document.getElementById("prevChoice");
         this.labelList = document.getElementById("labelList");
         this.labelFilterInput = document.getElementById("labelFilter");
-        this.previewFromCursorBtn = document.getElementById("previewFromCursorButton");
-        this.syncEditorToPreviewBtn = document.getElementById("syncEditorToPreviewButton");
         this.scriptDiagnostics = document.getElementById("scriptDiagnostics");
         this.refErrorBadge = document.getElementById("refErrorBadge");
         this.refErrorList = document.getElementById("refErrorList");
@@ -148,12 +146,7 @@ class NovelPlayer {
             });
         }
 
-        if (this.previewFromCursorBtn) {
-            this.previewFromCursorBtn.addEventListener("click", () => this.previewFromEditorLine());
-        }
-        if (this.syncEditorToPreviewBtn) {
-            this.syncEditorToPreviewBtn.addEventListener("click", () => this.syncEditorToPreview());
-        }
+        this.bindPreviewSyncActions();
 
         if (this.labelFilterInput) {
             this.labelFilterInput.addEventListener("input", () => this.refreshLabelList());
@@ -1653,6 +1646,19 @@ class NovelPlayer {
                 return;
             }
         }
+    }
+
+    bindPreviewSyncActions() {
+        document
+            .querySelectorAll('[data-action="preview-from-cursor"]')
+            .forEach((btn) => {
+                btn.addEventListener("click", () => this.previewFromEditorLine());
+            });
+        document
+            .querySelectorAll('[data-action="sync-editor-to-preview"]')
+            .forEach((btn) => {
+                btn.addEventListener("click", () => this.syncEditorToPreview());
+            });
     }
 
     previewFromEditorLine() {
