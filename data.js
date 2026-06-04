@@ -35,11 +35,5 @@ const tools = [
         link: "https://irebachan.github.io/page/novel_player/index.html",
         date: "2025/04/05",
         timestamp: new Date("2025/04/05").getTime()
-    },
-    {
-        title: "plot_board",
-        link: "https://irebachan.github.io/page/plot_board/index.html",
-        date: "2026/06/03",
-        timestamp: new Date("2026/06/03").getTime()
     }
 ]; 
