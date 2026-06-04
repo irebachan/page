@@ -14,6 +14,14 @@ export const novelLanguage = StreamLanguage.define({
                 stream.skipToEnd();
                 return "characterName";
             }
+            if (stream.match("@if") || stream.match("@elseif") || stream.match("@else if")) {
+                stream.skipToEnd();
+                return "controlKeyword";
+            }
+            if (stream.match("@else") || stream.match("@endif")) {
+                stream.skipToEnd();
+                return "controlKeyword";
+            }
             if (stream.match("@goto") || stream.match("@call")) {
                 stream.skipToEnd();
                 return "controlKeyword";

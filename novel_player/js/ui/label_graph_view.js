@@ -5,6 +5,11 @@ class LabelGraphView {
     constructor(container, options = {}) {
         this.container = container;
         this.onNodeClick = options.onNodeClick || null;
+        this.onNodeDoubleClick = options.onNodeDoubleClick || null;
+        this.onIfBranchClick = options.onIfBranchClick || null;
+        this._nodeClickTimer = null;
+        this._lastNodeTap = null;
+        this._nodeClickDelayMs = 240;
         this.onConnect = options.onConnect || null;
         this.onConnectCall = options.onConnectCall || null;
         this.onConnectChoice = options.onConnectChoice || null;
@@ -265,6 +270,23 @@ class LabelGraphView {
             hitEl.style.cursor = "default";
             return;
         }
+        if (edge.kind === "if_rejoin") {
+            hitEl.style.cursor = "default";
+            return;
+        }
+        if (
+            edge.kind === "if_inline" &&
+            edge.bodyPreview &&
+            this.onIfBranchClick
+        ) {
+            hitEl.style.cursor = "pointer";
+            this.bindIfBranchTap(hitEl, edge);
+            return;
+        }
+        if (edge.kind === "if_inline") {
+            hitEl.style.cursor = "default";
+            return;
+        }
 
         const bindTapRemove = (el) => {
             let down = null;
@@ -316,6 +338,34 @@ class LabelGraphView {
                     pointerId: e.pointerId,
                 };
             });
+        }
+    }
+
+    bindIfBranchTap(el, edge) {
+        let down = null;
+        el.addEventListener("pointerdown", (e) => {
+            e.stopPropagation();
+            if (e.button !== 0) return;
+            down = { x: e.clientX, y: e.clientY };
+        });
+        el.addEventListener("pointerup", (e) => {
+            if (!down || e.button !== 0) return;
+            e.stopPropagation();
+            const dx = e.clientX - down.x;
+            const dy = e.clientY - down.y;
+            down = null;
+            if (dx * dx + dy * dy > 28 * 28) return;
+            this.onIfBranchClick?.(edge);
+        });
+        el.addEventListener("pointercancel", () => {
+            down = null;
+        });
+    }
+
+    clearNodeClickTimer() {
+        if (this._nodeClickTimer) {
+            clearTimeout(this._nodeClickTimer);
+            this._nodeClickTimer = null;
         }
     }
 
@@ -560,6 +610,14 @@ class LabelGraphView {
                 markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M 0 0 L 10 5 L 0 10 z" class="label-graph-arrowhead-call"/>
             </marker>
+            <marker id="label-graph-arrow-if" viewBox="0 0 10 10" refX="9" refY="5"
+                markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" class="label-graph-arrowhead-if"/>
+            </marker>
+            <marker id="label-graph-dot-if-rejoin" viewBox="0 0 8 8" refX="4" refY="4"
+                markerWidth="5" markerHeight="5" orient="auto">
+                <circle cx="4" cy="4" r="2.5" class="label-graph-if-rejoin-dot"/>
+            </marker>
             <marker id="label-graph-arrow-fallthrough" viewBox="0 0 10 10" refX="9" refY="5"
                 markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                 <path d="M 0 0 L 10 5 L 0 10 z" class="label-graph-arrowhead-fallthrough"/>
@@ -617,6 +675,8 @@ class LabelGraphView {
 
             if (
                 (edge.kind === "choice" && edge.disconnected) ||
+                edge.kind === "if_inline" ||
+                edge.kind === "if_rejoin" ||
                 edge.kind === "exit"
             ) {
                 stubEdges.push({ edge, dimmed });
@@ -645,7 +705,11 @@ class LabelGraphView {
             const stubPoints =
                 edge.kind === "exit"
                     ? computeExitStubPoints(edge, fromLay, fromNode)
-                    : computeChoiceStubPoints(edge, fromLay, fromNode);
+                    : edge.kind === "if_inline"
+                      ? computeIfInlineStubPoints(edge, fromLay, fromNode)
+                      : edge.kind === "if_rejoin"
+                        ? computeIfRejoinStubPoints(edge, fromLay, fromNode)
+                        : computeChoiceStubPoints(edge, fromLay, fromNode);
             this.appendEdgePaths(edge, stubPoints, dimmed);
         }
 
@@ -656,8 +720,7 @@ class LabelGraphView {
             if (!lay) continue;
             this._nodeCenters.set(node.name, { x: lay.x, y: lay.y });
 
-            const padBottom = node.layoutPadBottom || 0;
-            const displayH = Math.max(36, lay.height - padBottom);
+            const displayH = node.preview ? 50 : 36;
             const box = { width: lay.width, height: displayH };
 
             const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -715,6 +778,17 @@ class LabelGraphView {
                     x: e.clientX,
                     y: e.clientY,
                 };
+            });
+
+            g.addEventListener("dblclick", (e) => {
+                if (node.ghost || e.button !== 0) return;
+                e.preventDefault();
+                e.stopPropagation();
+                if (this._commandMode) return;
+                this.clearNodeClickTimer();
+                this._lastNodeTap = null;
+                this._nodePointerDown = null;
+                this.handleNodeDoubleTap(node.name);
             });
 
             this.gNodes.appendChild(g);
@@ -815,13 +889,49 @@ class LabelGraphView {
         this.applyTransform();
     }
 
-    handleNodeTap(nodeName) {
+    handleNodeTap(nodeName, pointerType) {
         if (!nodeName || nodeName.startsWith("__open__")) return;
         if (this._commandMode) {
             this.handleCommandNodeClick(nodeName);
             return;
         }
-        if (this.onNodeClick) this.onNodeClick(nodeName);
+
+        if (pointerType === "mouse") {
+            this.clearNodeClickTimer();
+            this._lastNodeTap = null;
+            this.onNodeClick?.(nodeName);
+            return;
+        }
+
+        const now = Date.now();
+        if (
+            this._lastNodeTap &&
+            this._lastNodeTap.name === nodeName &&
+            now - this._lastNodeTap.time < this._nodeClickDelayMs
+        ) {
+            this.clearNodeClickTimer();
+            this._lastNodeTap = null;
+            this.handleNodeDoubleTap(nodeName);
+            return;
+        }
+
+        this._lastNodeTap = { name: nodeName, time: now };
+        this.clearNodeClickTimer();
+        this._nodeClickTimer = setTimeout(() => {
+            this._nodeClickTimer = null;
+            this._lastNodeTap = null;
+            this.onNodeClick?.(nodeName);
+        }, this._nodeClickDelayMs);
+    }
+
+    handleNodeDoubleTap(nodeName) {
+        if (!nodeName || nodeName.startsWith("__open__")) return;
+        if (this._commandMode) return;
+        if (this.onNodeDoubleClick) {
+            this.onNodeDoubleClick(nodeName);
+        } else {
+            this.onNodeClick?.(nodeName);
+        }
     }
 
     onPointerUp(e) {
@@ -845,7 +955,7 @@ class LabelGraphView {
             const dx = e.clientX - pending.x;
             const dy = e.clientY - pending.y;
             if (dx * dx + dy * dy <= 64) {
-                this.handleNodeTap(pending.name);
+                this.handleNodeTap(pending.name, e.pointerType);
             }
             return;
         }
@@ -932,7 +1042,9 @@ class LabelGraphView {
         }
         path.setAttribute("d", d);
         if (edge.disconnected) path.classList.add("is-stub");
-        if (edge.kind === "exit") {
+        if (edge.kind === "if_inline" || edge.kind === "if_rejoin") {
+            path.setAttribute("marker-end", "url(#label-graph-dot-if-rejoin)");
+        } else if (edge.kind === "exit") {
             const dotId =
                 edge.exitKind === "return"
                     ? "label-graph-dot-exit-return"
@@ -940,6 +1052,8 @@ class LabelGraphView {
             path.setAttribute("marker-end", `url(#${dotId})`);
         } else if (edge.kind === "call") {
             path.setAttribute("marker-end", "url(#label-graph-arrow-call)");
+        } else if (edge.kind === "if_branch") {
+            path.setAttribute("marker-end", "url(#label-graph-arrow-if)");
         } else if (edge.kind === "fallthrough") {
             path.setAttribute("marker-end", "url(#label-graph-arrow-fallthrough)");
         } else {
@@ -960,6 +1074,15 @@ class LabelGraphView {
                 hint = "（クリックで行削除・ドラッグでつなぐ）";
             } else if (edge.kind === "choice") {
                 hint = "（クリックで接続を切る）";
+            } else if (edge.kind === "if_inline" && edge.bodyPreview) {
+                hint = "（クリックで @if へ）";
+            } else if (
+                edge.kind === "if_inline" ||
+                edge.kind === "if_rejoin"
+            ) {
+                hint = "";
+            } else if (edge.kind === "if_branch") {
+                hint = "（条件が真のときだけ別ラベルへ）";
             }
             t.textContent = title + hint;
             hit.appendChild(t);
@@ -968,14 +1091,42 @@ class LabelGraphView {
         this.gEdges.appendChild(hit);
         this.gEdges.appendChild(path);
 
+        let labelPt = null;
+        if (edge.kind === "exit") {
+            labelPt = exitStubLabelPoint(points);
+        } else if (edge.kind === "if_rejoin") {
+            labelPt = ifRejoinLabelPoint(points);
+        } else if (edge.disconnected) {
+            labelPt =
+                edge.kind === "if_inline" && edge.bodyPreview
+                    ? ifStubLabelPoint(points)
+                    : choiceStubLabelPoint(points);
+        }
+
+        if (edge.kind === "if_inline" && edge.detail) {
+            if (edge.bodyPreview) {
+                appendIfStubLabel(
+                    this.gEdges,
+                    edge,
+                    labelPt,
+                    dimmed,
+                    (e) => this.onIfBranchClick?.(e)
+                );
+            } else {
+                appendEdgeLabel(
+                    this.gEdges,
+                    String(edge.detail),
+                    points,
+                    dimmed,
+                    labelPt,
+                    edge.kind
+                );
+            }
+            return;
+        }
+
         const labelText = edgeDisplayLabel(edge);
         if (labelText) {
-            let labelPt = null;
-            if (edge.kind === "exit") {
-                labelPt = exitStubLabelPoint(points);
-            } else if (edge.disconnected) {
-                labelPt = choiceStubLabelPoint(points);
-            }
             appendEdgeLabel(
                 this.gEdges,
                 labelText,
@@ -988,21 +1139,48 @@ class LabelGraphView {
     }
 }
 
+function stubAttachX(edge, fromLay, fromNode) {
+    if (edge.stubLayoutX != null) return fromLay.x + edge.stubLayoutX;
+    if (edge.kind === "choice") {
+        return choiceAttachX(edge, fromLay, fromNode);
+    }
+    if (edge.kind === "if_inline" || edge.kind === "if_branch") {
+        return branchAttachX(edge, fromLay, fromNode);
+    }
+    return fromLay.x;
+}
+
+function branchAttachX(edge, fromLay, fromNode) {
+    const n = Math.max(1, edge.branchGroupSize || edge.choiceGroupSize || 1);
+    const i = edge.branchIndex ?? edge.choiceIndex ?? 0;
+    const w = fromLay.width || 88;
+    const minSpacing = 64;
+    const span = n <= 1 ? w : Math.max(w, (n - 1) * minSpacing);
+    return n <= 1
+        ? fromLay.x
+        : fromLay.x - span / 2 + (span * i) / (n - 1);
+}
+
 function sanitizeClipKey(name) {
     return String(name).replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-/** 未接続の選択肢: ノード下端から別々の縦線（重ならないよう間隔を確保） */
+/** スタブなしラベルの dagre 下端余白（if 等は diagnostics の layoutPadBottom を使う） */
+const DAGRE_NODE_PAD_MIN = 10;
+
 function nodeContentBottomY(fromLay, fromNode) {
-    const pad = fromNode?.layoutPadBottom || 0;
-    const displayH = Math.max(36, fromLay.height - pad);
-    return fromLay.y - fromLay.height / 2 + displayH;
+    const nodeH = fromNode?.preview ? 50 : 36;
+    return fromLay.y - fromLay.height / 2 + nodeH;
+}
+
+function stubBaseY(fromLay, fromNode, edge) {
+    return nodeContentBottomY(fromLay, fromNode) + (edge?.stubYOffset ?? 0);
 }
 
 function choiceAttachX(edge, fromLay, fromNode) {
     const n = Math.max(1, edge.choiceGroupSize || 1);
     const i = edge.choiceIndex ?? 0;
-    const w = Math.max(fromLay.width || 88, fromNode?.layoutMinWidth || 0);
+    const w = fromLay.width || 88;
     const minSpacing = 64;
     const span = n <= 1 ? w : Math.max(w, (n - 1) * minSpacing);
     return n <= 1
@@ -1016,11 +1194,8 @@ function adjustDagreEdgePoints(points, edge, fromLay, fromNode) {
         return points;
     }
     const pts = points.map((p) => ({ x: p.x, y: p.y }));
-    const y = nodeContentBottomY(fromLay, fromNode);
-    const x =
-        edge.kind === "choice"
-            ? choiceAttachX(edge, fromLay, fromNode)
-            : fromLay.x;
+    const y = stubBaseY(fromLay, fromNode, edge);
+    const x = stubAttachX(edge, fromLay, fromNode);
     pts[0] = { x, y };
     if (pts.length > 1 && pts[1].y < y + 12) {
         pts[1] = { x: pts[1].x, y: y + 12 };
@@ -1029,30 +1204,46 @@ function adjustDagreEdgePoints(points, edge, fromLay, fromNode) {
 }
 
 function computeChoiceStubPoints(edge, fromLay, fromNode) {
-    const attachX = choiceAttachX(edge, fromLay, fromNode);
-    const i = edge.choiceIndex ?? 0;
-    const y0 = nodeContentBottomY(fromLay, fromNode);
-    const y1 = y0 + 44 + i * 16;
+    const attachX = stubAttachX(edge, fromLay, fromNode);
+    const y0 = stubBaseY(fromLay, fromNode, edge);
+    const drop = edge.stubDrop ?? 40;
+    const mid = Math.min(14, drop * 0.35);
     return [
         { x: attachX, y: y0 },
-        { x: attachX, y: y0 + 14 },
-        { x: attachX, y: y1 },
+        { x: attachX, y: y0 + mid },
+        { x: attachX, y: y0 + drop },
+    ];
+}
+
+function computeIfInlineStubPoints(edge, fromLay, fromNode) {
+    const attachX = stubAttachX(edge, fromLay, fromNode);
+    const y0 = stubBaseY(fromLay, fromNode, edge);
+    const drop = edge.stubDrop ?? 22;
+    return [
+        { x: attachX, y: y0 },
+        { x: attachX, y: y0 + drop },
+    ];
+}
+
+/** @endif 合流（ラベル内で続きに戻る・ノード下の中央軸） */
+function computeIfRejoinStubPoints(edge, fromLay, fromNode) {
+    const attachX = stubAttachX(edge, fromLay, fromNode);
+    const y0 = stubBaseY(fromLay, fromNode, edge);
+    const drop = edge.stubDrop ?? 40;
+    return [
+        { x: attachX, y: y0 },
+        { x: attachX, y: y0 + Math.min(16, drop * 0.32) },
+        { x: attachX, y: y0 + drop },
     ];
 }
 
 /** @end / @return: ノード下端から短いスタブ（共有ノードにしない） */
 function computeExitStubPoints(edge, fromLay, fromNode) {
-    const n = Math.max(1, edge.exitGroupSize || 1);
+    const attachX = stubAttachX(edge, fromLay, fromNode);
     const i = edge.exitIndex ?? 0;
-    const w = Math.max(fromLay.width || 88, fromNode?.layoutMinWidth || 0);
-    const minSpacing = 50;
-    const span = n <= 1 ? w * 0.55 : Math.max(w * 0.55, (n - 1) * minSpacing);
-    const attachX =
-        n <= 1
-            ? fromLay.x
-            : fromLay.x - span / 2 + (span * i) / (n - 1);
-    const y0 = nodeContentBottomY(fromLay, fromNode);
-    const y1 = y0 + 28 + i * 8;
+    const y0 = stubBaseY(fromLay, fromNode, edge);
+    const drop = (edge.stubDrop ?? 26) + i * 6;
+    const y1 = y0 + drop;
     return [
         { x: attachX, y: y0 },
         { x: attachX, y: y1 },
@@ -1060,6 +1251,11 @@ function computeExitStubPoints(edge, fromLay, fromNode) {
 }
 
 function exitStubLabelPoint(points) {
+    const b = points[points.length - 1];
+    return { x: b.x, y: b.y + 2 };
+}
+
+function ifRejoinLabelPoint(points) {
     const b = points[points.length - 1];
     return { x: b.x, y: b.y + 2 };
 }
@@ -1073,26 +1269,36 @@ function choiceStubLabelPoint(points) {
     };
 }
 
+/** if スタブ（2行ラベル）の中心 */
+function ifStubLabelPoint(points) {
+    const a = points[0];
+    const b = points[points.length - 1];
+    return {
+        x: a.x,
+        y: a.y + (b.y - a.y) * 0.5,
+    };
+}
+
 function measureLabelNode(node) {
     const name = node.displayName || node.name || "";
     const NODE_H = node.preview ? 50 : 36;
-    const w = Math.max(
-        measureNodeWidth(name, node.preview),
-        node.layoutMinWidth || 0
-    );
-    const padBottom = node.layoutPadBottom || 0;
-    return { width: w, height: NODE_H + padBottom };
+    const w = measureNodeWidth(name, node.preview);
+    const stubPad = Math.max(0, Number(node.layoutPadBottom) || 0);
+    return {
+        width: w,
+        height: NODE_H + (stubPad > 0 ? stubPad : DAGRE_NODE_PAD_MIN),
+    };
 }
 
 function layoutLabelGraphWithDagre(nodes, edges) {
     const g = new dagre.graphlib.Graph({ multigraph: true, compound: false });
     g.setGraph({
         rankdir: "TB",
-        nodesep: 56,
-        ranksep: 96,
+        nodesep: 50,
+        ranksep: 50,
         edgesep: 20,
-        marginx: 40,
-        marginy: 40,
+        marginx: 32,
+        marginy: 24,
         ranker: "network-simplex",
     });
     g.setDefaultEdgeLabel(() => ({}));
@@ -1111,10 +1317,6 @@ function layoutLabelGraphWithDagre(nodes, edges) {
         if (seen.has(edgeName)) continue;
         seen.add(edgeName);
         const label = { id: edge.id, kind: edge.kind };
-        const fromNode = nodes.find((n) => n.name === edge.from);
-        if (fromNode?.layoutPadBottom > 0 && edge.kind === "fallthrough") {
-            label.minlen = Math.max(1, Math.ceil(fromNode.layoutPadBottom / 48));
-        }
         g.setEdge(edge.from, edge.to, label, edgeName);
         edgeKeys.set(edge, edgeName);
     }
@@ -1135,8 +1337,17 @@ function pointsToPath(points) {
 
 function edgeTitle(edge) {
     if (edge.kind === "choice") {
+        return `「${edge.detail}」→ ${edge.to}`;
+    }
+    if (edge.kind === "if_branch") {
         const mode = edge.mode === "call" ? "call " : "";
-        return `「${edge.detail}」→ ${mode}${edge.to}`;
+        return `if ${edge.detail} → ${mode}${edge.to}（条件が真のとき）`;
+    }
+    if (edge.kind === "if_inline") {
+        return `if ${edge.detail}（このラベル内・@endif で続き）`;
+    }
+    if (edge.kind === "if_rejoin") {
+        return "@endif 合流（このラベルの続きへ）";
     }
     if (edge.kind === "goto" || edge.kind === "call") {
         return `@${edge.kind} ${edge.to}`;
@@ -1155,7 +1366,15 @@ function edgeTitle(edge) {
 /** 矢印上に出す文言（選択肢は脚本の選択肢テキストそのまま） */
 function edgeDisplayLabel(edge) {
     if (edge.kind === "choice" && edge.detail) {
-        if (edge.mode === "call") return `call: ${edge.detail}`;
+        return String(edge.detail);
+    }
+    if (edge.kind === "if_branch" && edge.detail) {
+        return String(edge.detail);
+    }
+    if (edge.kind === "if_inline" && edge.detail) {
+        return String(edge.detail);
+    }
+    if (edge.kind === "if_rejoin" && edge.detail) {
         return String(edge.detail);
     }
     if (edge.kind === "exit" && edge.detail) {
@@ -1173,6 +1392,103 @@ function truncateEdgeLabel(text, maxLen) {
     const s = String(text).replace(/\s+/g, " ").trim();
     if (s.length <= maxLen) return s;
     return s.slice(0, maxLen - 1) + "…";
+}
+
+/** if スタブ: 上＝条件、下＝超短い本文 */
+function appendIfStubLabel(parent, edge, labelPt, dimmed, onJump) {
+    const pt = labelPt || { x: 0, y: 0 };
+    const cond = truncateEdgeLabel(edge.detail, 22);
+    const body = truncateEdgeLabel(edge.bodyPreview, 8);
+    const lineGap = 10;
+    const condY = pt.y - lineGap / 2;
+    const bodyY = pt.y + lineGap / 2;
+
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", "label-graph-edge-label label-graph-edge-label--if-stub");
+    g.setAttribute("data-kind", edge.kind);
+    if (dimmed) g.classList.add("is-dimmed");
+    if (onJump) {
+        g.classList.add("is-if-jumpable");
+        g.style.cursor = "pointer";
+    }
+
+    const textCond = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    textCond.setAttribute("class", "label-graph-edge-label__cond");
+    textCond.setAttribute("x", pt.x);
+    textCond.setAttribute("y", condY);
+    textCond.setAttribute("text-anchor", "middle");
+    textCond.setAttribute("dominant-baseline", "central");
+    textCond.setAttribute("font-size", "10");
+    textCond.textContent = cond;
+
+    const textBody = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    textBody.setAttribute("class", "label-graph-edge-label__body");
+    textBody.setAttribute("x", pt.x);
+    textBody.setAttribute("y", bodyY);
+    textBody.setAttribute("text-anchor", "middle");
+    textBody.setAttribute("dominant-baseline", "central");
+    textBody.setAttribute("font-size", "9");
+    textBody.textContent = body;
+
+    const tip = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    tip.textContent = `${edge.detail}\n${edge.bodyPreview}\n（クリックで @if へ）`;
+    g.appendChild(tip);
+    g.appendChild(textCond);
+    g.appendChild(textBody);
+    parent.appendChild(g);
+
+    if (onJump) {
+        let down = null;
+        g.addEventListener("pointerdown", (e) => {
+            e.stopPropagation();
+            if (e.button !== 0) return;
+            down = { x: e.clientX, y: e.clientY };
+        });
+        g.addEventListener("pointerup", (e) => {
+            if (!down || e.button !== 0) return;
+            e.stopPropagation();
+            const dx = e.clientX - down.x;
+            const dy = e.clientY - down.y;
+            down = null;
+            if (dx * dx + dy * dy > 28 * 28) return;
+            onJump(edge);
+        });
+        g.addEventListener("pointercancel", () => {
+            down = null;
+        });
+    }
+
+    const padX = 5;
+    const padY = 3;
+    let bbox;
+    try {
+        const b1 = textCond.getBBox();
+        const b2 = textBody.getBBox();
+        bbox = {
+            x: Math.min(b1.x, b2.x),
+            y: Math.min(b1.y, b2.y),
+            width:
+                Math.max(b1.x + b1.width, b2.x + b2.width) -
+                Math.min(b1.x, b2.x),
+            height:
+                Math.max(b1.y + b1.height, b2.y + b2.height) -
+                Math.min(b1.y, b2.y),
+        };
+    } catch (_) {
+        const w = Math.max(
+            estimateTextWidthPx(cond, 10),
+            estimateTextWidthPx(body, 9)
+        );
+        bbox = { x: -w / 2, y: condY - 7, width: w, height: lineGap + 14 };
+    }
+
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", bbox.x - padX);
+    rect.setAttribute("y", bbox.y - padY);
+    rect.setAttribute("width", String(Math.max(bbox.width + padX * 2, 18)));
+    rect.setAttribute("height", String(bbox.height + padY * 2));
+    rect.setAttribute("rx", "3");
+    g.insertBefore(rect, textCond);
 }
 
 function appendEdgeLabel(parent, fullText, points, dimmed, labelPt, kind) {

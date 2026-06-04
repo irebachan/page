@@ -167,15 +167,12 @@ function parseChoiceLineParts(line) {
     const body = raw.slice(1).trim();
     const arrow = body.indexOf("=>");
     const textPart = arrow >= 0 ? body.slice(0, arrow).trim() : body;
-    let mode = "goto";
     let hasTarget = false;
     if (arrow >= 0) {
         const targetRaw = body.slice(arrow + 2).trim();
         hasTarget = targetRaw.length > 0;
-        if (targetRaw.startsWith("@call ")) mode = "call";
-        else if (targetRaw.startsWith("call ")) mode = "call";
     }
-    return { indent, textPart, mode, hasTarget };
+    return { indent, textPart, hasTarget };
 }
 
 /** 選択肢の => 先だけ外す（- 文 は残す） */
@@ -324,7 +321,7 @@ function removeGraphEdgeFromText(text, script, labels, labelSourceLines, edge) {
     return { ok: false, error: "この辺は削除できません", text };
 }
 
-/** 選択肢行の => 先を差し替え（call 記法は維持） */
+/** 選択肢行の => 先を差し替え */
 function patchChoiceTarget(text, _script, labels, labelSourceLines, edge, toLabel) {
     if (!edge || edge.kind !== "choice") {
         return { ok: false, error: "選択肢の辺ではありません", text };
@@ -355,9 +352,7 @@ function patchChoiceTarget(text, _script, labels, labelSourceLines, edge, toLabe
         return { ok: false, error: "脚本が変更されています", text };
     }
 
-    const mode = edge.mode || parts.mode || "goto";
-    const targetPart = mode === "call" ? `call ${toLabel}` : toLabel;
-    lines[lineIdx] = `${parts.indent}- ${parts.textPart} => ${targetPart}`;
+    lines[lineIdx] = `${parts.indent}- ${parts.textPart} => ${toLabel}`;
 
     return { ok: true, text: lines.join("\n") };
 }
@@ -419,14 +414,10 @@ function parseChoiceLineTarget(line) {
     const raw = line.trim().slice(1).trim();
     const arrow = raw.indexOf("=>");
     if (arrow < 0) return null;
-    const targetRaw = raw.slice(arrow + 2).trim();
-    if (targetRaw.startsWith("@call ")) {
-        return { mode: "call", target: targetRaw.slice(6).trim() };
-    }
-    if (targetRaw.startsWith("call ")) {
-        return { mode: "call", target: targetRaw.slice(5).trim() };
-    }
-    return { mode: "goto", target: targetRaw };
+    let targetRaw = raw.slice(arrow + 2).trim();
+    if (targetRaw.startsWith("@call ")) targetRaw = targetRaw.slice(6).trim();
+    else if (targetRaw.startsWith("call ")) targetRaw = targetRaw.slice(5).trim();
+    return { target: targetRaw };
 }
 
 /** ファイル末尾に空のラベルブロックを追加 */
@@ -488,9 +479,7 @@ function patchRenameLabel(text, _script, labels, labelSourceLines, oldName, newN
         if (!choice || choice.target !== oldName) continue;
         const parts = parseChoiceLineParts(lines[i]);
         if (!parts) continue;
-        const targetPart =
-            choice.mode === "call" ? `call ${newName}` : newName;
-        lines[i] = `${parts.indent}- ${parts.textPart} => ${targetPart}`;
+        lines[i] = `${parts.indent}- ${parts.textPart} => ${newName}`;
     }
 
     return { ok: true, text: lines.join("\n"), oldName, newName };

@@ -17,13 +17,13 @@ var ScenarioEditorModule = (() => {
   };
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-  // novel_player/editor/scenario_editor.mjs
+  // editor/scenario_editor.mjs
   var scenario_editor_exports = {};
   __export(scenario_editor_exports, {
     createScenarioEditor: () => createScenarioEditor
   });
 
-  // novel_player/node_modules/@marijn/find-cluster-break/src/index.js
+  // node_modules/@marijn/find-cluster-break/src/index.js
   var rangeFrom = [];
   var rangeTo = [];
   (() => {
@@ -97,7 +97,7 @@ var ScenarioEditorModule = (() => {
     return code < 65536 ? 1 : 2;
   }
 
-  // novel_player/node_modules/@codemirror/state/dist/index.js
+  // node_modules/@codemirror/state/dist/index.js
   var Text = class _Text {
     /**
     Get the line description around the given position.
@@ -3450,7 +3450,7 @@ var ScenarioEditorModule = (() => {
     return strict === true ? -1 : string2.length;
   }
 
-  // novel_player/node_modules/style-mod/src/style-mod.js
+  // node_modules/style-mod/src/style-mod.js
   var C = "\u037C";
   var COUNT = typeof Symbol == "undefined" ? "__" + C : Symbol.for(C);
   var SET = typeof Symbol == "undefined" ? "__styleSet" + Math.floor(Math.random() * 1e8) : Symbol("styleSet");
@@ -3581,7 +3581,7 @@ var ScenarioEditorModule = (() => {
     }
   };
 
-  // novel_player/node_modules/w3c-keyname/index.js
+  // node_modules/w3c-keyname/index.js
   var base = {
     8: "Backspace",
     9: "Tab",
@@ -3687,7 +3687,7 @@ var ScenarioEditorModule = (() => {
     return name2;
   }
 
-  // novel_player/node_modules/crelt/index.js
+  // node_modules/crelt/index.js
   function crelt() {
     var elt = arguments[0];
     if (typeof elt == "string") elt = document.createElement(elt);
@@ -3716,7 +3716,7 @@ var ScenarioEditorModule = (() => {
     }
   }
 
-  // novel_player/node_modules/@codemirror/view/dist/index.js
+  // node_modules/@codemirror/view/dist/index.js
   var nav = typeof navigator != "undefined" ? navigator : { userAgent: "", vendor: "", platform: "" };
   var doc = typeof document != "undefined" ? document : { documentElement: { style: {} } };
   var ie_edge = /* @__PURE__ */ /Edge\/(\d+)/.exec(nav.userAgent);
@@ -14268,7 +14268,7 @@ var ScenarioEditorModule = (() => {
     return activeLineGutterHighlighter;
   }
 
-  // novel_player/node_modules/@lezer/common/dist/index.js
+  // node_modules/@lezer/common/dist/index.js
   var DefaultBufferLength = 1024;
   var nextPropID = 0;
   var Range2 = class {
@@ -15892,7 +15892,7 @@ var ScenarioEditorModule = (() => {
   };
   var stoppedInner = new NodeProp({ perNode: true });
 
-  // novel_player/node_modules/@lezer/highlight/dist/index.js
+  // node_modules/@lezer/highlight/dist/index.js
   var nextTagID = 0;
   var Tag = class _Tag {
     /**
@@ -16616,7 +16616,7 @@ var ScenarioEditorModule = (() => {
     { tag: tags.punctuation, class: "tok-punctuation" }
   ]);
 
-  // novel_player/node_modules/@codemirror/language/dist/index.js
+  // node_modules/@codemirror/language/dist/index.js
   var _a;
   var languageDataProp = /* @__PURE__ */ new NodeProp();
   function defineLanguageFacet(baseData) {
@@ -18606,7 +18606,7 @@ var ScenarioEditorModule = (() => {
     auto: /* @__PURE__ */ Decoration.mark({ class: "cm-iso", inclusive: true, attributes: { dir: "auto" }, bidiIsolate: null })
   };
 
-  // novel_player/node_modules/@codemirror/commands/dist/index.js
+  // node_modules/@codemirror/commands/dist/index.js
   var toggleComment = (target) => {
     let { state } = target, line = state.doc.lineAt(state.selection.main.from), config2 = getConfig(target.state, line.from);
     return config2.line ? toggleLineComment(target) : config2.block ? toggleBlockCommentByLine(target) : false;
@@ -19686,7 +19686,7 @@ var ScenarioEditorModule = (() => {
     { key: "Ctrl-m", mac: "Shift-Alt-m", run: toggleTabFocusMode }
   ].concat(standardKeymap);
 
-  // novel_player/node_modules/@codemirror/search/dist/index.js
+  // node_modules/@codemirror/search/dist/index.js
   var basicNormalize = typeof String.prototype.normalize == "function" ? (x) => x.normalize("NFKD") : (x) => x;
   var SearchCursor = class {
     /**
@@ -20767,7 +20767,7 @@ var ScenarioEditorModule = (() => {
     baseTheme3
   ];
 
-  // novel_player/node_modules/@codemirror/autocomplete/dist/index.js
+  // node_modules/@codemirror/autocomplete/dist/index.js
   var CompletionContext = class {
     /**
     Create a new completion context. (Mostly useful for testing
@@ -22354,7 +22354,7 @@ var ScenarioEditorModule = (() => {
   ];
   var completionKeymapExt = /* @__PURE__ */ Prec.highest(/* @__PURE__ */ keymap.computeN([completionConfig], (state) => state.facet(completionConfig).defaultKeymap ? [completionKeymap] : []));
 
-  // novel_player/node_modules/@codemirror/lint/dist/index.js
+  // node_modules/@codemirror/lint/dist/index.js
   var SelectedDiagnostic = class {
     constructor(from, to, diagnostic) {
       this.from = from;
@@ -22963,7 +22963,7 @@ var ScenarioEditorModule = (() => {
     baseTheme5
   ];
 
-  // novel_player/node_modules/codemirror/dist/index.js
+  // node_modules/codemirror/dist/index.js
   var basicSetup = /* @__PURE__ */ (() => [
     lineNumbers(),
     highlightActiveLineGutter(),
@@ -22993,7 +22993,7 @@ var ScenarioEditorModule = (() => {
     ])
   ])();
 
-  // novel_player/editor/novel_syntax.mjs
+  // editor/novel_syntax.mjs
   var novelLanguage = StreamLanguage.define({
     name: "novel",
     token(stream) {
@@ -23005,6 +23005,14 @@ var ScenarioEditorModule = (() => {
         if (stream.match("#")) {
           stream.skipToEnd();
           return "characterName";
+        }
+        if (stream.match("@if") || stream.match("@elseif") || stream.match("@else if")) {
+          stream.skipToEnd();
+          return "controlKeyword";
+        }
+        if (stream.match("@else") || stream.match("@endif")) {
+          stream.skipToEnd();
+          return "controlKeyword";
         }
         if (stream.match("@goto") || stream.match("@call")) {
           stream.skipToEnd();
@@ -23035,7 +23043,7 @@ var ScenarioEditorModule = (() => {
     }
   });
 
-  // novel_player/editor/novel_theme.mjs
+  // editor/novel_theme.mjs
   var novelEditorTheme = EditorView.theme({
     "&": {
       height: "100%",
@@ -23084,7 +23092,7 @@ var ScenarioEditorModule = (() => {
   ]);
   var novelSyntaxHighlighting = syntaxHighlighting(novelHighlightStyle);
 
-  // novel_player/editor/scenario_editor.mjs
+  // editor/scenario_editor.mjs
   function createScenarioEditor(parent, options = {}) {
     const { onChange, onPreviewShortcut, onCursorChange } = options;
     const previewKeymap = keymap.of([
