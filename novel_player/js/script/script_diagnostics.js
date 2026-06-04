@@ -4,6 +4,13 @@ function collectReferenceErrors(script, labels) {
     const hasLabel = (name) => name && labels.hasOwnProperty(name);
 
     for (const item of script) {
+        if (item.type === "parse_error") {
+            errors.push({
+                sourceLine: item.sourceLine,
+                message: item.message,
+            });
+            continue;
+        }
         if (item.type === "choice") {
             for (const c of item.choices) {
                 if (!hasLabel(c.target)) {
@@ -64,7 +71,6 @@ function buildLabelFlow(script, labels) {
                     from,
                     kind: "choice",
                     detail: c.text,
-                    mode: c.mode || "goto",
                 });
             }
         } else if (item.type === "goto" || item.type === "call") {
@@ -87,7 +93,6 @@ function buildLabelFlow(script, labels) {
                         kind: "choice",
                         target: c.target,
                         detail: c.text,
-                        mode: c.mode || "goto",
                     });
                 }
             } else if (item.type === "goto") {
@@ -177,6 +182,78 @@ function truncatePreviewText(text, maxLen) {
     return s.slice(0, maxLen - 1) + "…";
 }
 
+function ifBranchLabel(condition) {
+    if (condition == null || condition === "") return "それ以外";
+    return String(condition);
+}
+
+const IF_STUB_BODY_MAX = 8;
+
+function estimateTextWidthPx(text, fontSizePx) {
+    let w = 0;
+    for (const ch of String(text)) {
+        w += ch.charCodeAt(0) > 0xff ? fontSizePx : fontSizePx * 0.55;
+    }
+    return w;
+}
+
+/** if スタブ下の超短い本文（話者名は出さない） */
+function previewFromIfBranchBody(script, from, to, maxLen = IF_STUB_BODY_MAX) {
+    if (from == null || to == null || from >= to) return "";
+    for (let i = from; i < to && i < script.length; i++) {
+        const item = script[i];
+        if (item.type === "blank" || item.type === "comment") continue;
+        if (item.type === "line") {
+            const t = (item.text || "").replace(/\s+/g, " ").trim();
+            if (!t) continue;
+            return truncatePreviewText(t, maxLen);
+        }
+        if (item.type === "choice") {
+            const texts = item.choices
+                .map((c) => (c.text || "").trim())
+                .filter(Boolean);
+            if (texts.length) return truncatePreviewText(texts[0], maxLen);
+        }
+    }
+    return "";
+}
+
+function stubLabelWidthPx(edge) {
+    const cond = String(edge.detail || "");
+    const body = edge.bodyPreview ? String(edge.bodyPreview) : "";
+    const w = Math.max(
+        estimateTextWidthPx(cond, 10),
+        body ? estimateTextWidthPx(body, 9) : 0
+    );
+    return Math.max(48, w + 16);
+}
+
+/** if 枝の中から goto / call / end 参照を収集 */
+function collectIfBranchTargets(script, from, to) {
+    const targets = [];
+    if (from == null || to == null) return targets;
+    for (let i = from; i < to && i < script.length; i++) {
+        const item = script[i];
+        if (item.type === "goto" || item.type === "call") {
+            targets.push({ kind: item.type, target: item.target });
+        } else if (item.type === "end") {
+            targets.push({ kind: "end", target: null });
+        }
+    }
+    return targets;
+}
+
+function previewFromIfChain(item, maxLen) {
+    const parts = (item.branches || [])
+        .map((b) => ifBranchLabel(b.condition))
+        .filter(Boolean);
+    if (!parts.length) return "if";
+    if (parts.length <= 2) {
+        return truncatePreviewText(`if: ${parts.join(" / ")}`, maxLen);
+    }
+    return truncatePreviewText(`if: ${parts[0]} 他${parts.length - 1}`, maxLen);
+}
+
 function previewFromChoiceBlock(item, maxLen) {
     const desc = (item.description || "").trim();
     if (desc) return truncatePreviewText(desc, maxLen);
@@ -210,6 +287,10 @@ function buildLabelPreviewSnippet(script, labels, labelName, maxLen = 22) {
 
         if (item.type === "choice") {
             return previewFromChoiceBlock(item, maxLen);
+        }
+
+        if (item.type === "if_chain") {
+            return previewFromIfChain(item, maxLen);
         }
 
         if (
@@ -282,9 +363,75 @@ function buildLabelGraphData(script, labels, labelSourceLines) {
                     choiceIndex,
                     choiceGroupSize: groupSize,
                     detail: c.text,
-                    mode: c.mode || "goto",
                     disconnected,
                 });
+            });
+        } else if (item.type === "if_chain") {
+            if (!from) continue;
+            const groupSize = item.branches.length;
+
+            item.branches.forEach((branch, branchIndex) => {
+                if (branch.from == null || branch.to == null || branch.from >= branch.to) {
+                    return;
+                }
+                const detail = ifBranchLabel(branch.condition);
+                const bodyPreview = previewFromIfBranchBody(
+                    script,
+                    branch.from,
+                    branch.to,
+                    IF_STUB_BODY_MAX
+                );
+                const targets = collectIfBranchTargets(
+                    script,
+                    branch.from,
+                    branch.to
+                );
+                const external = targets.filter(
+                    (t) => t.kind === "goto" || t.kind === "call"
+                );
+
+                if (external.length) {
+                    external.forEach((t, targetIndex) => {
+                        ensureNode(t.target, true);
+                        edges.push({
+                            id: `if-${item.sourceLine}-${branchIndex}-ext-${targetIndex}`,
+                            from,
+                            to: t.target,
+                            kind: "if_branch",
+                            sourceLine: item.sourceLine,
+                            branchIndex,
+                            branchGroupSize: groupSize,
+                            detail,
+                            mode: t.kind === "call" ? "call" : "goto",
+                            disconnected: false,
+                            external: true,
+                        });
+                    });
+                } else {
+                    edges.push({
+                        id: `if-${item.sourceLine}-${branchIndex}-inline`,
+                        from,
+                        to: null,
+                        kind: "if_inline",
+                        sourceLine: item.sourceLine,
+                        branchIndex,
+                        branchGroupSize: groupSize,
+                        detail,
+                        bodyPreview: bodyPreview || undefined,
+                        disconnected: true,
+                        external: false,
+                    });
+                }
+            });
+
+            edges.push({
+                id: `if-rejoin-${item.sourceLine}`,
+                from,
+                to: null,
+                kind: "if_rejoin",
+                sourceLine: item.sourceLine,
+                detail: "@endif",
+                disconnected: true,
             });
         } else if (item.type === "goto" || item.type === "call") {
             ensureNode(item.target, true);
@@ -353,42 +500,194 @@ function buildLabelGraphData(script, labels, labelSourceLines) {
         return a.name.localeCompare(b.name, "ja");
     });
 
-    const { padBottom, minWidth } = computeNodeLayoutExtras(edges);
+    const padBottom = computeNodeLayoutExtras(edges);
     for (const n of nodes) {
         n.layoutPadBottom = padBottom.get(n.name) || 0;
-        n.layoutMinWidth = minWidth.get(n.name) || 0;
     }
 
     return { nodes, edges };
 }
 
-/** 下端スタブ用の余白・幅（dagre レイアウトにだけ使う） */
+/** 下端スタブの縦サイズ → layoutPadBottom（if があるラベルだけ dagre 高さが伸びる） */
 function computeNodeLayoutExtras(edges) {
     const padBottom = new Map();
-    const minWidth = new Map();
     const bumpPad = (from, v) => {
         padBottom.set(from, Math.max(padBottom.get(from) || 0, v));
     };
-    const bumpW = (from, v) => {
-        minWidth.set(from, Math.max(minWidth.get(from) || 0, v));
-    };
 
+    const byFrom = new Map();
     for (const e of edges) {
         if (!e.from) continue;
-        if (e.kind === "exit") {
-            const i = e.exitIndex ?? 0;
-            const n = e.exitGroupSize || 1;
-            bumpPad(e.from, 34 + i * 8 + 20);
-            if (n > 1) bumpW(e.from, Math.max(100, (n - 1) * 50 + 56));
-        }
-        if (e.kind === "choice" && e.disconnected) {
-            const i = e.choiceIndex ?? 0;
-            const n = e.choiceGroupSize || 1;
-            bumpPad(e.from, 54 + i * 18 + 26);
-            if (n > 1) bumpW(e.from, Math.max(100, (n - 1) * 64 + 56));
-        }
+        if (!edgeUsesBottomStub(e)) continue;
+        if (!byFrom.has(e.from)) byFrom.set(e.from, []);
+        byFrom.get(e.from).push(e);
     }
-    return { padBottom, minWidth };
+    for (const [from, group] of byFrom) {
+        layoutBottomStubsForNode(from, group, bumpPad);
+    }
+    return padBottom;
+}
+
+function edgeUsesBottomStub(e) {
+    return (
+        e.kind === "if_rejoin" ||
+        e.kind === "if_inline" ||
+        e.kind === "exit" ||
+        (e.kind === "choice" && e.disconnected)
+    );
+}
+
+/** 同一ラベル内の @if ブロックごとの縦段間隔 */
+const STUB_TIER_GAP = 40;
+const STUB_DROP_IF_INLINE = 42;
+const STUB_DROP_IF_BODY = 10;
+const STUB_DROP_IF_REJOIN = 48;
+const STUB_DROP_CHOICE = 40;
+const STUB_DROP_EXIT = 28;
+const STUB_PAD_TAIL = 12;
+
+function assignStubTiers(group) {
+    const lines = [
+        ...new Set(
+            group
+                .filter(edgeUsesBottomStub)
+                .map((e) => e.sourceLine)
+                .filter((l) => l != null && l !== undefined)
+        ),
+    ].sort((a, b) => a - b);
+    const lineToTier = new Map(lines.map((l, i) => [l, i]));
+    for (const e of group) {
+        if (!edgeUsesBottomStub(e) || e.sourceLine == null) continue;
+        e.stubTier = lineToTier.get(e.sourceLine) ?? 0;
+    }
+}
+
+/** 1段ぶん: その @if ブロックの枝だけ横並び、@endif はその段の中央 */
+function layoutStubTier(tierEdges, labelHasIf) {
+    const GAP_CENTER = 10;
+    const MIN_GAP = 12;
+    const yOff = (tierEdges[0]?.stubTier ?? 0) * STUB_TIER_GAP;
+    const markY = (e) => {
+        e.stubYOffset = yOff;
+    };
+
+    const rejoin = tierEdges.filter((e) => e.kind === "if_rejoin");
+    const ifInlines = tierEdges
+        .filter((e) => e.kind === "if_inline")
+        .sort((a, b) => (a.branchIndex ?? 0) - (b.branchIndex ?? 0));
+    const choices = tierEdges
+        .filter((e) => e.kind === "choice" && e.disconnected)
+        .sort((a, b) => (a.choiceIndex ?? 0) - (b.choiceIndex ?? 0));
+    const exits = tierEdges
+        .filter((e) => e.kind === "exit")
+        .sort((a, b) => (a.exitIndex ?? 0) - (b.exitIndex ?? 0));
+
+    const ifN = ifInlines.length;
+    const useIfZones = labelHasIf && (rejoin.length > 0 || ifN > 0);
+
+    if (!useIfZones) {
+        layoutStubRowCentered(choices, MIN_GAP, (e) => {
+            e.stubDrop =
+                STUB_DROP_CHOICE + (e.choiceIndex ?? 0) * 12;
+            markY(e);
+        });
+        let left = -GAP_CENTER;
+        for (let i = exits.length - 1; i >= 0; i--) {
+            const e = exits[i];
+            const w = stubLabelWidthPx(e);
+            left -= w / 2;
+            e.stubLayoutX = left;
+            left -= w / 2 + MIN_GAP;
+            e.stubDrop = STUB_DROP_EXIT + i * 8;
+            markY(e);
+        }
+        return;
+    }
+
+    for (const e of rejoin) {
+        e.stubLayoutX = 0;
+        e.stubDrop = STUB_DROP_IF_REJOIN;
+        markY(e);
+    }
+
+    let left = -GAP_CENTER;
+    for (let i = ifN - 1; i >= 0; i--) {
+        const e = ifInlines[i];
+        const w = stubLabelWidthPx(e);
+        left -= w / 2;
+        e.stubLayoutX = left;
+        left -= w / 2 + MIN_GAP;
+        e.stubDrop =
+            STUB_DROP_IF_INLINE +
+            (e.bodyPreview ? STUB_DROP_IF_BODY : 0);
+        markY(e);
+    }
+
+    let right = GAP_CENTER;
+    for (let i = 0; i < choices.length; i++) {
+        const e = choices[i];
+        const w = stubLabelWidthPx(e);
+        right += w / 2;
+        e.stubLayoutX = right;
+        right += w / 2 + MIN_GAP;
+        e.stubDrop = STUB_DROP_CHOICE + i * 10;
+        markY(e);
+    }
+
+    for (let i = exits.length - 1; i >= 0; i--) {
+        const e = exits[i];
+        const w = stubLabelWidthPx(e);
+        left -= w / 2;
+        e.stubLayoutX = left;
+        left -= w / 2 + MIN_GAP;
+        e.stubDrop = STUB_DROP_EXIT + i * 8;
+        markY(e);
+    }
+}
+
+function layoutBottomStubsForNode(from, group, bumpPad) {
+    assignStubTiers(group);
+    const labelHasIf = group.some(
+        (e) => e.kind === "if_inline" || e.kind === "if_rejoin"
+    );
+    const tiers = [
+        ...new Set(
+            group.filter(edgeUsesBottomStub).map((e) => e.stubTier ?? 0)
+        ),
+    ].sort((a, b) => a - b);
+
+    for (const tier of tiers) {
+        const tierEdges = group.filter(
+            (e) => edgeUsesBottomStub(e) && (e.stubTier ?? 0) === tier
+        );
+        layoutStubTier(tierEdges, labelHasIf);
+    }
+
+    finalizeStubLayout(from, group, bumpPad);
+}
+
+function layoutStubRowCentered(items, minGap, afterPlace) {
+    if (!items.length) return;
+    const widths = items.map((e) => stubLabelWidthPx(e));
+    const total =
+        widths.reduce((a, w) => a + w, 0) + minGap * Math.max(0, items.length - 1);
+    let x = -total / 2;
+    items.forEach((e, i) => {
+        const w = widths[i];
+        e.stubLayoutX = x + w / 2;
+        x += w + minGap;
+        afterPlace?.(e);
+    });
+}
+
+function finalizeStubLayout(from, group, bumpPad) {
+    let maxReach = 0;
+    for (const e of group) {
+        if (!edgeUsesBottomStub(e)) continue;
+        const reach = (e.stubYOffset ?? 0) + (e.stubDrop ?? 30);
+        maxReach = Math.max(maxReach, reach);
+    }
+    bumpPad(from, maxReach + STUB_PAD_TAIL);
 }
 
 function formatLabelFlowRef(ref, direction) {
@@ -403,7 +702,6 @@ function getLabelFlowRefParts(ref, direction) {
     if (ref.kind === "choice") {
         if (direction === "out") {
             parts.push({ type: "text", value: `選択「${ref.detail}」→ ` });
-            if (ref.mode === "call") parts.push({ type: "text", value: "call " });
             parts.push({ type: "label", value: ref.target });
         } else {
             parts.push({ type: "text", value: `「${ref.detail}」` });

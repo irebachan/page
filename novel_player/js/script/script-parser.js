@@ -1,15 +1,59 @@
 // スクリプトパーサー - シナリオテキストを解析する
 class ScriptParser {
-    /** 選択肢の => 右側を解析（goto または call） */
+    /** 選択肢の => 右側（行き先ラベル）。旧記法の call 接頭辞は無視してラベル名だけ取る */
     parseChoiceTarget(raw) {
-        const t = (raw || "").trim();
-        if (t.startsWith("@call ")) {
-            return { mode: "call", target: t.slice(6).trim() };
+        let t = (raw || "").trim();
+        if (t.startsWith("@call ")) t = t.slice(6).trim();
+        else if (t.startsWith("call ")) t = t.slice(5).trim();
+        return { target: t };
+    }
+
+    parseIfCondition(line, prefix) {
+        return line.slice(prefix.length).trim();
+    }
+
+    closeIfBranch(script, ifChain) {
+        if (!ifChain || !ifChain.branches.length) return;
+        const last = ifChain.branches[ifChain.branches.length - 1];
+        if (last.from == null) {
+            last.from = script.length;
+            last.to = script.length;
+        } else if (last.to == null) {
+            last.to = script.length;
         }
-        if (t.startsWith("call ")) {
-            return { mode: "call", target: t.slice(5).trim() };
-        }
-        return { mode: "goto", target: t };
+    }
+
+    pushIfChain(script, ifChain) {
+        this.closeIfBranch(script, ifChain);
+        const endifAt = script.length + 1;
+        script.push({
+            type: "if_chain",
+            branches: ifChain.branches,
+            endifAt,
+            sourceLine: ifChain.sourceLine,
+        });
+    }
+
+    isIfDirective(line) {
+        return (
+            line.startsWith("@if ") ||
+            line.startsWith("@elseif ") ||
+            line.startsWith("@else if ") ||
+            line === "@else" ||
+            line === "@endif"
+        );
+    }
+
+    isReservedAtLine(line) {
+        return (
+            line.startsWith("@goto") ||
+            line.startsWith("@call") ||
+            line === "@return" ||
+            line === "@end" ||
+            line === "@meta" ||
+            line === "@endmeta" ||
+            this.isIfDirective(line)
+        );
     }
 
     parse(rawScript) {
@@ -18,13 +62,19 @@ class ScriptParser {
         let labels = {};
         let labelSourceLines = {};
         let i = 0;
-        let currentName = ""; // 現在の名前を保持
+        let currentName = "";
         let inMetaBlock = false;
+        let ifChain = null;
+
+        const ensureBranchFrom = () => {
+            if (!ifChain || !ifChain.branches.length) return;
+            const last = ifChain.branches[ifChain.branches.length - 1];
+            if (last.from == null) last.from = script.length;
+        };
 
         while (i < lines.length) {
             let line = lines[i].trim();
 
-            // @meta ... @endmeta はプレビュー・出力解析対象から除外
             if (inMetaBlock) {
                 if (line === "@endmeta") {
                     inMetaBlock = false;
@@ -38,15 +88,15 @@ class ScriptParser {
                 continue;
             }
 
-            // 空行は blank として保持（変換後の見やすさのため）
             if (line === "") {
+                ensureBranchFrom();
                 script.push({ type: "blank", sourceLine: i });
                 i++;
                 continue;
             }
 
-            // コメント行（//）はプレビューに表示せず、エクスポート時はそのまま出力
             if (line.startsWith("//")) {
+                ensureBranchFrom();
                 script.push({ type: "comment", text: line, sourceLine: i });
                 i++;
                 continue;
@@ -54,57 +104,168 @@ class ScriptParser {
 
             if (line.startsWith("@")) {
                 const sourceLine = i;
-                // @から始まる行を解析
+
+                if (line.startsWith("@if ")) {
+                    if (ifChain) {
+                        this.pushIfChain(script, ifChain);
+                    }
+                    const condition = this.parseIfCondition(line, "@if ");
+                    if (!condition) {
+                        script.push({
+                            type: "parse_error",
+                            message: "@if の条件が空です",
+                            sourceLine: i,
+                        });
+                    } else {
+                        ifChain = {
+                            sourceLine: i,
+                            branches: [{ condition, from: null, to: null }],
+                        };
+                    }
+                    i++;
+                    continue;
+                }
+                if (line.startsWith("@elseif ") || line.startsWith("@else if ")) {
+                    if (!ifChain) {
+                        script.push({
+                            type: "parse_error",
+                            message: "@elseif に対応する @if がありません",
+                            sourceLine: i,
+                        });
+                        i++;
+                        continue;
+                    }
+                    this.closeIfBranch(script, ifChain);
+                    const prefix = line.startsWith("@elseif ")
+                        ? "@elseif "
+                        : "@else if ";
+                    const condition = this.parseIfCondition(line, prefix);
+                    if (!condition) {
+                        script.push({
+                            type: "parse_error",
+                            message: "@elseif の条件が空です",
+                            sourceLine: i,
+                        });
+                    } else {
+                        ifChain.branches.push({
+                            condition,
+                            from: null,
+                            to: null,
+                        });
+                    }
+                    i++;
+                    continue;
+                }
+                if (line === "@else") {
+                    if (!ifChain) {
+                        script.push({
+                            type: "parse_error",
+                            message: "@else に対応する @if がありません",
+                            sourceLine: i,
+                        });
+                        i++;
+                        continue;
+                    }
+                    this.closeIfBranch(script, ifChain);
+                    ifChain.branches.push({
+                        condition: null,
+                        from: null,
+                        to: null,
+                    });
+                    i++;
+                    continue;
+                }
+                if (line === "@endif") {
+                    if (!ifChain) {
+                        script.push({
+                            type: "parse_error",
+                            message: "@endif に対応する @if がありません",
+                            sourceLine: i,
+                        });
+                        i++;
+                        continue;
+                    }
+                    this.pushIfChain(script, ifChain);
+                    ifChain = null;
+                    i++;
+                    continue;
+                }
                 if (line.startsWith("@goto")) {
+                    ensureBranchFrom();
                     const labelName = line.split(/\s+/)[1];
                     script.push({ type: "goto", target: labelName, sourceLine });
-                } else if (line.startsWith("@call")) {
+                    i++;
+                    continue;
+                }
+                if (line.startsWith("@call")) {
+                    ensureBranchFrom();
                     const labelName = line.split(/\s+/)[1];
                     script.push({ type: "call", target: labelName, sourceLine });
-                } else if (line === "@return") {
-                    script.push({ type: "return", sourceLine });
-                } else if (line === "@end") {
-                    script.push({ type: "end", sourceLine });
-                } else {
-                    // @ラベル名 形式のラベル定義
-                    const labelName = line.substring(1); // @を除いた部分をラベル名とする
-                    labels[labelName] = script.length;
-                    labelSourceLines[labelName] = sourceLine;
+                    i++;
+                    continue;
                 }
-                i++;
-            } else if (line.startsWith("-")) {
-                const choiceStart = i;
-                // 選択肢の処理
-                let choices = [];
-                let description = ""; // 選択肢の説明文
+                if (line === "@return") {
+                    ensureBranchFrom();
+                    script.push({ type: "return", sourceLine });
+                    i++;
+                    continue;
+                }
+                if (line === "@end") {
+                    ensureBranchFrom();
+                    script.push({ type: "end", sourceLine });
+                    i++;
+                    continue;
+                }
 
-                // 前の行が説明文として扱われる
-                if (i > 0 && !lines[i - 1].trim().startsWith("@") && !lines[i - 1].trim().startsWith("#")) {
+                ensureBranchFrom();
+                const labelName = line.substring(1);
+                labels[labelName] = script.length;
+                labelSourceLines[labelName] = sourceLine;
+                i++;
+                continue;
+            }
+
+            if (line.startsWith("-")) {
+                ensureBranchFrom();
+                const choiceStart = i;
+                let choices = [];
+                let description = "";
+
+                if (
+                    i > 0 &&
+                    !lines[i - 1].trim().startsWith("@") &&
+                    !lines[i - 1].trim().startsWith("#")
+                ) {
                     description = lines[i - 1].trim();
                 }
 
-                // 選択肢を収集
                 while (i < lines.length && lines[i].trim().startsWith("-")) {
-                    let [text, targetRaw] = lines[i].trim().slice(1).split("=>").map(s => s.trim());
-                    const { mode, target } = this.parseChoiceTarget(targetRaw);
-                    choices.push({ text, target, mode });
+                    let [text, targetRaw] = lines[i]
+                        .trim()
+                        .slice(1)
+                        .split("=>")
+                        .map((s) => s.trim());
+                    const { target } = this.parseChoiceTarget(targetRaw);
+                    choices.push({ text, target });
                     i++;
                 }
 
-                // 選択肢がある場合は追加
                 if (choices.length > 0) {
-                    script.push({ type: "choice", description, choices, sourceLine: choiceStart });
+                    script.push({
+                        type: "choice",
+                        description,
+                        choices,
+                        sourceLine: choiceStart,
+                    });
                 }
             } else if (line.startsWith("#")) {
+                ensureBranchFrom();
                 const sourceLine = i;
-                // 名前を更新
                 currentName = line.slice(1);
 
-                // 複数行テキストのサポート
                 let textLines = [];
                 i++;
 
-                // 次の空行または#または@までの全テキストを収集
                 while (i < lines.length) {
                     line = lines[i].trim();
                     if (
@@ -123,15 +284,13 @@ class ScriptParser {
                 const text = textLines.join("\n");
                 script.push({ type: "line", name: currentName, text, sourceLine });
             } else {
+                ensureBranchFrom();
                 const sourceLine = i;
-                // 通常のテキスト行（#で始まらない）
                 let textLines = [];
 
-                // 現在の行を追加
                 textLines.push(line);
                 i++;
 
-                // 次の空行または#または@までの全テキストを収集
                 while (i < lines.length) {
                     line = lines[i].trim();
                     if (
@@ -148,10 +307,18 @@ class ScriptParser {
                 }
 
                 const text = textLines.join("\n");
-                // 前の名前を使用（なければ空の名前）
                 script.push({ type: "line", name: currentName, text, sourceLine });
             }
         }
+
+        if (ifChain) {
+            script.push({
+                type: "parse_error",
+                message: "@endif が必要です（@if が未閉じ）",
+                sourceLine: ifChain.sourceLine,
+            });
+        }
+
         return { script, labels, labelSourceLines };
     }
 }

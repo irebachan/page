@@ -1,5 +1,67 @@
 // エクスポート用共通ヘルパー（複数フォーマットで利用）
 
+/** if_chain 枝本文の script 添字（親 if_chain でまとめて出力する） */
+function buildIfChainSkipSet(script) {
+    const skip = new Set();
+    for (const item of script) {
+        if (item.type !== "if_chain") continue;
+        for (const branch of item.branches) {
+            if (branch.from == null || branch.to == null) continue;
+            for (let j = branch.from; j < branch.to; j++) skip.add(j);
+        }
+    }
+    return skip;
+}
+
+/** ティラノ [if exp="…"] 用（属性内の " をエスケープ） */
+function escapeTyranoIfExp(condition) {
+    return String(condition ?? "")
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"');
+}
+
+function tyranoIfOpenTag(branch, branchIndex) {
+    if (branch.condition == null) return "[else]";
+    const exp = escapeTyranoIfExp(branch.condition);
+    if (branchIndex === 0) return `[if exp="${exp}"]`;
+    return `[elsif exp="${exp}"]`;
+}
+
+function tyranoLabelRef(settings, labelName) {
+    return (settings.labelSymbol?.value?.trim() || "*") + labelName;
+}
+
+/** ジャンプタグ（@goto → 設定テンプレート） */
+function formatTyranoJumpTag(settings, target) {
+    const jumpTag = settings.jumpTag?.value?.trim() || "";
+    const labelValue = tyranoLabelRef(settings, target);
+    if (jumpTag && (jumpTag.includes("@LABEL") || jumpTag.includes("@"))) {
+        return jumpTag.includes("@LABEL")
+            ? jumpTag.replace(/@LABEL/g, labelValue)
+            : jumpTag.replace("@", labelValue);
+    }
+    return "@goto " + target;
+}
+
+/** サブルーチン呼び出し（@call → 設定テンプレート、既定 [call target=@LABEL]） */
+function formatTyranoCallTag(settings, target) {
+    const callTag = settings.callTag?.value?.trim() || "";
+    const labelValue = tyranoLabelRef(settings, target);
+    if (callTag && (callTag.includes("@LABEL") || callTag.includes("@"))) {
+        return callTag.includes("@LABEL")
+            ? callTag.replace(/@LABEL/g, labelValue)
+            : callTag.replace("@", labelValue);
+    }
+    if (callTag) return callTag;
+    return "[call target=" + labelValue + "]";
+}
+
+/** サブルーチン戻り（@return → 設定テンプレート、既定 [return]） */
+function formatTyranoReturnTag(settings) {
+    const tag = settings.returnTag?.value?.trim();
+    return tag || "[return]";
+}
+
 function getLabelsAtPosition(labels, index) {
     return Object.keys(labels).filter(name => labels[name] === index);
 }

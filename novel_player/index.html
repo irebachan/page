@@ -243,6 +243,7 @@
                     <div class="node-graph-help__body">
                         <ul class="node-graph-help__list">
                             <li><strong>ジャンプ</strong> … タップ＝プレビューのみ（エディタのカーソルは動かない）／ダブルタップ＝移動して閉じる（閉じたあと設定どおりエディタも連動可）</li>
+                            <li><strong>if スタブ</strong> … 水色スタブをタップで <code>@if</code> へ（グラフは開いたまま）</li>
                             <li><strong>表示</strong> … ドラッグ＝パン、2本指ピンチ＝ズーム（PCはホイールも可）、「全体」でフィット</li>
                             <li><strong>＋ラベル</strong> … 脚本の末尾に追加</li>
                             <li><strong>改名・削除</strong> … ボタンを押してからノードをタップ</li>
@@ -279,11 +280,35 @@
 セリフ内容（複数行可能）
                 </pre>
 
+                <h3>条件分岐（@if）</h3>
+                <p>プレビューでは条件式ごとのボタンが出ます（見た目は選択肢に近いが、プレイヤー向けの選択肢ではありません）。</p>
+                <pre>
+@if 条件式
+#キャラ
+この枝のセリフ
+@elseif 別の条件
+#キャラ
+別の枝
+@else
+#キャラ
+どの条件にも当てはまらないとき
+@endif
+                </pre>
+                <ul>
+                    <li><code>@elseif</code> / <code>@else if 条件</code> … 追加の条件枝</li>
+                    <li><code>@else</code> … 上記のどれにも当てはまらないときの枝（条件式は書かない）</li>
+                    <li>押した条件の枝だけ通り、終わったら <code>@endif</code> の続きへ</li>
+                    <li>脚本に <code>@else</code> があるときは <strong>それ以外</strong> ボタンでその枝の本文へ（他の条件と同じ）</li>
+                    <li><code>@else</code> が無いときだけ、プレビュー用に <strong>どれにも当てはまらない</strong> が付く（すべて偽の想定 → <code>@endif</code> 直行）</li>
+                    <li>ノードグラフ: 水色スタブ＝<code>@if</code> の枝（上＝条件、下＝本文の先頭8字）。<code>@if</code> が複数あるラベルは出現順に<strong>段を分けて</strong>表示。各段の中央が <code>@endif</code></li>
+                    <li>特殊出力（ティラノ）: <code>[if exp="条件"]</code> … <code>[elsif exp="条件"]</code> … <code>[else]</code> … <code>[endif]</code>（条件式は脚本のまま。ティラノの変数は <code>f.</code> 等を自分で書く）</li>
+                </ul>
+
                 <h3>選択肢</h3>
                 <pre>
 - 選択肢テキスト => ジャンプ先ラベル
-- 選択肢テキスト => call ジャンプ先ラベル
                 </pre>
+                <p>選択肢の <code>=&gt; ラベル</code> はジャンプです。同じ選択肢に戻すときは枝の末尾で <code>@goto 選択肢ラベル</code> だけで足ります（<code>@return</code> は不要）。<code>@return</code> は、本文で <code>@call</code> したあと呼び出し元の続きへ戻るときだけ使います。</p>
 
                 <h3>ラベル定義</h3>
                 <pre>
@@ -332,6 +357,8 @@ preview.overflow=wrap
                     <li>「。」の後に自動でクリック待ち記号を追加</li>
                     <li>テキストブロック内の行末に改行記号を追加</li>
                     <li>テキストブロックの最後に改ページ記号を追加</li>
+                    <li><strong>ティラノ</strong> / <strong>カスタム</strong> … 同じ変換（<code>@if</code> → <code>[if exp]</code> 等、<code>@goto</code> / <code>@call</code> / <code>@return</code> は設定のジャンプ・call・returnタグへ）。カスタムは他エンジン向けにタグ文字列を差し替えて使う想定</li>
+                    <li><strong>Ren'Py</strong> … <code>if</code> / <code>call</code> / <code>return</code> 形式</li>
                 </ul>
                 <p>記号は自由にカスタマイズ可能です。</p>
 
@@ -342,12 +369,12 @@ preview.overflow=wrap
 
 @choice
 - 公園へ => park
-- 寄り道 => call detour
+- 寄り道 => detour
 
 @detour
 #ミナ
 ちょっと寄り道。
-@return
+@goto choice
 
 @park
 #ユウ
@@ -392,7 +419,8 @@ preview.overflow=wrap
                     <h3>ノードグラフ</h3>
                     <p>画面上部の <strong>ノードグラフ</strong> で分岐を俯瞰します。変更は脚本テキストへの反映です（正本はエディタの記法のまま）。</p>
                     <ul class="help-compact">
-                        <li><strong>ジャンプ</strong> … ノードタップでそのラベルへ（プレビュー・エディタ）。グラフは閉じない</li>
+                        <li><strong>ジャンプ</strong> … タップ＝プレビューのみ／ダブルタップ＝移動してグラフを閉じる</li>
+                        <li><strong>if スタブ</strong> … タップで <code>@if</code> へ（グラフは開いたまま）</li>
                         <li><strong>表示</strong> … パン・2本指ピンチでズーム・「全体」。ラベル名フィルタ</li>
                         <li><strong>＋ラベル</strong> … 脚本末尾に空ブロックを追加</li>
                         <li><strong>改名・削除</strong> … ツールオン → ノード1タップ（削除は確認あり。参照も整理）</li>
@@ -502,6 +530,14 @@ preview.overflow=wrap
                         <div class="export-setting-item">
                             <label for="jumpTag">ジャンプタグ:</label>
                             <input type="text" id="jumpTag" value="[jump target=@LABEL]" placeholder="@LABEL=ラベル記号+名前">
+                        </div>
+                        <div class="export-setting-item">
+                            <label for="callTag">callタグ:</label>
+                            <input type="text" id="callTag" value="[call target=@LABEL]" placeholder="@call → 既定 [call target=@LABEL]">
+                        </div>
+                        <div class="export-setting-item">
+                            <label for="returnTag">returnタグ:</label>
+                            <input type="text" id="returnTag" value="[return]" placeholder="@return → 既定 [return]">
                         </div>
                         <div class="export-setting-item export-setting-item-label-block">
                             <label for="choiceLineTemplate">選択肢テンプレート:</label>

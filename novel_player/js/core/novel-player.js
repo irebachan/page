@@ -81,6 +81,8 @@ class NovelPlayer {
         /** @call の戻り先 */
         this.callStack = [];
         this._previewAtEnd = false;
+        /** @if 枝を抜けたあと @endif へ進むためのスタック */
+        this.ifSkipStack = [];
         this.previewMeta = {};
 
         // イベントリスナーの設定
@@ -197,6 +199,8 @@ class NovelPlayer {
                     this.labelGraphView?.clearNodeClickTimer?.();
                     this.jumpToLabelByName(name, { closeGraphExplicit: true });
                 },
+                onIfBranchClick: (edge) =>
+                    this.jumpToIfFromGraph(edge, { keepNodeGraphOpen: true }),
                 onConnect: (from, to) => this.graphConnectLabels(from, to),
                 onConnectCall: (from, to) => this.graphConnectCall(from, to),
                 onConnectChoice: (edge, to) => this.graphConnectChoice(edge, to),
@@ -275,6 +279,14 @@ class NovelPlayer {
 公園は静かでいいなあ。
 鳥の声が聞こえるね。
 
+@if 初めて公園
+#ユウ
+初めて来た公園だ。新鮮な感じがする。
+@else
+#ユウ
+また公園に来たね。
+@endif
+
 #
 （周りを見渡すと、人はまばらで静かな公園でした）
 
@@ -285,7 +297,7 @@ class NovelPlayer {
 @choice_park
 - パンをあげる => feed_birds
 - やめておく => dont_feed
-- ミナに話しかける => call mina_park_talk
+- ミナに話しかける => mina_park_talk
 
 @mina_park_talk
 #ミナ
@@ -293,7 +305,7 @@ class NovelPlayer {
 
 #ユウ
 へえ、また教えて。
-@return
+@goto choice_park
 
 @feed_birds
 #ユウ
@@ -321,12 +333,12 @@ class NovelPlayer {
 @choice_library
 - ミステリーを探す => mystery
 - 科学の本を探す => science
-- 司書さんに聞く => call ask_librarian
+- 司書さんに聞く => ask_librarian
 
 @ask_librarian
 #司書
 新刊コーナーは奥です。
-@return
+@goto choice_library
 
 @mystery
 #ユウ
@@ -411,7 +423,6 @@ class NovelPlayer {
             callStackDepth: this.callStack.length,
             callStack: this.callStack.map((f) => ({
                 index: f.index,
-                returnToChoice: f.returnToChoice,
                 at: this.script[f.index]?.type,
             })),
             nearLabel: this.getLabelForIndex(this.viewIndex),
@@ -683,6 +694,7 @@ class NovelPlayer {
         this.viewLineUnit = 0;
         this.lastJumpLabel = "";
         this.callStack = [];
+        this.ifSkipStack = [];
         this.updatePrevButton();
     }
 
@@ -698,6 +710,7 @@ class NovelPlayer {
         this.labels = parseResult.labels;
         this.labelSourceLines = parseResult.labelSourceLines || {};
         this.callStack = [];
+        this.ifSkipStack = [];
 
         const resolved =
             preservePosition && anchor
@@ -1144,13 +1157,23 @@ class NovelPlayer {
             this.previewStatusBar.textContent = "（終わり）";
             return;
         }
+        if (line?.type === "choice") {
+            this.previewStatusBar.textContent = "選択肢";
+            return;
+        }
+        if (line?.type === "if_chain") {
+            this.previewStatusBar.textContent = "if";
+            return;
+        }
+        const ifCtx = this.findIfBranchContext(this.viewIndex);
+        if (ifCtx) {
+            const cond = this.ifBranchButtonLabel(ifCtx.branch);
+            this.previewStatusBar.textContent = `if: ${cond}`;
+            return;
+        }
         const label = this.getLabelForIndex(this.viewIndex);
         if (label) {
             this.previewStatusBar.textContent = `@${label}`;
-            return;
-        }
-        if (line?.type === "choice") {
-            this.previewStatusBar.textContent = "選択肢";
             return;
         }
         if (line?.type === "line" && line.name) {
@@ -1596,6 +1619,26 @@ class NovelPlayer {
         }
     }
 
+    isIfElseBranch(branch) {
+        return branch.condition == null || branch.condition === "";
+    }
+
+    ifBranchButtonLabel(branch) {
+        return this.isIfElseBranch(branch) ? "それ以外" : branch.condition;
+    }
+
+    hasScriptElseBranch(chain) {
+        return (chain.branches || []).some((b) => this.isIfElseBranch(b));
+    }
+
+    skipIfChainToEndif(chain) {
+        this.ifSkipStack = [];
+        this.viewIndex = chain.endifAt;
+        this.viewLineUnit = 0;
+        this.index = chain.endifAt;
+        this.renderCurrentView();
+    }
+
     jumpToLastChoice() {
         for (let i = this.previewHistory.length - 1; i >= 0; i--) {
             const state = this.previewHistory[i];
@@ -1626,6 +1669,14 @@ class NovelPlayer {
             viewLineUnit: this.viewLineUnit,
         });
         this.callStack = [];
+        this.ifSkipStack = [];
+        const ctx = this.findIfBranchContext(pos.viewIndex);
+        if (ctx) {
+            this.ifSkipStack.push({
+                end: ctx.branch.to,
+                endifAt: ctx.chain.endifAt,
+            });
+        }
         this.viewIndex = pos.viewIndex;
         this.viewLineUnit = pos.viewLineUnit;
         this.renderCurrentView();
@@ -1748,6 +1799,7 @@ class NovelPlayer {
     showPrev() {
         const state = this.previewHistory.pop();
         if (!state) return;
+        this.ifSkipStack = [];
         this.viewIndex = state.viewIndex;
         this.viewLineUnit = state.viewLineUnit;
         this.renderCurrentView();
@@ -1765,11 +1817,30 @@ class NovelPlayer {
         const lines = this.getScriptText().split("\n");
         const trimmed = (lines[targetLine] || "").trim();
         if (
+            trimmed.startsWith("@if ") ||
+            trimmed.startsWith("@elseif ") ||
+            trimmed.startsWith("@else if ") ||
+            trimmed === "@else" ||
+            trimmed === "@endif"
+        ) {
+            for (let i = 0; i < this.script.length; i++) {
+                const item = this.script[i];
+                if (item.type === "if_chain" && item.sourceLine === targetLine) {
+                    return { viewIndex: i, viewLineUnit: 0 };
+                }
+            }
+        }
+        if (
             trimmed.startsWith("@") &&
             !trimmed.startsWith("@goto") &&
             !trimmed.startsWith("@call") &&
             trimmed !== "@return" &&
-            trimmed !== "@end"
+            trimmed !== "@end" &&
+            !trimmed.startsWith("@if ") &&
+            !trimmed.startsWith("@elseif ") &&
+            !trimmed.startsWith("@else if ") &&
+            trimmed !== "@else" &&
+            trimmed !== "@endif"
         ) {
             const name = trimmed.substring(1);
             if (this.labels.hasOwnProperty(name)) {
@@ -1925,14 +1996,11 @@ class NovelPlayer {
         return returnScriptIdx + 1;
     }
 
-    pushCallReturn(callScriptIndex, targetLabel, isFromChoice) {
-        const index = isFromChoice
-            ? callScriptIndex
-            : this.getContinuationAfterCall(callScriptIndex, targetLabel);
+    pushCallReturn(callScriptIndex, targetLabel) {
+        const index = this.getContinuationAfterCall(callScriptIndex, targetLabel);
         this.callStack.push({
             index,
             lineUnitIndex: 0,
-            returnToChoice: isFromChoice,
         });
     }
 
@@ -1941,11 +2009,69 @@ class NovelPlayer {
         this.lineUnitIndex = frame.lineUnitIndex;
         this.viewIndex = frame.index;
         this.viewLineUnit = frame.lineUnitIndex;
-        if (frame.returnToChoice) {
-            this.renderCurrentView();
-        } else {
-            this.showLine();
+        this.showLine();
+    }
+
+    findIfBranchContext(scriptIndex) {
+        for (let i = 0; i < this.script.length; i++) {
+            const item = this.script[i];
+            if (item.type !== "if_chain") continue;
+            for (const branch of item.branches) {
+                if (branch.from == null || branch.to == null) continue;
+                if (scriptIndex >= branch.from && scriptIndex < branch.to) {
+                    return { chain: item, chainIndex: i, branch };
+                }
+            }
         }
+        return null;
+    }
+
+    /** 未選択の @if 枝本文に当たったら if_chain の位置へ戻す */
+    redirectInactiveIfContent(idx) {
+        for (let i = 0; i < this.script.length; i++) {
+            const item = this.script[i];
+            if (item.type !== "if_chain") continue;
+            for (const branch of item.branches) {
+                if (branch.from == null || branch.to == null) continue;
+                if (idx < branch.from || idx >= branch.to) continue;
+                const active = this.ifSkipStack.some(
+                    (f) => f.end === branch.to && f.endifAt === item.endifAt
+                );
+                if (!active) return i;
+            }
+        }
+        return idx;
+    }
+
+    consumeIfSkipForIndex(indexRef) {
+        let idx = indexRef;
+        while (
+            this.ifSkipStack.length &&
+            idx >= this.ifSkipStack[this.ifSkipStack.length - 1].end
+        ) {
+            const frame = this.ifSkipStack.pop();
+            idx = frame.endifAt;
+        }
+        return idx;
+    }
+
+    /** 枝の途中で @goto したら @endif への強制合流をやめる（別ラベルでプレビュー続行） */
+    popIfSkipOnBranchGoto(gotoIndex) {
+        if (!this.ifSkipStack.length) return;
+        const frame = this.ifSkipStack[this.ifSkipStack.length - 1];
+        if (gotoIndex < frame.end) {
+            this.ifSkipStack.pop();
+        }
+    }
+
+    enterIfBranch(chain, branchIndex) {
+        const branch = chain.branches[branchIndex];
+        if (!branch || branch.from == null || branch.to == null) return;
+        if (branch.from >= branch.to) return;
+        this.ifSkipStack.push({ end: branch.to, endifAt: chain.endifAt });
+        this.viewIndex = branch.from;
+        this.viewLineUnit = 0;
+        this.renderCurrentView();
     }
 
     paintAt(index, lineUnitIndex) {
@@ -1955,6 +2081,8 @@ class NovelPlayer {
         this._previewAtEnd = false;
 
         if (line.type === "line") {
+            this.choicesBox.classList.remove("choices--if");
+            this.choicesBox.removeAttribute("aria-label");
             const rawText = line.text != null ? line.text : "";
             const parts = rawText.split("\n");
             const useLineUnit = this.isPreviewLineUnit() && parts.length > 1;
@@ -1976,9 +2104,64 @@ class NovelPlayer {
             return true;
         }
 
+        if (line.type === "if_chain") {
+            this.nextBtn.style.display = "none";
+            this.choicesBox.innerHTML = "";
+            this.choicesBox.classList.add("choices--if");
+            this.choicesBox.setAttribute("role", "group");
+            this.choicesBox.setAttribute(
+                "aria-label",
+                "条件分岐のプレビュー（選択肢ではありません）"
+            );
+
+            line.branches.forEach((branch, branchIndex) => {
+                if (
+                    branch.from == null ||
+                    branch.to == null ||
+                    branch.from >= branch.to
+                ) {
+                    return;
+                }
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "if-branch-btn";
+                btn.textContent = this.ifBranchButtonLabel(branch);
+                btn.onclick = () => {
+                    this.pushPreviewHistory({
+                        viewIndex: this.viewIndex,
+                        viewLineUnit: this.viewLineUnit,
+                    });
+                    this.enterIfBranch(line, branchIndex);
+                };
+                this.choicesBox.appendChild(btn);
+            });
+
+            if (!this.hasScriptElseBranch(line)) {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "if-branch-btn if-branch-btn--virtual";
+                btn.textContent = "どれにも当てはまらない";
+                btn.title =
+                    "脚本に @else はありません。すべての条件が当てはまらないときは @endif の続きへ進みます";
+                btn.onclick = () => {
+                    this.pushPreviewHistory({
+                        viewIndex: this.viewIndex,
+                        viewLineUnit: this.viewLineUnit,
+                    });
+                    this.skipIfChainToEndif(line);
+                };
+                this.choicesBox.appendChild(btn);
+            }
+
+            this.scrollTextContainerToTop();
+            return true;
+        }
+
         if (line.type === "choice") {
             this.nextBtn.style.display = "none";
             this.choicesBox.innerHTML = "";
+            this.choicesBox.classList.remove("choices--if");
+            this.choicesBox.removeAttribute("aria-label");
             this.nameBox.style.display = "none";
             this.nameBox.textContent = "";
             this.textBox.textContent = line.description || "";
@@ -1992,9 +2175,6 @@ class NovelPlayer {
                         viewLineUnit: this.viewLineUnit,
                     });
                     if (this.labels.hasOwnProperty(choice.target)) {
-                        if (choice.mode === "call") {
-                            this.pushCallReturn(index, choice.target, true);
-                        }
                         this.viewIndex = this.labels[choice.target];
                         this.viewLineUnit = 0;
                         this.renderCurrentView();
@@ -2012,6 +2192,8 @@ class NovelPlayer {
         }
 
         if (line.type === "end") {
+            this.choicesBox.classList.remove("choices--if");
+            this.choicesBox.removeAttribute("aria-label");
             this.nameBox.textContent = "";
             this.textBox.textContent = "（終わり）";
             this.nextBtn.style.display = "none";
@@ -2021,6 +2203,8 @@ class NovelPlayer {
         }
 
         if (line.type === "goto" || line.type === "call") {
+            this.choicesBox.classList.remove("choices--if");
+            this.choicesBox.removeAttribute("aria-label");
             this.nameBox.style.display = "none";
             this.nameBox.textContent = "";
             this.textBox.textContent = `@${line.type} ${line.target}`;
@@ -2050,6 +2234,9 @@ class NovelPlayer {
         } else if (line.type === "choice") {
             this.index = viewIndex;
             this.lineUnitIndex = 0;
+        } else if (line.type === "if_chain") {
+            this.index = viewIndex;
+            this.lineUnitIndex = 0;
         } else if (line.type === "end") {
             this.index = viewIndex + 1;
             this.lineUnitIndex = 0;
@@ -2067,6 +2254,8 @@ class NovelPlayer {
         this.nextBtn.style.display = "none";
         this.choicesBox.innerHTML = "";
         this._previewAtEnd = this.script.length > 0;
+        this.choicesBox.classList.remove("choices--if");
+        this.choicesBox.removeAttribute("aria-label");
     }
 
     renderCurrentView() {
@@ -2083,7 +2272,15 @@ class NovelPlayer {
         const maxSteps = this.script.length + 8;
 
         while (idx < this.script.length && steps++ < maxSteps) {
+            idx = this.consumeIfSkipForIndex(idx);
+            if (idx >= this.script.length) break;
+            idx = this.redirectInactiveIfContent(idx);
+
             const line = this.script[idx];
+            if (line.type === "parse_error") {
+                idx++;
+                continue;
+            }
             if (line.type === "call") {
                 if (this.paintAt(idx, 0)) {
                     this.syncPlaybackIndexAfterView(idx, 0);
@@ -2106,8 +2303,11 @@ class NovelPlayer {
                 }
                 gotoGuard.add(guardKey);
                 if (this.labels.hasOwnProperty(line.target)) {
+                    this.popIfSkipOnBranchGoto(idx);
                     idx = this.labels[line.target];
                     lu = 0;
+                    this.index = idx;
+                    this.viewIndex = idx;
                     continue;
                 }
                 idx++;
@@ -2120,13 +2320,6 @@ class NovelPlayer {
                     lu = frame.lineUnitIndex || 0;
                     this.index = idx;
                     this.lineUnitIndex = lu;
-                    if (frame.returnToChoice) {
-                        if (this.paintAt(idx, 0)) {
-                            this.syncPlaybackIndexAfterView(idx, 0);
-                            this.refreshLabelUI();
-                            return;
-                        }
-                    }
                     continue;
                 }
                 idx++;
@@ -2148,7 +2341,7 @@ class NovelPlayer {
                     return;
                 }
             }
-            if (line.type === "choice" || line.type === "end") {
+            if (line.type === "if_chain" || line.type === "choice" || line.type === "end") {
                 if (this.paintAt(idx, 0)) {
                     this.syncPlaybackIndexAfterView(idx, 0);
                     this.refreshLabelUI();
@@ -2163,6 +2356,8 @@ class NovelPlayer {
     }
 
     showLine() {
+        this.index = this.consumeIfSkipForIndex(this.index);
+        this.index = this.redirectInactiveIfContent(this.index);
         if (this.index >= this.script.length) {
             this.showEndState();
             this.refreshLabelUI();
@@ -2170,11 +2365,30 @@ class NovelPlayer {
         }
 
         const line = this.script[this.index];
-        if (line.type === "goto") {
-            if (this.labels.hasOwnProperty(line.target)) {
-                this.index = this.labels[line.target];
-                this.lineUnitIndex = 0;
+        if (line.type === "parse_error") {
+            this.index++;
+            this.showLine();
+            return;
+        }
+        if (line.type === "if_chain") {
+            this.viewIndex = this.index;
+            this.viewLineUnit = 0;
+            if (this.paintAt(this.index, 0)) {
+                this.syncPlaybackIndexAfterView(this.index, 0);
+            } else {
+                this.index++;
                 this.showLine();
+            }
+            return;
+        }
+        if (line.type === "goto") {
+            const fromIdx = this.index;
+            if (this.labels.hasOwnProperty(line.target)) {
+                this.popIfSkipOnBranchGoto(fromIdx);
+                this.viewIndex = this.labels[line.target];
+                this.viewLineUnit = 0;
+                this.index = this.viewIndex;
+                this.renderCurrentView();
             } else {
                 console.error(`ラベル "${line.target}" が見つかりません`);
                 this.index++;
@@ -2184,7 +2398,7 @@ class NovelPlayer {
         }
         if (line.type === "call") {
             if (this.labels.hasOwnProperty(line.target)) {
-                this.pushCallReturn(this.index, line.target, false);
+                this.pushCallReturn(this.index, line.target);
                 this.index = this.labels[line.target];
                 this.lineUnitIndex = 0;
                 this.showLine();
@@ -2244,6 +2458,7 @@ class NovelPlayer {
         this.viewIndex = 0;
         this.viewLineUnit = 0;
         this.callStack = [];
+        this.ifSkipStack = [];
         this.renderCurrentView();
         this.updatePrevButton();
     }
@@ -2251,6 +2466,34 @@ class NovelPlayer {
     moveEditorToSourceLine(lineNum, options = {}) {
         if (this.scenarioEditor) {
             this.scenarioEditor.goToLine(lineNum, options);
+        }
+    }
+
+    jumpToIfFromGraph(edge, options = {}) {
+        if (edge?.sourceLine == null) return;
+        const labelName = edge.from;
+        if (!options.keepNodeGraphOpen) {
+            this.closeNodeGraph();
+        }
+        this.pushPreviewHistory({
+            viewIndex: this.viewIndex,
+            viewLineUnit: this.viewLineUnit,
+        });
+        this.callStack = [];
+        this.ifSkipStack = [];
+        const pos = this.findPreviewIndexForSourceLine(edge.sourceLine);
+        if (pos) {
+            this.viewIndex = pos.viewIndex;
+            this.viewLineUnit = pos.viewLineUnit;
+            this.renderCurrentView();
+        }
+        const moveEditor =
+            options.forceEditorMove || this.isSyncEditorOnLabelJumpEnabled();
+        if (moveEditor) {
+            this.moveEditorToSourceLine(edge.sourceLine);
+        }
+        if (options.keepNodeGraphOpen && labelName && this.isNodeGraphOpen()) {
+            this.labelGraphView?.setCurrentLabel(labelName);
         }
     }
 
@@ -2307,6 +2550,7 @@ class NovelPlayer {
             viewLineUnit: this.viewLineUnit,
         });
         this.callStack = [];
+        this.ifSkipStack = [];
         this.lastJumpLabel = labelName;
         this.viewIndex = this.labels[labelName];
         this.viewLineUnit = 0;

@@ -11,6 +11,8 @@ class ExportSettings {
         this.punctuationMarksInput = document.getElementById("punctuationMarks");
         this.labelSymbol = document.getElementById("labelSymbol");
         this.jumpTag = document.getElementById("jumpTag");
+        this.callTag = document.getElementById("callTag");
+        this.returnTag = document.getElementById("returnTag");
         this.replaceList = document.getElementById("replaceList");
         this.addReplaceButton = document.getElementById("addReplace");
         this.exportFormat = document.getElementById("exportFormat");
@@ -126,10 +128,12 @@ class ExportSettings {
             const { script, labels } = parser.parse(rawScript);
             text = typeof renderRenpy === "function" ? renderRenpy(this, script, labels) : "";
         } else {
-            const pageBreak = this.pageBreakSymbol.value.trim();
-            const lineBreak = this.lineBreakSymbol.value.trim();
-            const clickWait = this.clickWaitSymbol.value.trim();
-            text = typeof processScriptForExport === "function" ? processScriptForExport(this, rawScript, pageBreak, lineBreak, clickWait) : rawScript;
+            const parser = new ScriptParser();
+            const { script, labels } = parser.parse(rawScript);
+            text =
+                typeof renderTyrano === "function"
+                    ? renderTyrano(this, script, labels)
+                    : rawScript;
         }
         return this.applyStringReplace(text || rawScript);
     }
