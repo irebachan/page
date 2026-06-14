@@ -12,6 +12,19 @@ class ScriptParser {
         return line.slice(prefix.length).trim();
     }
 
+    /** @if / @elseif / @else if / @else / @endif（if と条件の間は半角・全角スペース可） */
+    static matchIfDirective(line) {
+        if (line === "@else") return { type: "else" };
+        if (line === "@endif") return { type: "endif" };
+        let m = line.match(/^@else if(\s+)(.*)$/);
+        if (m) return { type: "elseif", condition: m[2].trim() };
+        m = line.match(/^@elseif(\s+)(.*)$/);
+        if (m) return { type: "elseif", condition: m[2].trim() };
+        m = line.match(/^@if(\s+)(.*)$/);
+        if (m) return { type: "if", condition: m[2].trim() };
+        return null;
+    }
+
     closeIfBranch(script, ifChain) {
         if (!ifChain || !ifChain.branches.length) return;
         const last = ifChain.branches[ifChain.branches.length - 1];
@@ -31,17 +44,12 @@ class ScriptParser {
             branches: ifChain.branches,
             endifAt,
             sourceLine: ifChain.sourceLine,
+            endifSourceLine: ifChain.endifSourceLine,
         });
     }
 
     isIfDirective(line) {
-        return (
-            line.startsWith("@if ") ||
-            line.startsWith("@elseif ") ||
-            line.startsWith("@else if ") ||
-            line === "@else" ||
-            line === "@endif"
-        );
+        return ScriptParser.matchIfDirective(line) != null;
     }
 
     isReservedAtLine(line) {
@@ -104,13 +112,13 @@ class ScriptParser {
 
             if (line.startsWith("@")) {
                 const sourceLine = i;
+                const ifDir = ScriptParser.matchIfDirective(line);
 
-                if (line.startsWith("@if ")) {
+                if (ifDir?.type === "if") {
                     if (ifChain) {
                         this.pushIfChain(script, ifChain);
                     }
-                    const condition = this.parseIfCondition(line, "@if ");
-                    if (!condition) {
+                    if (!ifDir.condition) {
                         script.push({
                             type: "parse_error",
                             message: "@if の条件が空です",
@@ -119,13 +127,20 @@ class ScriptParser {
                     } else {
                         ifChain = {
                             sourceLine: i,
-                            branches: [{ condition, from: null, to: null }],
+                            branches: [
+                                {
+                                    condition: ifDir.condition,
+                                    from: null,
+                                    to: null,
+                                    sourceLine: i,
+                                },
+                            ],
                         };
                     }
                     i++;
                     continue;
                 }
-                if (line.startsWith("@elseif ") || line.startsWith("@else if ")) {
+                if (ifDir?.type === "elseif") {
                     if (!ifChain) {
                         script.push({
                             type: "parse_error",
@@ -136,11 +151,7 @@ class ScriptParser {
                         continue;
                     }
                     this.closeIfBranch(script, ifChain);
-                    const prefix = line.startsWith("@elseif ")
-                        ? "@elseif "
-                        : "@else if ";
-                    const condition = this.parseIfCondition(line, prefix);
-                    if (!condition) {
+                    if (!ifDir.condition) {
                         script.push({
                             type: "parse_error",
                             message: "@elseif の条件が空です",
@@ -148,15 +159,16 @@ class ScriptParser {
                         });
                     } else {
                         ifChain.branches.push({
-                            condition,
+                            condition: ifDir.condition,
                             from: null,
                             to: null,
+                            sourceLine: i,
                         });
                     }
                     i++;
                     continue;
                 }
-                if (line === "@else") {
+                if (ifDir?.type === "else") {
                     if (!ifChain) {
                         script.push({
                             type: "parse_error",
@@ -171,11 +183,12 @@ class ScriptParser {
                         condition: null,
                         from: null,
                         to: null,
+                        sourceLine: i,
                     });
                     i++;
                     continue;
                 }
-                if (line === "@endif") {
+                if (ifDir?.type === "endif") {
                     if (!ifChain) {
                         script.push({
                             type: "parse_error",
@@ -185,6 +198,7 @@ class ScriptParser {
                         i++;
                         continue;
                     }
+                    ifChain.endifSourceLine = i;
                     this.pushIfChain(script, ifChain);
                     ifChain = null;
                     i++;

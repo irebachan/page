@@ -16,12 +16,20 @@ export const novelLanguage = StreamLanguage.define({
                 stream.skipToEnd();
                 return "characterName";
             }
-            if (stream.match("@if") || stream.match("@elseif") || stream.match("@else if")) {
+            if (stream.match("@elseif") || stream.match("@else if")) {
                 state.lineCtx = "ifTail";
                 return "ifKeyword";
             }
-            if (stream.match("@else") || stream.match("@endif")) {
+            if (stream.match("@endif")) {
                 stream.skipToEnd();
+                return "ifKeyword";
+            }
+            if (stream.match("@else")) {
+                stream.skipToEnd();
+                return "ifKeyword";
+            }
+            if (stream.match("@if")) {
+                state.lineCtx = "ifTail";
                 return "ifKeyword";
             }
             if (stream.match("@endmeta") || stream.match("@meta")) {

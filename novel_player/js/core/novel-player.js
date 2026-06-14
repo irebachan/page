@@ -1942,21 +1942,29 @@ class NovelPlayer {
         return 0;
     }
 
+    findIfChainIndexForSourceLine(targetLine) {
+        for (let i = 0; i < this.script.length; i++) {
+            const item = this.script[i];
+            if (item.type !== "if_chain") continue;
+            if (item.sourceLine === targetLine) return i;
+            if (item.endifSourceLine === targetLine) return i;
+            for (const branch of item.branches || []) {
+                if (branch.sourceLine === targetLine) return i;
+            }
+        }
+        return null;
+    }
+
     findPreviewIndexForSourceLine(targetLine) {
         const lines = this.getScriptText().split("\n");
         const trimmed = (lines[targetLine] || "").trim();
         if (
-            trimmed.startsWith("@if ") ||
-            trimmed.startsWith("@elseif ") ||
-            trimmed.startsWith("@else if ") ||
-            trimmed === "@else" ||
-            trimmed === "@endif"
+            typeof ScriptParser !== "undefined" &&
+            ScriptParser.matchIfDirective(trimmed)
         ) {
-            for (let i = 0; i < this.script.length; i++) {
-                const item = this.script[i];
-                if (item.type === "if_chain" && item.sourceLine === targetLine) {
-                    return { viewIndex: i, viewLineUnit: 0 };
-                }
+            const chainIdx = this.findIfChainIndexForSourceLine(targetLine);
+            if (chainIdx != null) {
+                return { viewIndex: chainIdx, viewLineUnit: 0 };
             }
         }
         if (
@@ -1965,11 +1973,7 @@ class NovelPlayer {
             !trimmed.startsWith("@call") &&
             trimmed !== "@return" &&
             trimmed !== "@end" &&
-            !trimmed.startsWith("@if ") &&
-            !trimmed.startsWith("@elseif ") &&
-            !trimmed.startsWith("@else if ") &&
-            trimmed !== "@else" &&
-            trimmed !== "@endif"
+            !(typeof ScriptParser !== "undefined" && ScriptParser.matchIfDirective(trimmed))
         ) {
             const name = trimmed.substring(1);
             if (this.labels.hasOwnProperty(name)) {
