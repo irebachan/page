@@ -1,0 +1,23 @@
+[data-app-theme="sepia"] {
+    --theme-label: セピア（古びた紙）;
+    --theme-meta-color: #1a1610;
+    --syntax-character: #e8c878;
+    --syntax-label: #c8b0d8;
+    --syntax-if: #e8a050;
+    --syntax-goto: #88c0c0;
+    --syntax-call: #e8c860;
+    --syntax-choice: #c8b8a8;
+    --syntax-end: #988870;
+    --t-bg: #0e0c08;
+    --t-fg: #ece4d4;
+    --t-surface: #1a1610;
+    --t-panel: #201a12;
+    --t-field: #262018;
+    --t-control: #4a4034;
+    --t-control-hover: #5a5040;
+    --t-border: #685848;
+    --t-muted: #a89880;
+    --t-accent: #d8b868;
+    --t-danger: #c8a060;
+    --t-overlay: rgba(10, 8, 4, 0.78);
+}

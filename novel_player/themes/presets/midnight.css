@@ -1,0 +1,23 @@
+[data-app-theme="midnight"] {
+    --theme-label: ミッドナイト（青）;
+    --theme-meta-color: #0e1420;
+    --syntax-character: #98c8ff;
+    --syntax-label: #b8a8e8;
+    --syntax-if: #e8b060;
+    --syntax-goto: #70d0f0;
+    --syntax-call: #f0d878;
+    --syntax-choice: #c0c8d8;
+    --syntax-end: #7888a8;
+    --t-bg: #060a20;
+    --t-fg: #bfd6fc;
+    --t-surface: #060a20;
+    --t-panel: #101828;
+    --t-field: #141c2c;
+    --t-control: #243048;
+    --t-control-hover: #304060;
+    --t-border: #3a5070;
+    --t-muted: #7888a8;
+    --t-accent: #88b8ff;
+    --t-danger: #cc8888;
+    --t-overlay: rgba(4, 8, 18, 0.78);
+}

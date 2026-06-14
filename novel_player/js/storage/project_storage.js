@@ -158,17 +158,46 @@
         });
     }
 
+    let sharedDbPromise = null;
+
+    function acquireDb() {
+        if (!window.indexedDB) return Promise.resolve(null);
+        if (!sharedDbPromise) {
+            sharedDbPromise = openDB().catch((err) => {
+                sharedDbPromise = null;
+                throw err;
+            });
+        }
+        return sharedDbPromise;
+    }
+
     async function withDb(fn) {
         try {
-            const db = await openDB();
-            if (!db) return fn(null);
-            try {
-                return await fn(db);
-            } finally {
-                db.close();
-            }
+            const db = await acquireDb();
+            return await fn(db);
         } catch (_) {
             return fn(null);
+        }
+    }
+
+    function scheduleFallbackMirror(fn) {
+        const run = () => {
+            if (document.hidden) {
+                document.addEventListener(
+                    "visibilitychange",
+                    () => {
+                        if (!document.hidden) scheduleFallbackMirror(fn);
+                    },
+                    { once: true }
+                );
+                return;
+            }
+            fn();
+        };
+        if (typeof requestIdleCallback === "function") {
+            requestIdleCallback(run, { timeout: 5000 });
+        } else {
+            setTimeout(run, 0);
         }
     }
 
@@ -210,15 +239,33 @@
         writeFallbackBundle(bundle);
     }
 
-    async function saveProject({ id, title, text, savedAt }) {
-        const existing = id ? await get(id) : null;
+    function mirrorProjectToFallback(project) {
+        const bundle = readFallbackBundle();
+        const idx = bundle.projects.findIndex((p) => p.id === project.id);
+        if (idx >= 0) bundle.projects[idx] = project;
+        else bundle.projects.push(project);
+        writeFallbackBundle(bundle);
+    }
+
+    async function saveProject({
+        id,
+        title,
+        text,
+        savedAt,
+        createdAt,
+        deferFallbackMirror = true,
+    }) {
         const now = Date.now();
+        let existing = null;
+        if (!createdAt && id) {
+            existing = await get(id);
+        }
         const project = normalizeProject({
             id: id || existing?.id || newId(),
             title: title !== undefined ? title : existing?.title,
             text: text !== undefined ? text : existing?.text ?? "",
             savedAt: savedAt || now,
-            createdAt: existing?.createdAt || now,
+            createdAt: createdAt || existing?.createdAt || now,
         });
         if (!project) return null;
 
@@ -226,11 +273,11 @@
             if (db) await idbPut(db, project);
         });
 
-        const bundle = readFallbackBundle();
-        const idx = bundle.projects.findIndex((p) => p.id === project.id);
-        if (idx >= 0) bundle.projects[idx] = project;
-        else bundle.projects.push(project);
-        writeFallbackBundle(bundle);
+        if (deferFallbackMirror) {
+            scheduleFallbackMirror(() => mirrorProjectToFallback(project));
+        } else {
+            mirrorProjectToFallback(project);
+        }
 
         return project;
     }

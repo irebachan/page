@@ -1,0 +1,23 @@
+[data-app-theme="default"] {
+    --theme-label: 標準（ダーク）;
+    --theme-meta-color: #1a1a1a;
+    --syntax-character: #9cf;
+    --syntax-label: #c0b0e8;
+    --syntax-if: #e8a55c;
+    --syntax-goto: #5ec8e8;
+    --syntax-call: #e8d060;
+    --syntax-choice: #bdc;
+    --syntax-end: #a8a8a8;
+    --t-bg: #000000;
+    --t-fg: #ffffff;
+    --t-surface: #1a1a1a;
+    --t-panel: #222222;
+    --t-field: #2a2a2a;
+    --t-control: #444444;
+    --t-control-hover: #555555;
+    --t-border: #555555;
+    --t-muted: #888888;
+    --t-accent: #99ccff;
+    --t-danger: #cc8888;
+    --t-overlay: rgba(0, 0, 0, 0.72);
+}

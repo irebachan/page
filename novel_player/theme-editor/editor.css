@@ -1,0 +1,283 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    background: #111;
+    color: #ddd;
+}
+
+.te-app {
+    display: grid;
+    grid-template-columns: 240px minmax(280px, 1fr) minmax(280px, 340px);
+    grid-template-rows: auto 1fr;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+}
+
+.te-header {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 10px 14px;
+    background: #1a1a1a;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+}
+
+.te-header h1 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.te-header label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.te-header input[type="text"],
+.te-header select {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background: #222;
+    color: #eee;
+    font-size: 12px;
+}
+
+.te-header-link {
+    color: #9cf;
+    font-size: 12px;
+    margin-left: auto;
+}
+
+.te-header-btn {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background: #222;
+    color: #ccc;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.te-header-btn:hover:not(:disabled) {
+    background: #333;
+    color: #eee;
+}
+
+.te-header-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.te-section-title {
+    margin: 0 0 8px;
+    font-size: 12px;
+    color: #888;
+    font-weight: 600;
+}
+
+.te-preview-note {
+    margin: 0 0 8px;
+    font-size: 11px;
+    color: #777;
+    line-height: 1.4;
+}
+
+.te-sidebar {
+    padding: 10px 12px;
+    border-right: 1px solid #333;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.te-palette-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    padding: 2px 4px;
+}
+
+.te-palette-row label {
+    flex: 1;
+    font-size: 11px;
+    color: #ccc;
+    min-width: 0;
+    cursor: default;
+}
+
+.te-palette-row input[type="color"] {
+    width: 32px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid #444;
+    background: none;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.te-palette-row input[type="text"] {
+    width: 76px;
+    font-size: 10px;
+    padding: 3px 5px;
+    border: 1px solid #444;
+    background: #222;
+    color: #eee;
+    font-family: ui-monospace, monospace;
+    flex-shrink: 0;
+}
+
+.te-main {
+    padding: 10px 12px;
+    overflow-y: auto;
+    min-height: 0;
+    border-right: 1px solid #333;
+}
+
+.te-pv-callout {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    z-index: 5;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-family: ui-monospace, monospace;
+    color: #bdf;
+    background: rgba(20, 30, 50, 0.92);
+    border: 1px solid rgba(102, 170, 255, 0.35);
+    border-radius: 4px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.te-pv-callout.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.te-export-panel {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: #141414;
+    gap: 8px;
+}
+
+.te-import {
+    flex-shrink: 0;
+}
+
+.te-import-summary {
+    cursor: pointer;
+    user-select: none;
+}
+
+.te-import-textarea {
+    width: 100%;
+    min-height: 72px;
+    max-height: 140px;
+    margin-top: 6px;
+    padding: 8px;
+    box-sizing: border-box;
+    font-size: 11px;
+    line-height: 1.45;
+    font-family: ui-monospace, monospace;
+    color: #bdbdbd;
+    background: #0a0a0a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    resize: vertical;
+}
+
+.te-import-btn {
+    margin-top: 6px;
+    padding: 6px 12px;
+    border: 1px solid #555;
+    background: #333;
+    color: #eee;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.te-import-btn:hover {
+    background: #444;
+}
+
+.te-export-pre {
+    flex: 1;
+    min-height: 120px;
+    margin: 0;
+    overflow: auto;
+    padding: 10px;
+    background: #0a0a0a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #bdbdbd;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.te-import-hint {
+    margin: 8px 0 0;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #777;
+    font-family: ui-monospace, monospace;
+    white-space: pre-wrap;
+}
+
+.te-export-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.te-export-actions button {
+    padding: 6px 10px;
+    border: 1px solid #555;
+    background: #333;
+    color: #eee;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.te-export-actions button:hover {
+    background: #444;
+}
+
+.te-field-group-title {
+    font-size: 11px;
+    color: #888;
+    margin: 10px 0 6px;
+}
+
+.te-syntax {
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 10px;
+    margin-top: 8px;
+    background: var(--editor-bg, var(--t-field));
+    border: 1px solid var(--border-faint, #333);
+    border-radius: 6px;
+}

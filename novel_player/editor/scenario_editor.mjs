@@ -1,20 +1,20 @@
+import { Compartment } from "@codemirror/state";
 import { EditorView, basicSetup } from "codemirror";
 import { keymap } from "@codemirror/view";
 import { novelLanguage } from "./novel_syntax.mjs";
-import { novelEditorTheme, novelSyntaxHighlighting } from "./novel_theme.mjs";
+import { buildColorThemeExtensions } from "./novel_theme.mjs";
+import { getStoredThemeId } from "./novel_editor_colors.mjs";
 
-/**
- * シナリオエディタ（CodeMirror 6）を初期化する。
- * @param {HTMLElement} parent
- * @param {{ onChange?: () => void, onPreviewShortcut?: () => void, onSyncEditorShortcut?: () => void }} options
- */
 function clearDomTextSelection() {
     const sel = window.getSelection?.();
     if (sel?.rangeCount) sel.removeAllRanges();
 }
 
+const colorThemeCompartment = new Compartment();
+
 export function createScenarioEditor(parent, options = {}) {
     const { onChange, onPreviewShortcut, onSyncEditorShortcut, onCursorChange } = options;
+    const initialTheme = getStoredThemeId();
 
     const previewKeymap = keymap.of([
         {
@@ -39,8 +39,7 @@ export function createScenarioEditor(parent, options = {}) {
         extensions: [
             basicSetup,
             novelLanguage,
-            novelEditorTheme,
-            novelSyntaxHighlighting,
+            colorThemeCompartment.of(buildColorThemeExtensions(initialTheme)),
             EditorView.lineWrapping,
             previewKeymap,
             EditorView.updateListener.of((update) => {
@@ -70,12 +69,10 @@ export function createScenarioEditor(parent, options = {}) {
             });
         },
 
-        /** 0-based 行番号（パーサーの sourceLine と一致） */
         getCursorLine() {
             return view.state.doc.lineAt(view.state.selection.main.head).number - 1;
         },
 
-        /** 0-based 行へ移動（focus: false ならカーソルだけ動かしキーボードは出さない） */
         goToLine(lineNum, options = {}) {
             if (lineNum < 0) return;
             const lineCount = view.state.doc.lines;
@@ -120,6 +117,18 @@ export function createScenarioEditor(parent, options = {}) {
 
         getView() {
             return view;
+        },
+
+        getAppTheme() {
+            return getStoredThemeId();
+        },
+
+        setAppTheme(themeId) {
+            view.dispatch({
+                effects: colorThemeCompartment.reconfigure(
+                    buildColorThemeExtensions(themeId)
+                ),
+            });
         },
     };
 }

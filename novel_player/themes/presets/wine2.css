@@ -1,0 +1,23 @@
+[data-app-theme="wine2"] {
+    --theme-label: ワイン2;
+    --theme-meta-color: #160c10;
+    --syntax-character: #f0b0c8;
+    --syntax-label: #d8b0e0;
+    --syntax-if: #e8a868;
+    --syntax-goto: #88c8e0;
+    --syntax-call: #f0d878;
+    --syntax-choice: #d8c0c8;
+    --syntax-end: #a88898;
+    --t-bg: #000000;
+    --t-fg: #f5e8ec;
+    --t-surface: #160c10;
+    --t-panel: #28151f;
+    --t-field: #2c1620;
+    --t-control: #4a2834;
+    --t-control-hover: #5a3440;
+    --t-border: #684048;
+    --t-muted: #a88898;
+    --t-accent: #e898b0;
+    --t-danger: #d08090;
+    --t-overlay: rgba(8, 2, 6, 0.78);
+}

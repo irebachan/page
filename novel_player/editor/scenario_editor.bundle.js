@@ -22996,8 +22996,10 @@ var ScenarioEditorModule = (() => {
   // editor/novel_syntax.mjs
   var novelLanguage = StreamLanguage.define({
     name: "novel",
-    token(stream) {
+    startState: () => ({ lineCtx: null }),
+    token(stream, state) {
       if (stream.sol()) {
+        state.lineCtx = null;
         if (stream.match("//", false)) {
           stream.skipToEnd();
           return "lineComment";
@@ -23007,29 +23009,86 @@ var ScenarioEditorModule = (() => {
           return "characterName";
         }
         if (stream.match("@if") || stream.match("@elseif") || stream.match("@else if")) {
-          stream.skipToEnd();
-          return "controlKeyword";
+          state.lineCtx = "ifTail";
+          return "ifKeyword";
         }
         if (stream.match("@else") || stream.match("@endif")) {
           stream.skipToEnd();
-          return "controlKeyword";
+          return "ifKeyword";
         }
-        if (stream.match("@goto") || stream.match("@call")) {
+        if (stream.match("@endmeta") || stream.match("@meta")) {
           stream.skipToEnd();
-          return "controlKeyword";
+          return "metaKeyword";
         }
-        if (stream.match("@return") || stream.match("@end")) {
+        if (stream.match("@goto")) {
+          state.lineCtx = "gotoTail";
+          return "gotoKeyword";
+        }
+        if (stream.match("@call")) {
+          state.lineCtx = "callTail";
+          return "callKeyword";
+        }
+        if (stream.match("@return")) {
           stream.skipToEnd();
-          return "controlKeyword";
+          return "returnKeyword";
+        }
+        if (stream.match("@end")) {
+          stream.skipToEnd();
+          return "endKeyword";
         }
         if (stream.match("@")) {
           stream.skipToEnd();
           return "labelDef";
         }
         if (stream.match("-")) {
-          stream.skipToEnd();
-          return "choiceLine";
+          stream.eatSpace();
+          state.lineCtx = stream.eol() ? null : "choice";
+          return null;
         }
+      }
+      if (state.lineCtx === "ifTail") {
+        stream.eatSpace();
+        if (!stream.eol()) {
+          stream.skipToEnd();
+          state.lineCtx = null;
+          return "ifCondition";
+        }
+        state.lineCtx = null;
+        return null;
+      }
+      if (state.lineCtx === "gotoTail") {
+        stream.eatSpace();
+        if (!stream.eol()) {
+          stream.skipToEnd();
+          state.lineCtx = null;
+          return "gotoTarget";
+        }
+        state.lineCtx = null;
+        return null;
+      }
+      if (state.lineCtx === "callTail") {
+        stream.eatSpace();
+        if (!stream.eol()) {
+          stream.skipToEnd();
+          state.lineCtx = null;
+          return "callTarget";
+        }
+        state.lineCtx = null;
+        return null;
+      }
+      if (state.lineCtx === "choice") {
+        if (stream.match("=>")) {
+          stream.eatSpace();
+          state.lineCtx = "choiceTarget";
+          return null;
+        }
+        stream.next();
+        return "choiceText";
+      }
+      if (state.lineCtx === "choiceTarget") {
+        stream.skipToEnd();
+        state.lineCtx = null;
+        return "choiceTarget";
       }
       stream.next();
       return null;
@@ -23037,68 +23096,124 @@ var ScenarioEditorModule = (() => {
     tokenTable: {
       lineComment: tags.lineComment,
       characterName: tags.heading,
-      controlKeyword: tags.keyword,
+      ifKeyword: tags.keyword,
+      ifCondition: tags.name,
+      gotoKeyword: tags.operator,
+      gotoTarget: tags.typeName,
+      callKeyword: tags.meta,
+      callTarget: tags.link,
+      returnKeyword: tags.meta,
+      endKeyword: tags.processingInstruction,
+      metaKeyword: tags.comment,
       labelDef: tags.labelName,
-      choiceLine: tags.string
+      choiceText: tags.string,
+      choiceTarget: tags.url
     }
   });
 
-  // editor/novel_theme.mjs
-  var novelEditorTheme = EditorView.theme({
-    "&": {
-      height: "100%",
-      backgroundColor: "#333",
-      color: "#eee",
-      fontSize: "1.05em"
-    },
-    ".cm-scroller": {
-      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-      lineHeight: "1.55",
-      overflow: "auto"
-    },
-    ".cm-content": {
-      padding: "1em 0.5em 1em 0",
-      caretColor: "#fff"
-    },
-    ".cm-gutters": {
-      backgroundColor: "#2a2a2a",
-      color: "#777",
-      border: "none",
-      paddingLeft: "0.35em"
-    },
-    ".cm-activeLineGutter": {
-      backgroundColor: "#353535",
-      color: "#aaa"
-    },
-    ".cm-activeLine": {
-      backgroundColor: "rgba(100, 140, 200, 0.08)"
-    },
-    "&.cm-focused .cm-cursor": {
-      borderLeftColor: "#fff"
-    },
-    "&.cm-focused .cm-selectionBackground, ::selection": {
-      backgroundColor: "rgba(100, 160, 255, 0.35) !important"
-    },
-    ".cm-selectionMatch": {
-      backgroundColor: "rgba(120, 180, 255, 0.2)"
+  // editor/novel_editor_colors.mjs
+  var DEFAULT_SYNTAX = {
+    character: "#9cf",
+    label: "#c0b0e8",
+    if: "#e8a55c",
+    goto: "#5ec8e8",
+    call: "#e8d060",
+    choice: "#bdc",
+    end: "#a8a8a8"
+  };
+  function resolveSyntaxColors(themeId) {
+    if (typeof window !== "undefined" && window.AppThemes?.getSyntaxColors) {
+      return window.AppThemes.getSyntaxColors(themeId);
     }
-  });
-  var novelHighlightStyle = HighlightStyle.define([
-    { tag: tags.lineComment, color: "#888", fontStyle: "italic" },
-    { tag: tags.heading, color: "#9cf", fontWeight: "bold" },
-    { tag: tags.keyword, color: "#c9f" },
-    { tag: tags.labelName, color: "#8df" },
-    { tag: tags.string, color: "#bdc" }
-  ]);
-  var novelSyntaxHighlighting = syntaxHighlighting(novelHighlightStyle);
+    return DEFAULT_SYNTAX;
+  }
+  function getStoredThemeId() {
+    if (typeof window !== "undefined" && window.AppThemes?.getThemeId) {
+      return window.AppThemes.getThemeId();
+    }
+    return "default";
+  }
+
+  // editor/novel_theme.mjs
+  function createEditorTheme() {
+    return EditorView.theme({
+      "&": {
+        height: "100%",
+        backgroundColor: "var(--editor-bg, #333)",
+        color: "var(--editor-fg, #eee)",
+        fontSize: "1.05em"
+      },
+      ".cm-scroller": {
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+        lineHeight: "1.55",
+        overflow: "auto"
+      },
+      ".cm-content": {
+        padding: "1em 0.5em 1em 0",
+        caretColor: "#fff"
+      },
+      ".cm-gutters": {
+        backgroundColor: "var(--editor-gutter-bg, #2a2a2a)",
+        color: "var(--editor-gutter-fg, #777)",
+        border: "none",
+        paddingLeft: "0.35em"
+      },
+      ".cm-activeLineGutter": {
+        backgroundColor: "var(--app-surface-3, #353535)",
+        color: "var(--app-muted-2, #aaa)"
+      },
+      ".cm-activeLine": {
+        backgroundColor: "var(--editor-active-line, rgba(100, 140, 200, 0.08))"
+      },
+      "&.cm-focused .cm-cursor": {
+        borderLeftColor: "#fff"
+      },
+      "&.cm-focused .cm-selectionBackground, ::selection": {
+        backgroundColor: "rgba(100, 160, 255, 0.35) !important"
+      },
+      ".cm-selectionMatch": {
+        backgroundColor: "rgba(120, 180, 255, 0.2)"
+      }
+    });
+  }
+  function buildHighlightStyle(colors) {
+    return HighlightStyle.define([
+      { tag: tags.lineComment, color: "#888", fontStyle: "italic" },
+      { tag: tags.comment, color: "#888", fontStyle: "italic" },
+      { tag: tags.heading, color: colors.character },
+      { tag: tags.keyword, color: colors.if },
+      { tag: tags.name, color: colors.if, fontStyle: "italic" },
+      { tag: tags.operator, color: colors.goto },
+      { tag: tags.typeName, color: colors.goto, fontStyle: "italic" },
+      { tag: tags.meta, color: colors.call },
+      { tag: tags.link, color: colors.call, fontStyle: "italic" },
+      { tag: tags.processingInstruction, color: colors.end },
+      { tag: tags.labelName, color: colors.label },
+      { tag: tags.string, color: colors.choice },
+      { tag: tags.url, color: colors.choice, fontStyle: "italic" }
+    ]);
+  }
+  function buildColorThemeExtensions(themeId) {
+    const colors = resolveSyntaxColors(themeId);
+    return [
+      createEditorTheme(),
+      syntaxHighlighting(buildHighlightStyle(colors))
+    ];
+  }
+  var novelEditorTheme = createEditorTheme();
+  var novelSyntaxHighlighting = syntaxHighlighting(
+    buildHighlightStyle(resolveSyntaxColors("default"))
+  );
 
   // editor/scenario_editor.mjs
   function clearDomTextSelection() {
     const sel = window.getSelection?.();
     if (sel?.rangeCount) sel.removeAllRanges();
   }
+  var colorThemeCompartment = new Compartment();
   function createScenarioEditor(parent, options = {}) {
     const { onChange, onPreviewShortcut, onSyncEditorShortcut, onCursorChange } = options;
+    const initialTheme = getStoredThemeId();
     const previewKeymap = keymap.of([
       {
         key: "Mod-Enter",
@@ -23121,8 +23236,7 @@ var ScenarioEditorModule = (() => {
       extensions: [
         basicSetup,
         novelLanguage,
-        novelEditorTheme,
-        novelSyntaxHighlighting,
+        colorThemeCompartment.of(buildColorThemeExtensions(initialTheme)),
         EditorView.lineWrapping,
         previewKeymap,
         EditorView.updateListener.of((update) => {
@@ -23148,11 +23262,9 @@ var ScenarioEditorModule = (() => {
           changes: { from: 0, to: view.state.doc.length, insert: next }
         });
       },
-      /** 0-based 行番号（パーサーの sourceLine と一致） */
       getCursorLine() {
         return view.state.doc.lineAt(view.state.selection.main.head).number - 1;
       },
-      /** 0-based 行へ移動（focus: false ならカーソルだけ動かしキーボードは出さない） */
       goToLine(lineNum, options2 = {}) {
         if (lineNum < 0) return;
         const lineCount = view.state.doc.lines;
@@ -23191,6 +23303,16 @@ var ScenarioEditorModule = (() => {
       },
       getView() {
         return view;
+      },
+      getAppTheme() {
+        return getStoredThemeId();
+      },
+      setAppTheme(themeId) {
+        view.dispatch({
+          effects: colorThemeCompartment.reconfigure(
+            buildColorThemeExtensions(themeId)
+          )
+        });
       }
     };
   }

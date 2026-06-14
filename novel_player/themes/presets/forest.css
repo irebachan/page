@@ -1,0 +1,23 @@
+[data-app-theme="forest"] {
+    --theme-label: フォレスト（深緑）;
+    --theme-meta-color: #0e1610;
+    --syntax-character: #98d8b0;
+    --syntax-label: #b0c8e0;
+    --syntax-if: #e8b060;
+    --syntax-goto: #78c8e8;
+    --syntax-call: #e8d060;
+    --syntax-choice: #b0c0b0;
+    --syntax-end: #789080;
+    --t-bg: #060a08;
+    --t-fg: #e4ece6;
+    --t-surface: #0e1610;
+    --t-panel: #101810;
+    --t-field: #142018;
+    --t-control: #304840;
+    --t-control-hover: #405850;
+    --t-border: #486858;
+    --t-muted: #789080;
+    --t-accent: #88c8a0;
+    --t-danger: #a87878;
+    --t-overlay: rgba(4, 10, 6, 0.78);
+}

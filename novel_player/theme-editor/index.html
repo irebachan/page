@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja" data-app-theme="default">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a1a">
+    <title>テーマエディタ — Novel Draft</title>
+    <link rel="stylesheet" href="../themes/base.css">
+    <link rel="stylesheet" href="gallery.css">
+    <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+    <div class="te-app">
+        <header class="te-header">
+            <h1>テーマエディタ</h1>
+            <label>
+                ひな形
+                <select id="presetSelect" title="組み込みテーマから色をコピー。本体の表示テーマとは無関係"></select>
+            </label>
+            <label>
+                ID
+                <input type="text" id="themeIdInput" size="12" pattern="[a-zA-Z0-9_-]+" title="英数字と _ -">
+            </label>
+            <label>
+                表示名
+                <input type="text" id="themeLabelInput" size="14">
+            </label>
+            <button type="button" id="undoBtn" class="te-header-btn" disabled title="元に戻す (⌘Z)">戻す</button>
+            <button type="button" id="redoBtn" class="te-header-btn" disabled title="やり直す (⌘⇧Z)">進む</button>
+            <a href="../index.html" class="te-header-link">← 本体</a>
+        </header>
+
+        <aside class="te-sidebar">
+            <div id="paletteFields"></div>
+        </aside>
+
+        <main class="te-main">
+            <h2 class="te-section-title">プレビュー</h2>
+            <p class="te-preview-note">部品の確認用です。本体と同じ見え方は「本体プレビュー」で。</p>
+            <div class="te-gallery" id="gallery" data-te-target="tBg">
+                <div class="te-pv-callout" id="tePvCallout" aria-hidden="true"></div>
+                <div class="te-pv-block" data-te-target="metaColor">
+                    <div class="te-meta-chrome">Novel Draft</div>
+                </div>
+
+                <div class="te-pv-block te-bar" data-te-target="tSurface">
+                    <div class="te-bar-inner">
+                        <button type="button" data-te-target="tControl">通常</button>
+                        <button type="button" class="te-primary" data-te-target="tAccent">強調</button>
+                        <button type="button" class="te-hover-demo" data-te-target="tControlHover">hover</button>
+                        <input class="te-field" type="text" value="入力欄" aria-label="sample" data-te-target="tField">
+                    </div>
+                </div>
+
+                <div class="te-pv-block te-preview-box" data-te-target="tPanel">
+                    <div class="name" data-te-target="tAccent">キャラ名</div>
+                    <div class="pv-body-text" data-te-target="tFg">本文テキスト</div>
+                    <div class="pv-muted-text" data-te-target="tMuted">補助テキスト</div>
+                </div>
+
+                <div class="te-pv-block te-modal-mock" data-te-target="tOverlay">
+                    <div class="te-modal-inner" data-te-target="tPanel">モーダル</div>
+                </div>
+
+                <div class="te-pv-block te-chips" data-te-target="tControl">
+                    <span class="te-chip">通常</span>
+                    <span class="te-chip is-active" data-te-target="tAccent">選択中</span>
+                    <span class="te-chip te-chip-danger" data-te-target="tDanger">警告</span>
+                </div>
+
+                <div class="te-pv-block te-scroll-mock" data-te-target="tPanel">
+                    スクロール<br>行2<br>行3<br>行4<br>行5<br>行6
+                </div>
+
+                <div class="te-pv-block te-border-demo" data-te-target="tBorder">枠線</div>
+
+                <div class="te-pv-block te-syntax-wrap" data-te-target="tField">
+                    <div class="te-syntax" id="syntaxPreview" aria-label="シンタックス色"></div>
+                </div>
+            </div>
+        </main>
+
+        <aside class="te-export-panel">
+            <details class="te-import" id="importCssPanel" open>
+                <summary class="te-section-title te-import-summary">CSS 貼り付け</summary>
+                <textarea
+                    id="importCssInput"
+                    class="te-import-textarea"
+                    spellcheck="false"
+                    placeholder="[data-app-theme=&quot;my-theme&quot;] { ... } を貼り付け"
+                ></textarea>
+                <button type="button" id="loadCssBtn" class="te-import-btn">読込</button>
+            </details>
+            <h2 class="te-section-title">CSS 出力</h2>
+            <pre id="exportPreview" class="te-export-pre"></pre>
+            <p id="importHint" class="te-import-hint"></p>
+            <div class="te-export-actions">
+                <button type="button" id="openAppPreviewBtn" title="このタブだけ一時表示。保存・上書きしません">本体プレビュー</button>
+                <button type="button" id="copyExportBtn">コピー</button>
+                <button type="button" id="downloadCssBtn">CSS 保存</button>
+            </div>
+        </aside>
+    </div>
+
+    <script src="../themes/registry.js"></script>
+    <script src="../js/ui/app_themes.js"></script>
+    <script src="editor.js"></script>
+</body>
+</html>

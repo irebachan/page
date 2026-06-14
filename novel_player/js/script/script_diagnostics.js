@@ -307,7 +307,8 @@ function buildLabelPreviewSnippet(script, labels, labelName, maxLen = 22) {
 }
 
 /** ノードグラフ描画用: ノード・辺のスナップショット（正本はテキスト） */
-function buildLabelGraphData(script, labels, labelSourceLines) {
+function buildLabelGraphData(script, labels, labelSourceLines, options = {}) {
+    const includePreview = options.includePreview !== false;
     const nodeMap = new Map();
     const edges = [];
 
@@ -331,6 +332,7 @@ function buildLabelGraphData(script, labels, labelSourceLines) {
 
     for (const name of Object.keys(labels)) {
         ensureNode(name, false);
+        if (!includePreview) continue;
         const n = nodeMap.get(name);
         const rawPreview = buildLabelPreviewSnippet(script, labels, name, 80);
         let preview = "";
@@ -506,6 +508,37 @@ function buildLabelGraphData(script, labels, labelSourceLines) {
     }
 
     return { nodes, edges };
+}
+
+/**
+ * ノードグラフの「構造」だけの指紋（ラベル・辺の接続。本文プレビューは含めない）。
+ * 変化時のみ dagre レイアウト＋全再描画が必要。
+ */
+function graphStructureSignature(graphData) {
+    if (!graphData) return "";
+    const nodePart = graphData.nodes
+        .map(
+            (n) =>
+                `${n.name}|${n.ghost ? 1 : 0}|${n.sourceLine ?? ""}|${n.layoutPadBottom ?? 0}`
+        )
+        .join("\n");
+    const edgePart = graphData.edges
+        .map((e) =>
+            [
+                e.id,
+                e.from,
+                e.to ?? "",
+                e.kind,
+                e.disconnected ? 1 : 0,
+                e.choiceIndex ?? "",
+                e.branchIndex ?? "",
+                e.exitIndex ?? "",
+                e.exitKind ?? "",
+                e.mode ?? "",
+            ].join("|")
+        )
+        .join("\n");
+    return `${nodePart}\n---\n${edgePart}`;
 }
 
 /** 下端スタブの縦サイズ → layoutPadBottom（if があるラベルだけ dagre 高さが伸びる） */

@@ -43,8 +43,10 @@ class NovelPlayer {
         this.copyButton = document.getElementById("copyButton");
         this.activeProjectId = null;
         this.activeProjectTitle = "無題";
+        this.activeProjectCreatedAt = null;
         this.lastProjectSavedAt = null;
         this.projectSavePending = false;
+        this._lastPersistedText = null;
         this.suppressProjectSave = false;
         this.projectSelect = document.getElementById("projectSelect");
         this.projectNewButton = document.getElementById("projectNewButton");
@@ -56,6 +58,7 @@ class NovelPlayer {
         this.importOverwriteButton = document.getElementById("importOverwriteButton");
         this.pendingImport = null;
         this.previewUnit = document.getElementById("previewUnit");
+        this.appThemeSelect = document.getElementById("appThemeSelect");
         this.syncEditorOnLabelJump = document.getElementById("syncEditorOnLabelJump");
         this.SYNC_EDITOR_LABEL_KEY = "novelPlayer.syncEditorOnLabelJump";
         /** プレビューが「1行ずつ」のとき、次に進むときの script[index] 内の行オフセット */
@@ -95,7 +98,15 @@ class NovelPlayer {
             this.prevChoiceBtn.addEventListener("click", () => this.jumpToLastChoice());
         }
         this.restartBtn.addEventListener("click", () => this.restart());
-        this.updateScriptDebounced = this.debounce(() => this.updateScript(), 300);
+        this.updateScriptDebounced = this.debounce(() => {
+            if (document.hidden) {
+                this._scriptParseDeferred = true;
+                return;
+            }
+            this.updateScript();
+        }, 300);
+        this._graphStructSig = null;
+        this._graphFilterSig = "";
         this.persistProjectDebounced = this.debounce(() => this.persistProject(), 2000);
         this.initScenarioEditor();
         if (this.saveButton) {
@@ -176,7 +187,9 @@ class NovelPlayer {
         }
 
         if (this.nodeGraphFilter) {
-            this.nodeGraphFilter.addEventListener("input", () => this.refreshNodeGraph());
+            this.nodeGraphFilter.addEventListener("input", () =>
+                this.refreshNodeGraphIfOpen()
+            );
         }
 
         this.bindGraphPanelPointerTracking();
@@ -386,6 +399,8 @@ class NovelPlayer {
 
 `;
 
+        this._scriptParseDeferred = false;
+        this.bindPageLifecycle();
         void this.init();
     }
 
@@ -427,10 +442,70 @@ class NovelPlayer {
 
     debounce(fn, ms) {
         let timer = null;
-        return () => {
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(fn, ms);
+        const run = () => {
+            timer = null;
+            fn();
         };
+        const wrapped = () => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(run, ms);
+        };
+        wrapped.cancel = () => {
+            if (timer) clearTimeout(timer);
+            timer = null;
+        };
+        wrapped.flush = () => {
+            if (!timer) return;
+            clearTimeout(timer);
+            run();
+        };
+        wrapped.pending = () => !!timer;
+        return wrapped;
+    }
+
+    bindPageLifecycle() {
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden") {
+                this.onPageHidden();
+            } else if (document.visibilityState === "visible") {
+                this.onPageVisible();
+            }
+        });
+        window.addEventListener("pagehide", () => this.onPageHidden());
+    }
+
+    onPageHidden() {
+        if (this.updateScriptDebounced.pending()) {
+            this._scriptParseDeferred = true;
+        }
+        this.updateScriptDebounced.cancel();
+        this.persistProjectDebounced.cancel();
+        this.labelGraphView?.cancelScheduledFit?.();
+        if (!this.projectSavePending) return;
+        const save = () => {
+            if (!this.projectSavePending) return;
+            void this.persistProject();
+        };
+        if (typeof requestIdleCallback === "function") {
+            requestIdleCallback(save, { timeout: 3000 });
+        } else {
+            setTimeout(save, 50);
+        }
+    }
+
+    onPageVisible() {
+        if (!this._scriptParseDeferred) return;
+        const runDeferredParse = () => {
+            if (document.hidden || !this._scriptParseDeferred) return;
+            this._scriptParseDeferred = false;
+            this.updateScript({ preservePreviewPosition: true });
+        };
+        // タブ復帰直後に同期パースすると UI が固まるため、アイドル時に実行
+        if (typeof requestIdleCallback === "function") {
+            requestIdleCallback(runDeferredParse, { timeout: 1200 });
+        } else {
+            setTimeout(runDeferredParse, 80);
+        }
     }
 
     initScenarioEditor() {
@@ -440,13 +515,23 @@ class NovelPlayer {
         }
         this.scenarioEditor = window.ScenarioEditor.create(this.scriptEditorHost, {
             onChange: () => {
-                this.updateScriptDebounced();
+                if (document.hidden) {
+                    this._scriptParseDeferred = true;
+                } else {
+                    this.updateScriptDebounced();
+                }
                 this.scheduleProjectSave();
             },
             onPreviewShortcut: () => this.previewFromEditorLine(),
             onSyncEditorShortcut: () => this.syncEditorToPreview(),
             onCursorChange: () => this.updateEditorStatusBar(),
         });
+        this.initAppThemeSelect();
+    }
+
+    initAppThemeSelect() {
+        if (!window.AppThemes?.initAppThemeSelect || !this.appThemeSelect) return;
+        window.AppThemes.initAppThemeSelect(this.appThemeSelect);
     }
 
     scheduleProjectSave() {
@@ -459,14 +544,22 @@ class NovelPlayer {
     async persistProject() {
         if (!window.ProjectStorage || !this.activeProjectId) return;
         const text = this.getScriptText();
+        if (text === this._lastPersistedText) {
+            this.projectSavePending = false;
+            this.updateEditorStatusBar();
+            return;
+        }
         try {
             const record = await ProjectStorage.saveProject({
                 id: this.activeProjectId,
                 title: this.activeProjectTitle,
                 text,
+                createdAt: this.activeProjectCreatedAt || undefined,
             });
             if (record) {
+                this._lastPersistedText = text;
                 this.lastProjectSavedAt = record.savedAt;
+                this.activeProjectCreatedAt = record.createdAt;
                 this.projectSavePending = false;
                 this.updateEditorStatusBar();
             }
@@ -510,9 +603,13 @@ class NovelPlayer {
         ProjectStorage.setActiveId(id);
         this.activeProjectId = project.id;
         this.activeProjectTitle = project.title;
+        this.activeProjectCreatedAt = project.createdAt || null;
         this.lastProjectSavedAt = project.savedAt;
         this.suppressProjectSave = true;
         this.setScriptText(project.text);
+        this._lastPersistedText = project.text;
+        this._graphStructSig = null;
+        this._graphFilterSig = "";
         this.resetPreviewState();
         this.updateScript({ preservePreviewPosition: false });
         this.suppressProjectSave = false;
@@ -656,6 +753,7 @@ class NovelPlayer {
                 const project = await ProjectStorage.ensureActiveProject();
                 this.activeProjectId = project.id;
                 this.activeProjectTitle = project.title;
+                this.activeProjectCreatedAt = project.createdAt || null;
                 this.lastProjectSavedAt = project.savedAt || null;
                 ProjectStorage.setActiveId(project.id);
                 if (project.text && project.text.trim()) {
@@ -668,7 +766,7 @@ class NovelPlayer {
 
         this.suppressProjectSave = true;
         this.setScriptText(initialText);
-        this.updateScript();
+        this.updateScript({ allowWhileHidden: true });
         this.suppressProjectSave = false;
 
         if (window.ProjectStorage && this.activeProjectId) {
@@ -692,6 +790,11 @@ class NovelPlayer {
     }
 
     updateScript(options = {}) {
+        if (document.hidden && options.allowWhileHidden !== true) {
+            this._scriptParseDeferred = true;
+            return;
+        }
+
         const preservePosition = options.preservePreviewPosition !== false;
         const anchor = preservePosition ? this.capturePreviewAnchor() : null;
 
@@ -711,10 +814,20 @@ class NovelPlayer {
                 : { viewIndex: 0, viewLineUnit: 0 };
         this.viewIndex = resolved.viewIndex;
         this.viewLineUnit = resolved.viewLineUnit;
+        this._scriptParseDeferred = false;
         this.renderCurrentView();
-        this.refreshReferenceErrors();
-        this.refreshNodeGraphIfOpen();
         this.updateEditorStatusBar();
+        // 参照エラー・ノードグラフはプレビュー表示後に遅延（メインスレッドの長時間占有を避ける）
+        const deferHeavyFollowUp = () => {
+            if (document.hidden) return;
+            this.refreshReferenceErrors();
+            this.refreshNodeGraphIfOpen();
+        };
+        if (typeof requestAnimationFrame === "function") {
+            requestAnimationFrame(deferHeavyFollowUp);
+        } else {
+            deferHeavyFollowUp();
+        }
     }
 
     pushGraphUndo() {
@@ -778,9 +891,7 @@ class NovelPlayer {
         if (typeof isOpenChoiceNodeId === "function" && isOpenChoiceNodeId(toLabel)) {
             return false;
         }
-        const ok = this.applyGraphTextPatch(patchLabelGoto, fromLabel, toLabel);
-        if (ok) this.refreshNodeGraphIfOpen();
-        return ok;
+        return this.applyGraphTextPatch(patchLabelGoto, fromLabel, toLabel);
     }
 
     graphConnectCall(fromLabel, toLabel) {
@@ -791,24 +902,18 @@ class NovelPlayer {
     }
 
     graphAddExit(labelName, exitKind) {
-        const ok = this.applyGraphTextPatch(patchLabelExit, labelName, exitKind);
-        if (ok) this.refreshNodeGraphIfOpen();
-        return ok;
+        return this.applyGraphTextPatch(patchLabelExit, labelName, exitKind);
     }
 
     graphConnectChoice(edge, toLabel) {
         if (typeof isOpenChoiceNodeId === "function" && isOpenChoiceNodeId(toLabel)) {
             return false;
         }
-        const ok = this.applyGraphTextPatch(patchChoiceTarget, edge, toLabel);
-        if (ok) this.refreshNodeGraphIfOpen();
-        return ok;
+        return this.applyGraphTextPatch(patchChoiceTarget, edge, toLabel);
     }
 
     graphRemoveEdge(edge) {
-        const ok = this.applyGraphTextPatch(removeGraphEdgeFromText, edge);
-        if (ok) this.refreshNodeGraphIfOpen();
-        return ok;
+        return this.applyGraphTextPatch(removeGraphEdgeFromText, edge);
     }
 
     promptReorderScriptByFlow() {
@@ -1328,7 +1433,7 @@ class NovelPlayer {
         if (this.nodeGraphButton) {
             this.nodeGraphButton.setAttribute("aria-expanded", "true");
         }
-        this.refreshNodeGraph();
+        this.refreshNodeGraph({ force: true });
         // グラフ領域へのフォーカスはキーボードを出す端末があるため行わない
     }
 
@@ -1411,9 +1516,10 @@ class NovelPlayer {
         this.moveEditorToSourceLine(line, opts);
     }
 
-    refreshNodeGraphIfOpen() {
+    refreshNodeGraphIfOpen(options = {}) {
+        if (document.hidden) return;
         if (this.isNodeGraphOpen()) {
-            this.refreshNodeGraph();
+            this.refreshNodeGraph(options);
         }
     }
 
@@ -1943,12 +2049,41 @@ class NovelPlayer {
         this.labelGraphView.setCurrentLabel(this.getHighlightLabelName());
     }
 
-    refreshNodeGraph() {
+    refreshNodeGraph(options = {}) {
         if (!this.labelGraphView || typeof buildLabelGraphData !== "function") return;
 
         const current = this.script.length
             ? this.getLabelForIndex(this.viewIndex)
             : null;
+        const filter = this.getNodeGraphFilterText();
+        const structData = buildLabelGraphData(
+            this.script,
+            this.labels,
+            this.labelSourceLines,
+            { includePreview: false }
+        );
+        const structSig =
+            typeof graphStructureSignature === "function"
+                ? graphStructureSignature(structData)
+                : null;
+
+        if (
+            !options.force &&
+            structSig &&
+            this._graphStructSig === structSig
+        ) {
+            if (this._graphFilterSig !== filter) {
+                this._graphFilterSig = filter;
+                this.labelGraphView.applyFilter(filter, current);
+            } else {
+                this.labelGraphView.setCurrentLabel(current);
+            }
+            return;
+        }
+
+        this._graphStructSig = structSig;
+        this._graphFilterSig = filter;
+
         const data = buildLabelGraphData(
             this.script,
             this.labels,
@@ -1956,9 +2091,9 @@ class NovelPlayer {
         );
 
         this.labelGraphView.render(data, {
-            filter: this.getNodeGraphFilterText(),
+            filter,
             currentLabel: current,
-            fitIfNeeded: true,
+            fitIfNeeded: !options.skipFit,
         });
     }
 
@@ -2034,6 +2169,7 @@ class NovelPlayer {
 
     /** 未選択の @if 枝本文に当たったら if_chain の位置へ戻す */
     redirectInactiveIfContent(idx) {
+        if (this.callStack.length) return idx;
         for (let i = 0; i < this.script.length; i++) {
             const item = this.script[i];
             if (item.type !== "if_chain") continue;
@@ -2050,6 +2186,7 @@ class NovelPlayer {
     }
 
     consumeIfSkipForIndex(indexRef) {
+        if (this.callStack.length) return indexRef;
         let idx = indexRef;
         while (
             this.ifSkipStack.length &&
@@ -2288,6 +2425,14 @@ class NovelPlayer {
                 continue;
             }
             if (line.type === "call") {
+                if (this.labels.hasOwnProperty(line.target)) {
+                    this.pushCallReturn(idx, line.target);
+                    idx = this.labels[line.target];
+                    lu = 0;
+                    this.index = idx;
+                    this.viewIndex = idx;
+                    continue;
+                }
                 if (this.paintAt(idx, 0)) {
                     this.syncPlaybackIndexAfterView(idx, 0);
                     this.refreshLabelUI();
@@ -2405,9 +2550,11 @@ class NovelPlayer {
         if (line.type === "call") {
             if (this.labels.hasOwnProperty(line.target)) {
                 this.pushCallReturn(this.index, line.target);
-                this.index = this.labels[line.target];
+                this.viewIndex = this.labels[line.target];
+                this.viewLineUnit = 0;
+                this.index = this.viewIndex;
                 this.lineUnitIndex = 0;
-                this.showLine();
+                this.renderCurrentView();
             } else {
                 console.error(`ラベル "${line.target}" が見つかりません`);
                 this.index++;

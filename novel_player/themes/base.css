@@ -1,0 +1,596 @@
+/* ========== 派生（全テーマ共通・パレットは JSON から実行時に CSS 生成） ========== */
+
+:root,
+[data-app-theme] {
+    --muted-2: color-mix(in srgb, var(--t-muted) 50%, var(--t-fg));
+    --surface-elevated: color-mix(in srgb, var(--t-field) 88%, var(--t-fg) 12%);
+    /* 区切り線（パネル枠など） */
+    --border-soft: color-mix(in srgb, var(--t-border) 38%, var(--t-bg));
+    --border-faint: color-mix(in srgb, var(--t-border) 20%, var(--t-bg));
+    /* ボタン・入力の輪郭（明るい fg を混ぜない＝目立ちにくい） */
+    --border-control: color-mix(in srgb, var(--t-border) 28%, var(--t-control));
+    --border-input: color-mix(in srgb, var(--t-border) 32%, var(--t-field));
+    --accent-dim: color-mix(in srgb, var(--t-accent) 50%, transparent);
+
+    /* ボタン・入力（アプリ内の標準コントロール） */
+    --control-bg: var(--t-control);
+    --control-bg-hover: var(--t-control-hover);
+    --control-fg: var(--t-fg);
+    --control-border: var(--border-control);
+    --field-bg: var(--t-field);
+    --field-fg: var(--t-fg);
+    --field-border: var(--border-input);
+    --panel-bg: var(--t-field);
+
+    /* 強調（選択中・プライマリボタン） */
+    --active-bg: color-mix(in srgb, var(--t-accent) 22%, var(--t-panel));
+    --active-border: var(--t-accent);
+    --active-fg: color-mix(in srgb, var(--t-accent) 38%, var(--t-fg));
+    --btn-primary-bg: var(--active-bg);
+    --btn-primary-fg: var(--active-fg);
+    --btn-primary-border: var(--active-border);
+    --btn-primary-hover: var(--control-bg-hover);
+
+    /* 警告・エラー */
+    --danger-bg: color-mix(in srgb, var(--t-danger) 28%, var(--t-panel));
+    --danger-border: var(--t-danger);
+    --danger-fg: color-mix(in srgb, var(--t-danger) 45%, var(--t-fg));
+
+    /* @if プレビュー枝 */
+    --if-bg: color-mix(in srgb, var(--t-accent) 14%, var(--t-panel));
+    --if-fg: color-mix(in srgb, var(--t-accent) 40%, var(--t-fg));
+    --if-border: color-mix(in srgb, var(--t-accent) 50%, transparent);
+
+    /* プレビュー枠・エディタ枠 */
+    --preview-hover: color-mix(in srgb, var(--t-panel) 88%, var(--t-fg));
+    --preview-active: color-mix(in srgb, var(--t-panel) 78%, var(--t-fg));
+    --editor-bg: color-mix(in srgb, var(--t-field) 92%, var(--t-bg));
+    --editor-line: color-mix(in srgb, var(--t-accent) 10%, transparent);
+
+    --overlay: var(--t-overlay);
+    --scrollbar-track: color-mix(in srgb, var(--t-panel) 70%, var(--t-bg));
+    --scrollbar-thumb: color-mix(in srgb, var(--t-muted) 28%, var(--t-panel));
+    --scrollbar-thumb-hover: color-mix(in srgb, var(--t-muted) 45%, var(--t-panel));
+
+    /* styles.css 後方互換 */
+    --app-bg: var(--t-bg);
+    --app-fg: var(--t-fg);
+    --app-surface: var(--t-surface);
+    --app-surface-2: var(--t-field);
+    --app-surface-3: var(--surface-elevated);
+    --app-surface-raised: var(--t-panel);
+    --app-border: var(--border-soft);
+    --app-border-strong: color-mix(in srgb, var(--t-border) 48%, var(--t-bg));
+    --app-border-input: var(--border-input);
+    --app-muted: var(--t-muted);
+    --app-muted-2: var(--muted-2);
+    --app-accent: var(--t-accent);
+    --app-accent-focus: var(--t-accent);
+    --app-accent-dim: var(--accent-dim);
+    --app-btn-bg: color-mix(in srgb, var(--t-control) 92%, transparent);
+    --app-btn-bg-hover: color-mix(in srgb, var(--t-control-hover) 95%, transparent);
+    --app-btn-border: var(--border-input);
+    --app-btn-fg: var(--muted-2);
+    --app-input-bg: var(--field-bg);
+    --app-input-fg: var(--field-fg);
+    --preview-bg: var(--t-panel);
+    --preview-bg-hover: var(--preview-hover);
+    --preview-bg-active: var(--preview-active);
+    --preview-name: var(--t-accent);
+    --preview-btn-bg: var(--control-bg);
+    --preview-btn-hover: var(--control-bg-hover);
+    --preview-if-btn-bg: var(--if-bg);
+    --preview-if-btn-fg: var(--if-fg);
+    --preview-if-accent: var(--if-border);
+    --editor-shell-bg: var(--t-panel);
+    --editor-fg: var(--t-fg);
+    --editor-gutter-bg: var(--t-surface);
+    --editor-gutter-fg: var(--t-muted);
+    --editor-border: var(--border-soft);
+    --editor-active-line: var(--editor-line);
+    --theme-color-meta: var(--t-surface);
+    --modal-overlay: var(--overlay);
+    --chip-active-bg: var(--active-bg);
+    --chip-active-border: var(--active-border);
+    --chip-active-fg: var(--active-fg);
+    --chip-danger-active-bg: var(--danger-bg);
+    --chip-danger-active-border: var(--danger-border);
+    --chip-danger-active-fg: var(--danger-fg);
+}
+
+/* ========== UI 適用（参照する変数は --t-* / --control-* / --field-* / --active-* だけ） ========== */
+
+body {
+    background: var(--t-bg);
+    color: var(--t-fg);
+}
+
+.app-menu-bar {
+    background: var(--t-surface);
+    border-bottom-color: var(--border-soft);
+}
+
+.app-menu-bar__status,
+.editor-panel-status {
+    color: var(--t-muted);
+    background: var(--t-surface);
+    border-top-color: var(--border-soft);
+}
+
+.app-menu-bar__project-select,
+.app-menu-bar__project-btn,
+.app-menu-bar__quick-btn,
+.panel-layout-toggle,
+.panel-expand-btn,
+.menu-toggle {
+    color: var(--control-fg);
+    background: var(--control-bg);
+    border-color: var(--control-border);
+}
+
+.app-menu-bar__project-btn:hover,
+.app-menu-bar__quick-btn:hover,
+.panel-layout-toggle:hover,
+.panel-expand-btn:hover,
+.app-menu-bar .menu-toggle--compact:hover {
+    background: var(--control-bg-hover);
+    color: var(--t-fg);
+    border-color: var(--control-border);
+}
+
+.app-menu-bar .menu-toggle--compact {
+    background: color-mix(in srgb, var(--t-control) 92%, transparent);
+}
+
+.menu-toggle:focus-visible,
+.app-menu-bar__quick-btn:focus-visible,
+.panel-layout-toggle:focus-visible,
+.panel-expand-btn:focus-visible,
+.panel-splitter:focus-visible {
+    outline-color: var(--t-accent);
+}
+
+.novel-viewer {
+    color: var(--t-fg);
+}
+
+.menu-drawer-backdrop,
+.modal {
+    background: var(--overlay);
+}
+
+.menu-drawer-panel,
+.modal-content {
+    background: var(--t-panel);
+    color: var(--t-fg);
+    border-color: var(--border-soft);
+}
+
+.menu-drawer-header {
+    background: var(--t-surface);
+    border-bottom-color: var(--border-soft);
+}
+
+.menu-drawer-title {
+    color: var(--t-fg);
+}
+
+.menu-drawer-close,
+.close {
+    color: var(--muted-2);
+}
+
+.menu-drawer-close:hover,
+.close:hover,
+.close:focus {
+    color: var(--t-fg);
+    background: var(--control-bg);
+}
+
+.menu-drawer-hint,
+.label-quick-title,
+.label-list-empty,
+.import-choice-message,
+.help-panel > p,
+.meta-settings-item,
+.export-setting-item label,
+.export-replace-section > label {
+    color: var(--muted-2);
+}
+
+.meta-settings-summary {
+    color: var(--t-fg);
+}
+
+.meta-settings,
+.script-diagnostics,
+.export-replace-section {
+    border-top-color: var(--border-soft);
+}
+
+.text-container {
+    background: var(--t-panel);
+    border-color: var(--border-faint);
+}
+
+.text-container:hover {
+    background: var(--preview-hover);
+}
+
+.text-container:active {
+    background: var(--preview-active);
+    box-shadow: inset 0 0 0 1px var(--accent-dim);
+}
+
+.text-container:focus-visible {
+    outline-color: var(--accent-dim);
+}
+
+.name {
+    color: var(--t-accent);
+}
+
+.button-area {
+    border-top-color: var(--border-soft);
+}
+
+.scenario-box {
+    background: var(--t-panel);
+}
+
+.script-editor-host {
+    border-color: var(--border-faint);
+}
+
+.panel-splitter {
+    background: var(--t-field);
+    border-color: var(--control-border);
+}
+
+.panel-splitter:hover,
+.panel-splitter:focus {
+    background: var(--surface-elevated);
+}
+
+.export-controls,
+.export-settings,
+.meta-settings-body {
+    background: var(--panel-bg);
+    border-color: var(--border-soft);
+}
+
+.export-settings {
+    border-left-color: var(--t-accent);
+}
+
+.export-controls h4,
+.help-content h3,
+.about-content h3 {
+    color: var(--t-accent);
+}
+
+.help-content h3,
+.about-content h3,
+.help-tabs {
+    border-bottom-color: var(--border-soft);
+}
+
+.help-tab {
+    color: var(--muted-2);
+}
+
+.help-tab:hover {
+    color: var(--t-fg);
+}
+
+.help-tab.is-active {
+    color: var(--t-accent);
+    border-bottom-color: var(--t-accent);
+}
+
+.help-content pre,
+.help-details pre {
+    background: var(--t-panel);
+    color: var(--t-fg);
+    border-left-color: var(--t-accent);
+}
+
+.choices--if {
+    border-top-color: var(--if-border);
+}
+
+.choices--if button.if-branch-btn {
+    background: var(--if-bg);
+    border-color: var(--if-border);
+    border-left-color: var(--if-border);
+    color: var(--if-fg);
+}
+
+/* ボタン（共通） */
+.menu-drawer-body--stack button,
+.menu-drawer--scenario .menu-drawer-body button,
+.modal button:not(.close),
+.meta-settings-actions button,
+.export-buttons button,
+#importChoiceModal button,
+.preview-nav button,
+.choices button:not(.if-branch-btn),
+.preview-sync-menu__btn,
+.menu-drawer--novel .menu-drawer-body #restart,
+.menu-drawer--novel .menu-drawer-body #prevChoice,
+.label-manage-btn,
+.label-chip,
+#addReplace,
+.remove-replace,
+#exportSettingsButton,
+#exportButton,
+#copyFormattedButton,
+#metaReloadButton,
+#metaApplyButton,
+#reorderFlowButton,
+#saveButton,
+#loadButton,
+#pasteLoadButton,
+#copyButton,
+#clearButton {
+    background: var(--control-bg);
+    color: var(--control-fg);
+    border: 1px solid var(--border-control);
+}
+
+.menu-drawer-body--stack button:hover,
+.menu-drawer--scenario .menu-drawer-body button:hover,
+.modal button:not(.close):hover:not(:disabled),
+.meta-settings-actions button:hover,
+.export-buttons button:hover,
+#importChoiceModal button:hover,
+.preview-nav button:hover:not(:disabled),
+.choices button:not(.if-branch-btn):hover,
+.preview-sync-menu__btn:hover,
+.menu-drawer--novel .menu-drawer-body #restart:hover,
+.menu-drawer--novel .menu-drawer-body #prevChoice:hover:not(:disabled),
+.label-manage-btn:hover:not(:disabled),
+.label-chip:hover,
+#addReplace:hover,
+.remove-replace:hover,
+#exportSettingsButton:hover,
+#exportButton:hover,
+#metaReloadButton:hover,
+#metaApplyButton:hover,
+#reorderFlowButton:hover,
+#saveButton:hover,
+#loadButton:hover,
+#pasteLoadButton:hover,
+#copyButton:hover,
+#clearButton:hover {
+    background: var(--control-bg-hover);
+    color: var(--t-fg);
+}
+
+#importChoiceModal .import-choice-btn--primary,
+#copyFormattedButton {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-fg);
+    border-color: var(--btn-primary-border);
+}
+
+#importChoiceModal .import-choice-btn--primary:hover,
+#copyFormattedButton:hover {
+    background: var(--btn-primary-hover);
+    color: var(--btn-primary-fg);
+    border-color: var(--btn-primary-border);
+}
+
+.label-manage-btn.is-active,
+.label-chip.is-current {
+    background: var(--active-bg);
+    border-color: var(--active-border);
+    color: var(--active-fg);
+}
+
+.label-manage-btn--danger.is-active,
+.label-chip.is-delete-mode {
+    border-color: var(--danger-border);
+}
+
+.label-manage-btn--danger.is-active {
+    background: var(--danger-bg);
+    color: var(--danger-fg);
+}
+
+.label-chip.is-rename-mode {
+    border-color: var(--active-border);
+}
+
+.label-list:has(.label-chip.is-rename-mode) {
+    outline-color: var(--active-border);
+}
+
+.label-list:has(.label-chip.is-delete-mode) {
+    outline-color: var(--danger-border);
+}
+
+.ref-error-badge {
+    color: var(--t-muted);
+}
+
+.ref-error-list-empty {
+    color: var(--t-muted);
+}
+
+.ref-error-item button {
+    background: var(--danger-bg);
+    color: var(--danger-fg);
+    border-color: var(--danger-border);
+}
+
+.ref-error-item button:hover {
+    background: var(--control-bg-hover);
+}
+
+/* 入力・select（共通） */
+.app-menu-bar select,
+.menu-drawer select,
+.menu-drawer input[type="text"],
+.menu-drawer input[type="number"],
+.modal select,
+.modal input[type="text"],
+.modal input[type="number"],
+.modal textarea,
+.export-content select,
+.export-content input[type="text"],
+.export-content input[type="number"],
+.replace-item input[type="text"],
+.format-options input[type="text"],
+.format-options select,
+.label-filter,
+.meta-settings-item input,
+.meta-settings-item select,
+#exportFormat,
+#exportExtension,
+#outputUnit,
+#pageBreakSymbol,
+#labelSymbol,
+#jumpTag,
+#callTag,
+#returnTag,
+#choiceLineTemplate,
+#choiceBlockEnd,
+#renpyDialogueStyle,
+#appThemeSelect,
+#previewUnit,
+.menu-drawer--novel .preview-unit-row select,
+.export-setting-item input[type="text"],
+.export-setting-item select {
+    background: var(--field-bg);
+    color: var(--field-fg);
+    border: 1px solid var(--border-input);
+    border-radius: 4px;
+}
+
+.label-filter::placeholder,
+.node-graph-panel__filter::placeholder {
+    color: var(--t-muted);
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+/* ノードグラフ外枠（SVG 本体は styles.css のまま） */
+.node-graph-panel {
+    background: var(--t-bg);
+}
+
+.node-graph-panel__header {
+    border-bottom-color: var(--border-soft);
+}
+
+.node-graph-panel__title {
+    color: var(--t-fg);
+}
+
+.node-graph-panel__icon-btn,
+.node-graph-panel__close {
+    color: var(--control-fg);
+    background: var(--field-bg);
+    border-color: var(--control-border);
+}
+
+.node-graph-panel__icon-btn:hover,
+.node-graph-panel__icon-btn[aria-expanded="true"],
+.node-graph-panel__close:hover {
+    background: var(--control-bg-hover);
+    color: var(--t-fg);
+    border-color: var(--t-accent);
+}
+
+.node-graph-panel__filter {
+    background: var(--field-bg);
+    color: var(--field-fg);
+    border-color: var(--field-border);
+}
+
+.node-graph-help-overlay {
+    background: var(--overlay);
+}
+
+.node-graph-help-overlay__panel,
+.node-graph-help-overlay__head {
+    background: var(--t-panel);
+    border-color: var(--border-soft);
+    color: var(--muted-2);
+}
+
+.node-graph-help-overlay__head h3 {
+    color: var(--t-fg);
+}
+
+.node-graph-help__foot {
+    color: var(--t-muted);
+    border-top-color: var(--border-soft);
+}
+
+.label-graph-float-toggle {
+    color: var(--control-fg);
+    background: color-mix(in srgb, var(--t-control) 92%, transparent);
+    border-color: var(--control-border);
+}
+
+.label-graph-float-toggle:hover,
+.label-graph-view.is-float-expanded .label-graph-float-toggle {
+    background: var(--active-bg);
+    border-color: var(--active-border);
+    color: var(--active-fg);
+}
+
+.label-graph-float-ui__tools {
+    background: color-mix(in srgb, var(--t-panel) 94%, transparent);
+    border-color: var(--border-soft);
+}
+
+.label-graph-toolbar button {
+    color: var(--control-fg);
+    background: var(--field-bg);
+    border-color: var(--control-border);
+}
+
+.label-graph-toolbar button:hover {
+    background: var(--control-bg-hover);
+    color: var(--t-fg);
+}
+
+.label-graph-toolbar button.is-active {
+    background: var(--active-bg);
+    border-color: var(--active-border);
+    color: var(--active-fg);
+}
+
+.label-graph-toolbar__sep {
+    background: var(--border-soft);
+}
+
+.label-graph-toolbar__group {
+    border-color: var(--border-soft);
+    background: var(--t-surface);
+}
+
+.label-graph-float-ui > .label-graph-status {
+    color: var(--muted-2);
+    background: color-mix(in srgb, var(--t-field) 96%, transparent);
+    border-color: var(--border-faint);
+}
+
+.label-graph-view.is-tool-mode .label-graph-float-ui > .label-graph-status {
+    color: var(--active-fg);
+    border-color: var(--active-border);
+    background: color-mix(in srgb, var(--active-bg) 92%, transparent);
+}

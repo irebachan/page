@@ -62,9 +62,9 @@ body {
     padding: 0;
     font-size: 0.82rem;
     line-height: 1;
-    color: #bbb;
-    background: rgba(35, 35, 35, 0.92);
-    border: 1px solid #555;
+    color: var(--control-fg, #bbb);
+    background: var(--control-bg, rgba(35, 35, 35, 0.92));
+    border: 1px solid var(--control-border, #555);
     border-radius: 6px;
     cursor: pointer;
     display: inline-flex;
@@ -75,9 +75,9 @@ body {
 }
 
 .app-menu-bar__quick-btn:hover {
-    background: rgba(55, 55, 55, 0.95);
-    border-color: #777;
-    color: #fff;
+    background: var(--control-bg-hover, rgba(55, 55, 55, 0.95));
+    border-color: var(--control-border, #777);
+    color: var(--t-fg, #fff);
 }
 
 .app-menu-bar__quick-btn:focus-visible {
@@ -183,10 +183,10 @@ body {
     min-width: 2rem;
     min-height: 2rem;
     padding: 0;
-    border: 1px solid #555;
+    border: 1px solid var(--control-border, #555);
     border-radius: 6px;
-    background: rgba(35, 35, 35, 0.92);
-    color: #ccc;
+    background: var(--control-bg, rgba(35, 35, 35, 0.92));
+    color: var(--control-fg, #ccc);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -196,9 +196,9 @@ body {
 }
 
 .panel-layout-toggle:hover {
-    background: rgba(55, 55, 55, 0.95);
-    color: #fff;
-    border-color: #777;
+    background: var(--control-bg-hover, rgba(55, 55, 55, 0.95));
+    color: var(--t-fg, #fff);
+    border-color: var(--control-border, #777);
 }
 
 .panel-layout-toggle:focus-visible {
@@ -418,18 +418,20 @@ body.is-panel-dragging * {
     font-size: 0.85rem;
     line-height: 1.3;
     border-radius: 4px;
-    border-color: #555;
-    background: rgba(40, 40, 40, 0.85);
+    color: var(--control-fg, #fff);
+    border-color: var(--control-border, #555);
+    background: color-mix(in srgb, var(--t-control, #444) 92%, transparent);
     box-shadow: none;
 }
 
 .app-menu-bar .menu-toggle--compact[aria-expanded="true"] {
-    background: #3a3a3a;
-    border-color: #666;
+    background: var(--control-bg-hover, #3a3a3a);
+    border-color: var(--control-border, #666);
 }
 
 .app-menu-bar .menu-toggle--compact:hover {
-    background: #454545;
+    background: var(--control-bg-hover, #454545);
+    color: var(--t-fg, #fff);
 }
 
 .menu-toggle[aria-expanded="true"] {
@@ -555,32 +557,32 @@ body.menu-drawer-open {
     text-align: left;
     padding: 0.65em 0.85em;
     font-size: 1em;
-    background: #444;
-    color: #fff;
-    border: 1px solid #666;
+    background: var(--control-bg, #444);
+    color: var(--control-fg, #fff);
+    border: 1px solid var(--control-border, #3a3a3a);
     border-radius: 6px;
     cursor: pointer;
 }
 
 .menu-drawer-body--stack button:hover {
-    background: #555;
+    background: var(--control-bg-hover, #555);
 }
 
 .meta-settings {
     margin: 0.1em 0;
     padding-top: 0.35em;
-    border-top: 1px solid #444;
+    border-top: 1px solid var(--app-border-strong, #444);
 }
 
 .meta-settings-summary {
     cursor: pointer;
     font-size: 0.95em;
-    color: #ddd;
+    color: var(--app-fg, #ddd);
     user-select: none;
 }
 
 .meta-settings-summary:hover {
-    color: #fff;
+    color: var(--app-fg, #fff);
 }
 
 .meta-settings-body {
@@ -595,7 +597,7 @@ body.menu-drawer-open {
     flex-direction: column;
     gap: 0.25em;
     font-size: 0.9em;
-    color: #ccc;
+    color: var(--app-muted-2, #ccc);
 }
 
 .meta-settings-item input,
@@ -604,9 +606,9 @@ body.menu-drawer-open {
     box-sizing: border-box;
     padding: 0.45em 0.55em;
     font-size: 0.95em;
-    background: #333;
-    color: #eee;
-    border: 1px solid #555;
+    background: var(--field-bg, #333);
+    color: var(--field-fg, #eee);
+    border: 1px solid var(--field-border, #333);
     border-radius: 4px;
 }
 
@@ -1897,15 +1899,15 @@ body.node-graph-open .cm-scroller {
 .export-controls {
     margin-top: 1em;
     padding: 1em;
-    background: #2a2a2a;
-    border: 1px solid #444;
+    background: var(--panel-bg, #2a2a2a);
+    border: 1px solid var(--app-border-strong, #444);
     border-radius: 4px;
 }
 
 .export-controls h4 {
     margin-top: 0;
     margin-bottom: 0.5em;
-    color: #9cf;
+    color: var(--app-accent, #9cf);
 }
 
 .export-option {
@@ -1916,9 +1918,9 @@ body.node-graph-open .cm-scroller {
     margin-top: 0;
     margin-bottom: 1.5em;
     padding: 1em;
-    background: #2a2a2a;
+    background: var(--panel-bg, #2a2a2a);
     border-radius: 4px;
-    border-left: 4px solid #9cf;
+    border-left: 4px solid var(--app-accent, #9cf);
 }
 
 .export-setting-item {
@@ -1930,28 +1932,30 @@ body.node-graph-open .cm-scroller {
 .export-setting-item label {
     flex: 1;
     margin-right: 0.5em;
+    color: var(--app-muted-2, #ccc);
 }
 
-.export-setting-item input[type="text"] {
+.export-setting-item input[type="text"],
+.export-setting-item select {
     width: 150px;
     padding: 0.3em;
-    background: #333;
-    color: #fff;
-    border: 1px solid #555;
+    background: var(--field-bg, #333);
+    color: var(--field-fg, #fff);
+    border: 1px solid var(--field-border, #333);
 }
 
 #exportButton {
     width: 100%;
     padding: 0.7em;
-    background: #444;
-    color: #fff;
-    border: 1px solid #666;
+    background: var(--control-bg, #444);
+    color: var(--control-fg, #fff);
+    border: 1px solid var(--control-border, #3a3a3a);
     cursor: pointer;
     font-size: 1em;
 }
 
 #exportButton:hover {
-    background: #555;
+    background: var(--control-bg-hover, #555);
 }
 
 /* スクロールバーのスタイル */
@@ -1960,16 +1964,16 @@ body.node-graph-open .cm-scroller {
 }
 
 ::-webkit-scrollbar-track {
-    background: #222;
+    background: var(--scrollbar-track, #1a1a1a);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #555;
+    background: var(--scrollbar-thumb, #383838);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #777;
+    background: var(--scrollbar-thumb-hover, #4a4a4a);
 }
 
 /* テキストコンテナの位置を確保するためのスペーサー */
@@ -2127,12 +2131,13 @@ body.node-graph-open .cm-scroller {
 
 .help-content pre,
 .help-details pre {
-    background-color: #222;
+    background-color: var(--app-surface-raised, #222);
     padding: 1em;
     border-radius: 4px;
-    border-left: 4px solid #9cf;
+    border-left: 4px solid var(--app-accent, #9cf);
     overflow-x: auto;
     white-space: pre-wrap;
+    color: var(--app-fg, #fff);
 }
 
 /* 特殊テキスト出力設定モーダル */
@@ -2159,14 +2164,16 @@ body.node-graph-open .cm-scroller {
 .export-setting-item label {
     flex: 1;
     margin-right: 1em;
+    color: var(--app-muted-2, #ccc);
 }
 
-.export-setting-item input[type="text"] {
+.export-setting-item input[type="text"],
+.export-setting-item select {
     width: 150px;
     padding: 0.5em;
-    background: #333;
-    color: #fff;
-    border: 1px solid #555;
+    background: var(--field-bg, #333);
+    color: var(--field-fg, #fff);
+    border: 1px solid var(--field-border, #333);
     border-radius: 3px;
 }
 
@@ -2183,7 +2190,7 @@ body.node-graph-open .cm-scroller {
 .export-replace-section {
     margin-top: 1em;
     padding-top: 1em;
-    border-top: 1px solid #555;
+    border-top: 1px solid var(--app-border-strong, #555);
 }
 
 .export-buttons {
@@ -2192,29 +2199,32 @@ body.node-graph-open .cm-scroller {
     margin-top: 1em;
 }
 
-#exportButton, 
+#exportButton,
 #copyFormattedButton {
     flex: 1;
     padding: 0.7em;
-    background: #444;
-    color: #fff;
-    border: 1px solid #666;
+    background: var(--control-bg, #444);
+    color: var(--control-fg, #fff);
+    border: 1px solid var(--control-border, #3a3a3a);
     border-radius: 4px;
     cursor: pointer;
     font-size: 1em;
 }
 
-#exportButton:hover, 
+#exportButton:hover,
 #copyFormattedButton:hover {
-    background: #555;
+    background: var(--control-bg-hover, #555);
 }
 
 #copyFormattedButton {
-    background: #2c5e7e;
+    background: var(--btn-primary-bg, #2c5e7e);
+    color: var(--btn-primary-fg, #fff);
+    border-color: var(--btn-primary-border, #5a8ab0);
 }
 
 #copyFormattedButton:hover {
-    background: #326b8f;
+    background: var(--btn-primary-hover, #326b8f);
+    border-color: var(--btn-primary-border, #5a8ab0);
 }
 
 .close {
@@ -2495,4 +2505,42 @@ body.node-graph-open .cm-scroller {
         min-height: 40px;
         font-size: 0.95rem;
     }
+}
+
+.theme-preview-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    padding: 10px 14px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    background: var(--t-panel, #222);
+    border-top: 1px solid var(--t-border, #555);
+    color: var(--t-fg, #eee);
+    font-size: 13px;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.theme-preview-banner[hidden] {
+    display: none;
+}
+
+.theme-preview-banner__btn {
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--t-border, #666);
+    background: var(--t-control, #444);
+    color: var(--t-fg, #eee);
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.theme-preview-banner__btn:hover {
+    background: var(--t-control-hover, #555);
 }

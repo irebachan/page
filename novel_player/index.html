@@ -38,9 +38,17 @@
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="themes/base.css">
+    <script src="themes/registry.js"></script>
+    <script src="js/ui/app_themes.js"></script>
+    <script>AppThemes.applyStoredThemeEarly();</script>
 </head>
 
 <body>
+    <div id="themePreviewBanner" class="theme-preview-banner" hidden>
+        <span>テーマをプレビュー中（このタブだけ・保存されません）</span>
+        <button type="button" id="themePreviewDismiss" class="theme-preview-banner__btn">解除</button>
+    </div>
     <nav class="app-menu-bar" aria-label="メニュー">
         <div class="app-menu-bar__project">
             <select id="projectSelect" class="app-menu-bar__project-select" aria-label="作品を選ぶ"></select>
@@ -130,6 +138,10 @@
                         <option value="block">ブロックごと（#〜次の区切りまで一画面）</option>
                         <option value="line">1行ずつ（「次へ」で1行進む）</option>
                     </select>
+                </div>
+                <div class="preview-unit-row" id="appThemeRow" hidden>
+                    <label for="appThemeSelect">表示テーマ:</label>
+                    <select id="appThemeSelect"></select>
                 </div>
                 <div class="preview-unit-row preview-option-row">
                     <label

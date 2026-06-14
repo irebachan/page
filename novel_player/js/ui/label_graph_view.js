@@ -607,6 +607,36 @@ class LabelGraphView {
         this.applyTransform();
     }
 
+    /** フィルタ文字列だけ変わったとき（レイアウトはそのまま） */
+    applyFilter(filter, currentLabel) {
+        this.state.filter = (filter || "").trim().toLowerCase();
+        if (currentLabel !== undefined) this.state.currentLabel = currentLabel;
+        if (!this.data || !this.gNodes) return;
+
+        for (const g of this.gNodes.querySelectorAll(".label-graph-node")) {
+            const name = g.getAttribute("data-name");
+            g.classList.toggle("is-dimmed", !this.nodeMatchesFilter(name));
+            g.classList.toggle("is-current", name === this.state.currentLabel);
+        }
+
+        const esc =
+            typeof CSS !== "undefined" && CSS.escape
+                ? CSS.escape
+                : (s) => String(s).replace(/["\\]/g, "\\$&");
+        for (const edge of this.data.edges) {
+            const dimmed = !this.edgeMatchesFilter(edge);
+            const hit = this.gEdges?.querySelector(
+                `[data-edge-id="${esc(edge.id)}"]`
+            );
+            if (!hit) continue;
+            hit.classList.toggle("is-dimmed", dimmed);
+            const path = hit.nextElementSibling;
+            if (path?.classList?.contains("label-graph-edge")) {
+                path.classList.toggle("is-dimmed", dimmed);
+            }
+        }
+    }
+
     setCurrentLabel(name) {
         const prev = this.state.currentLabel;
         if (prev === name) {

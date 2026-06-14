@@ -1,0 +1,182 @@
+/**
+ * テーマエディタ用ギャラリー（変数の見え方確認）
+ */
+.te-gallery {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: var(--t-bg);
+    color: var(--t-fg);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    min-height: 280px;
+    position: relative;
+}
+
+.te-pv-block {
+    position: relative;
+    border-radius: 6px;
+}
+
+.te-meta-chrome {
+    padding: 8px 10px;
+    background: var(--theme-meta-color, #1a1a1a);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+.te-meta-title {
+    font-weight: 500;
+}
+
+.te-bar {
+    padding: 8px 10px;
+    background: var(--t-surface);
+    border: 1px solid var(--border-soft);
+}
+
+.te-bar-inner {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.te-bar button {
+    background: var(--control-bg);
+    color: var(--control-fg);
+    border: 1px solid var(--border-control);
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: default;
+}
+
+.te-bar button.te-hover-demo {
+    background: var(--control-bg-hover);
+}
+
+.te-bar button.te-primary {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-fg);
+    border-color: var(--btn-primary-border);
+}
+
+.te-field {
+    background: var(--field-bg);
+    color: var(--field-fg);
+    border: 1px solid var(--border-input);
+    border-radius: 4px;
+    padding: 6px 8px;
+    min-width: 120px;
+    box-sizing: border-box;
+}
+
+.te-preview-box {
+    background: var(--t-panel);
+    border: 1px solid var(--border-faint);
+    padding: 12px;
+}
+
+.te-preview-box .name {
+    color: var(--t-accent);
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.pv-body-text {
+    margin-bottom: 4px;
+}
+
+.pv-muted-text {
+    font-size: 12px;
+    color: var(--t-muted);
+}
+
+.te-modal-mock {
+    background: var(--overlay);
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.te-modal-inner {
+    background: var(--t-panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 6px;
+    padding: 12px;
+    color: var(--muted-2);
+}
+
+.te-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.te-chip {
+    background: var(--control-bg);
+    border: 1px solid var(--border-control);
+    color: var(--control-fg);
+    border-radius: 4px;
+    padding: 4px 10px;
+}
+
+.te-chip.is-active {
+    background: var(--active-bg);
+    border-color: var(--active-border);
+    color: var(--active-fg);
+}
+
+.te-chip-danger {
+    background: var(--danger-bg);
+    border-color: var(--danger-border);
+    color: var(--danger-fg);
+}
+
+.te-scroll-mock {
+    height: 72px;
+    overflow-y: scroll;
+    background: var(--t-panel);
+    border: 1px solid var(--border-faint);
+    padding: 8px;
+    font-size: 12px;
+    color: var(--muted-2);
+}
+
+.te-border-demo {
+    padding: 10px 12px;
+    border: 2px solid var(--t-border);
+    color: var(--t-fg);
+    font-size: 12px;
+}
+
+.te-syntax-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.te-syntax {
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 10px;
+    background: var(--editor-bg, var(--t-field));
+    border: 1px solid var(--border-faint);
+    border-radius: 6px;
+}
+
+/* 左項目ホバー時のハイライト */
+[data-te-target].te-pv-highlight {
+    outline: 2px solid #6af;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(102, 170, 255, 0.25);
+}
+
+.te-palette-row.te-pv-active {
+    background: rgba(102, 170, 255, 0.12);
+    border-radius: 4px;
+    outline: 1px solid rgba(102, 170, 255, 0.45);
+}
