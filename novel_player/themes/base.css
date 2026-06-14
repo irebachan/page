@@ -48,6 +48,9 @@
     --editor-line: color-mix(in srgb, var(--t-accent) 10%, transparent);
 
     --overlay: var(--t-overlay);
+    /* 面の段階: panel(プレビュー枠) < field(モーダル) < control(ボタン) — preset の階段に乗せる */
+    --modal-content-bg: var(--t-field);
+    --modal-inset-bg: var(--t-panel);
     --scrollbar-track: color-mix(in srgb, var(--t-panel) 70%, var(--t-bg));
     --scrollbar-thumb: color-mix(in srgb, var(--t-muted) 28%, var(--t-panel));
     --scrollbar-thumb-hover: color-mix(in srgb, var(--t-muted) 45%, var(--t-panel));
@@ -159,11 +162,17 @@ body {
     background: var(--overlay);
 }
 
-.menu-drawer-panel,
-.modal-content {
+.menu-drawer-panel {
     background: var(--t-panel);
     color: var(--t-fg);
     border-color: var(--border-soft);
+}
+
+.modal-content {
+    background: var(--modal-content-bg);
+    color: var(--t-fg);
+    border-color: var(--border-input);
+    box-shadow: 0 10px 36px color-mix(in srgb, var(--t-bg) 50%, transparent);
 }
 
 .menu-drawer-header {
@@ -193,8 +202,7 @@ body {
 .import-choice-message,
 .help-panel > p,
 .meta-settings-item,
-.export-setting-item label,
-.export-replace-section > label {
+.export-setting-item label {
     color: var(--muted-2);
 }
 
@@ -203,8 +211,7 @@ body {
 }
 
 .meta-settings,
-.script-diagnostics,
-.export-replace-section {
+.script-diagnostics {
     border-top-color: var(--border-soft);
 }
 
@@ -290,7 +297,7 @@ body {
 
 .help-content pre,
 .help-details pre {
-    background: var(--t-panel);
+    background: var(--modal-inset-bg);
     color: var(--t-fg);
     border-left-color: var(--t-accent);
 }
@@ -320,8 +327,6 @@ body {
 .menu-drawer--novel .menu-drawer-body #prevChoice,
 .label-manage-btn,
 .label-chip,
-#addReplace,
-.remove-replace,
 #exportSettingsButton,
 #exportButton,
 #copyFormattedButton,
@@ -351,8 +356,6 @@ body {
 .menu-drawer--novel .menu-drawer-body #prevChoice:hover:not(:disabled),
 .label-manage-btn:hover:not(:disabled),
 .label-chip:hover,
-#addReplace:hover,
-.remove-replace:hover,
 #exportSettingsButton:hover,
 #exportButton:hover,
 #metaReloadButton:hover,
@@ -440,7 +443,6 @@ body {
 .export-content select,
 .export-content input[type="text"],
 .export-content input[type="number"],
-.replace-item input[type="text"],
 .format-options input[type="text"],
 .format-options select,
 .label-filter,
@@ -525,7 +527,7 @@ body {
 
 .node-graph-help-overlay__panel,
 .node-graph-help-overlay__head {
-    background: var(--t-panel);
+    background: var(--modal-content-bg);
     border-color: var(--border-soft);
     color: var(--muted-2);
 }

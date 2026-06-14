@@ -2187,12 +2187,6 @@ body.node-graph-open .cm-scroller {
     margin-bottom: 0.25em;
 }
 
-.export-replace-section {
-    margin-top: 1em;
-    padding-top: 1em;
-    border-top: 1px solid var(--app-border-strong, #555);
-}
-
 .export-buttons {
     display: flex;
     gap: 0.5em;

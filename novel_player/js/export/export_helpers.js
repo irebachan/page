@@ -87,6 +87,58 @@ function splitByPunctuation(settings, text) {
     return result;
 }
 
+/** @meta 〜 @endmeta ブロックを key=value にパース（先頭の1ブロックのみ） */
+function parseMetaBlock(scriptText) {
+    const m = (scriptText || "").match(/(^|\n)\s*@meta\s*\n([\s\S]*?)\n\s*@endmeta(?:\n|$)/);
+    if (!m) return null;
+    const parsed = {};
+    (m[2] || "").split("\n").forEach((rawLine) => {
+        const line = rawLine.trim();
+        if (!line || line.startsWith("//")) return;
+        const eq = line.indexOf("=");
+        if (eq <= 0) return;
+        const key = line.slice(0, eq).trim();
+        const value = line.slice(eq + 1).trim();
+        if (key) parsed[key] = value;
+    });
+    return parsed;
+}
+
+const EXPORT_REPLACE_PREFIX = "export.replace.";
+
+/** @meta 本文から export.replace.<検索>=<置換> 行を上から順に集める */
+function parseExportReplaceRulesFromMetaBody(body) {
+    const rules = [];
+    (body || "").split("\n").forEach((rawLine) => {
+        const line = rawLine.trim();
+        if (!line || line.startsWith("//")) return;
+        const eq = line.indexOf("=");
+        if (eq <= 0) return;
+        const key = line.slice(0, eq).trim();
+        if (!key.startsWith(EXPORT_REPLACE_PREFIX)) return;
+        const from = key.slice(EXPORT_REPLACE_PREFIX.length);
+        if (!from) return;
+        rules.push({ from, to: line.slice(eq + 1).trim() });
+    });
+    return rules;
+}
+
+function parseExportReplaceFromScript(scriptText) {
+    const m = (scriptText || "").match(/(^|\n)\s*@meta\s*\n([\s\S]*?)\n\s*@endmeta(?:\n|$)/);
+    if (!m) return [];
+    return parseExportReplaceRulesFromMetaBody(m[2]);
+}
+
+function applyStringReplacements(outputText, rules) {
+    if (!rules?.length) return outputText;
+    let text = outputText;
+    for (const { from, to } of rules) {
+        if (!from) continue;
+        text = text.replace(new RegExp(from, "g"), to ?? "");
+    }
+    return text;
+}
+
 function formatLineBlock(settings, name, text, pageBreak, lineBreak, clickWait, oneLinePerPage) {
     const outputLines = [];
     const block = text ? text.split("\n") : [];

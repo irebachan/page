@@ -13,8 +13,6 @@ class ExportSettings {
         this.jumpTag = document.getElementById("jumpTag");
         this.callTag = document.getElementById("callTag");
         this.returnTag = document.getElementById("returnTag");
-        this.replaceList = document.getElementById("replaceList");
-        this.addReplaceButton = document.getElementById("addReplace");
         this.exportFormat = document.getElementById("exportFormat");
         this.formatOptionsTyrano = document.getElementById("formatOptionsTyrano");
         this.formatOptionsRenpy = document.getElementById("formatOptionsRenpy");
@@ -29,12 +27,10 @@ class ExportSettings {
         this.exportSettingsButton.addEventListener("click", () => this.showModal());
         this.exportButton.addEventListener("click", () => this.exportScript());
         this.copyFormattedButton.addEventListener("click", () => this.copyFormattedText());
-        this.addReplaceButton.addEventListener("click", () => this.addReplaceItem());
         if (this.exportFormat) {
             this.exportFormat.addEventListener("change", () => this.updateFormatVisibility());
         }
 
-        this.initReplaceList();
         this.updateFormatVisibility();
     }
 
@@ -57,52 +53,9 @@ class ExportSettings {
         }
     }
 
-    applyStringReplace(outputText) {
-        const replaceItems = this.replaceList.querySelectorAll(".replace-item");
-        replaceItems.forEach(item => {
-            const from = item.querySelector(".replace-from").value.trim();
-            const to = item.querySelector(".replace-to").value;
-            if (!from || to === "") return;
-            outputText = outputText.replace(new RegExp(from, "g"), to);
-        });
-        return outputText;
-    }
-
     showModal() {
         const modal = document.getElementById("exportSettingsModal");
         modal.style.display = "block";
-    }
-
-    initReplaceList() {
-        this.addReplaceButton.addEventListener("click", () => {
-            const newItem = document.createElement("div");
-            newItem.className = "replace-item";
-            newItem.innerHTML = `
-                <input type="text" class="replace-from" placeholder="置換前">
-                <input type="text" class="replace-to" placeholder="置換後">
-                <button class="remove-replace">×</button>
-            `;
-            this.replaceList.appendChild(newItem);
-        });
-        this.replaceList.addEventListener("click", (e) => {
-            if (e.target.classList.contains("remove-replace")) {
-                const item = e.target.closest(".replace-item");
-                if (this.replaceList.children.length > 1) {
-                    item.remove();
-                }
-            }
-        });
-    }
-
-    addReplaceItem() {
-        const newItem = document.createElement("div");
-        newItem.className = "replace-item";
-        newItem.innerHTML = `
-            <input type="text" class="replace-from" placeholder="置換前">
-            <input type="text" class="replace-to" placeholder="置換後">
-            <button class="remove-replace">×</button>
-        `;
-        this.replaceList.appendChild(newItem);
     }
 
     getScriptText() {
@@ -135,7 +88,11 @@ class ExportSettings {
                     ? renderTyrano(this, script, labels)
                     : rawScript;
         }
-        return this.applyStringReplace(text || rawScript);
+        const metaRules =
+            typeof parseExportReplaceFromScript === "function"
+                ? parseExportReplaceFromScript(rawScript)
+                : [];
+        return applyStringReplacements(text || rawScript, metaRules);
     }
 
     exportScript() {

@@ -101,7 +101,7 @@
 }
 
 .te-modal-inner {
-    background: var(--t-panel);
+    background: var(--modal-content-bg);
     border: 1px solid var(--border-soft);
     border-radius: 6px;
     padding: 12px;
