@@ -99,7 +99,7 @@ class NovelPlayer {
         }
         this.restartBtn.addEventListener("click", () => this.restart());
         this.updateScriptDebounced = this.debounce(() => {
-            if (document.hidden) {
+            if (!this.isPageForeground()) {
                 this._scriptParseDeferred = true;
                 return;
             }
@@ -107,7 +107,10 @@ class NovelPlayer {
         }, 300);
         this._graphStructSig = null;
         this._graphFilterSig = "";
-        this.persistProjectDebounced = this.debounce(() => this.persistProject(), 2000);
+        this.persistProjectDebounced = this.debounce(() => {
+            if (!this.isPageForeground()) return;
+            void this.persistProject();
+        }, 2000);
         this.initScenarioEditor();
         if (this.saveButton) {
             this.saveButton.addEventListener("click", () => this.saveScriptToFile());
@@ -400,8 +403,22 @@ class NovelPlayer {
 `;
 
         this._scriptParseDeferred = false;
+        this._pageInForeground = this.isPageForeground();
         this.bindPageLifecycle();
         void this.init();
+    }
+
+    /** タブ表示かつウィンドウフォーカスあり（別アプリへ切替えただけでは hidden にならない） */
+    isPageForeground() {
+        return !document.hidden && document.hasFocus();
+    }
+
+    syncPageActivityState() {
+        const fg = this.isPageForeground();
+        if (fg === this._pageInForeground) return;
+        this._pageInForeground = fg;
+        if (fg) this.onPageForeground();
+        else this.onPageBackground();
     }
 
     initSyncEditorOnLabelJump() {
@@ -464,47 +481,45 @@ class NovelPlayer {
     }
 
     bindPageLifecycle() {
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "hidden") {
-                this.onPageHidden();
-            } else if (document.visibilityState === "visible") {
-                this.onPageVisible();
+        const sync = () => this.syncPageActivityState();
+        document.addEventListener("visibilitychange", sync);
+        window.addEventListener("blur", sync);
+        window.addEventListener("focus", sync);
+        window.addEventListener("pagehide", () => {
+            this.onPageBackground();
+            if (this.projectSavePending) {
+                void this.persistProject();
             }
         });
-        window.addEventListener("pagehide", () => this.onPageHidden());
     }
 
-    onPageHidden() {
+    onPageBackground() {
         if (this.updateScriptDebounced.pending()) {
             this._scriptParseDeferred = true;
         }
         this.updateScriptDebounced.cancel();
         this.persistProjectDebounced.cancel();
         this.labelGraphView?.cancelScheduledFit?.();
-        if (!this.projectSavePending) return;
-        const save = () => {
-            if (!this.projectSavePending) return;
-            void this.persistProject();
-        };
-        if (typeof requestIdleCallback === "function") {
-            requestIdleCallback(save, { timeout: 3000 });
-        } else {
-            setTimeout(save, 50);
-        }
     }
 
-    onPageVisible() {
-        if (!this._scriptParseDeferred) return;
-        const runDeferredParse = () => {
-            if (document.hidden || !this._scriptParseDeferred) return;
-            this._scriptParseDeferred = false;
-            this.updateScript({ preservePreviewPosition: true });
+    onPageForeground() {
+        const runCatchUp = () => {
+            if (!this.isPageForeground()) return;
+            if (this._scriptParseDeferred) {
+                this._scriptParseDeferred = false;
+                this.updateScript({ preservePreviewPosition: true });
+            } else if (this.isNodeGraphOpen()) {
+                this.refreshNodeGraphIfOpen();
+            }
+            if (this.projectSavePending) {
+                this.persistProjectDebounced();
+            }
         };
-        // タブ復帰直後に同期パースすると UI が固まるため、アイドル時に実行
+        // 復帰直後に同期パースすると UI が固まるため、アイドル時に実行
         if (typeof requestIdleCallback === "function") {
-            requestIdleCallback(runDeferredParse, { timeout: 1200 });
+            requestIdleCallback(runCatchUp, { timeout: 1200 });
         } else {
-            setTimeout(runDeferredParse, 80);
+            setTimeout(runCatchUp, 80);
         }
     }
 
@@ -515,7 +530,7 @@ class NovelPlayer {
         }
         this.scenarioEditor = window.ScenarioEditor.create(this.scriptEditorHost, {
             onChange: () => {
-                if (document.hidden) {
+                if (!this.isPageForeground()) {
                     this._scriptParseDeferred = true;
                 } else {
                     this.updateScriptDebounced();
@@ -538,7 +553,9 @@ class NovelPlayer {
         if (this.suppressProjectSave || !window.ProjectStorage || !this.activeProjectId) return;
         this.projectSavePending = true;
         this.updateEditorStatusBar();
-        this.persistProjectDebounced();
+        if (this.isPageForeground()) {
+            this.persistProjectDebounced();
+        }
     }
 
     async persistProject() {
@@ -790,7 +807,7 @@ class NovelPlayer {
     }
 
     updateScript(options = {}) {
-        if (document.hidden && options.allowWhileHidden !== true) {
+        if (!this.isPageForeground() && options.allowWhileHidden !== true) {
             this._scriptParseDeferred = true;
             return;
         }
@@ -819,7 +836,7 @@ class NovelPlayer {
         this.updateEditorStatusBar();
         // 参照エラー・ノードグラフはプレビュー表示後に遅延（メインスレッドの長時間占有を避ける）
         const deferHeavyFollowUp = () => {
-            if (document.hidden) return;
+            if (!this.isPageForeground()) return;
             this.refreshReferenceErrors();
             this.refreshNodeGraphIfOpen();
         };
@@ -1517,7 +1534,7 @@ class NovelPlayer {
     }
 
     refreshNodeGraphIfOpen(options = {}) {
-        if (document.hidden) return;
+        if (!this.isPageForeground()) return;
         if (this.isNodeGraphOpen()) {
             this.refreshNodeGraph(options);
         }

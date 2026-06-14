@@ -180,16 +180,18 @@
         }
     }
 
+    function isPageForeground() {
+        return !document.hidden && document.hasFocus();
+    }
+
     function scheduleFallbackMirror(fn) {
         const run = () => {
-            if (document.hidden) {
-                document.addEventListener(
-                    "visibilitychange",
-                    () => {
-                        if (!document.hidden) scheduleFallbackMirror(fn);
-                    },
-                    { once: true }
-                );
+            if (!isPageForeground()) {
+                const retry = () => {
+                    if (isPageForeground()) scheduleFallbackMirror(fn);
+                };
+                document.addEventListener("visibilitychange", retry, { once: true });
+                window.addEventListener("focus", retry, { once: true });
                 return;
             }
             fn();
