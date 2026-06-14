@@ -10,6 +10,7 @@ window.__NOVEL_THEME_MANIFEST__ = {
         "default",
         "midnight",
         "wine",
+        "cafe",
         "sepia",
         "forest",
     ],

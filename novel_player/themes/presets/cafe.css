@@ -1,0 +1,24 @@
+[data-app-theme="cafe"] {
+    --theme-label: カフェオレ;
+    --theme-meta-color: #c3bbbb;
+    --syntax-character: #4ea1f4;
+    --syntax-label: #9d77fd;
+    --syntax-if: #f98d1a;
+    --syntax-goto: #14addb;
+    --syntax-call: #b69b25;
+    --syntax-choice: #59c08c;
+    --syntax-end: #a39e9e;
+    --t-bg: #d8d4d4;
+    --t-fg: #716060;
+    --t-surface: #c5bfbf;
+    --t-gutter: #ede8e8;
+    --t-panel: #e6e6e6;
+    --t-field: #f0f0f0;
+    --t-control: #c3bbbb;
+    --t-control-hover: #e9e2e2;
+    --t-border: #c2bdbd;
+    --t-muted: #877d7d;
+    --t-accent: #967979;
+    --t-danger: #ff3333;
+    --t-overlay: rgba(45, 45, 42, 0.533);
+}

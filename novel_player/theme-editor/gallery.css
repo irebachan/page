@@ -158,6 +158,36 @@
     gap: 6px;
 }
 
+.te-editor-mock {
+    display: flex;
+    min-height: 56px;
+    border: 1px solid var(--border-faint);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--t-panel);
+}
+
+.te-editor-gutter {
+    flex: 0 0 2.2em;
+    padding: 8px 6px;
+    text-align: right;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--t-muted);
+    background: var(--t-gutter);
+    border-right: 1px solid var(--border-faint);
+}
+
+.te-editor-body {
+    flex: 1;
+    padding: 8px 10px;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    background: var(--editor-bg, var(--t-field));
+    color: var(--t-fg);
+}
+
 .te-syntax {
     font-family: ui-monospace, monospace;
     font-size: 13px;

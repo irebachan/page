@@ -76,7 +76,14 @@
         {
             id: "tSurface",
             var: "--t-surface",
-            label: "バー",
+            label: "メニューバー",
+            color: true,
+            group: "palette",
+        },
+        {
+            id: "tGutter",
+            var: "--t-gutter",
+            label: "行番号欄",
             color: true,
             group: "palette",
         },

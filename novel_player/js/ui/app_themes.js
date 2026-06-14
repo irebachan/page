@@ -196,6 +196,7 @@
                 "--t-bg",
                 "--t-fg",
                 "--t-surface",
+                "--t-gutter",
                 "--t-panel",
                 "--t-field",
                 "--t-control",

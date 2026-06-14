@@ -94,6 +94,25 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    function closeModal(modal) {
+        if (modal) modal.style.display = "none";
+    }
+
+    function bindModalBackdropClose(modal, onClose) {
+        if (!modal) return;
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) onClose();
+        });
+    }
+
+    function isModalOpen(modal) {
+        return modal && modal.style.display === "block";
+    }
+
+    bindModalBackdropClose(helpModal, () => closeModal(helpModal));
+    bindModalBackdropClose(aboutModal, () => closeModal(aboutModal));
+    bindModalBackdropClose(exportSettingsModal, () => closeModal(exportSettingsModal));
+
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
             if (novelPlayer.isNodeGraphOpen()) {
@@ -104,6 +123,18 @@ document.addEventListener("DOMContentLoaded", () => {
             if (importChoiceModal && importChoiceModal.style.display === "block") {
                 importChoiceModal.style.display = "none";
                 if (window.novelPlayer) window.novelPlayer.pendingImport = null;
+                return;
+            }
+            if (isModalOpen(exportSettingsModal)) {
+                closeModal(exportSettingsModal);
+                return;
+            }
+            if (isModalOpen(helpModal)) {
+                closeModal(helpModal);
+                return;
+            }
+            if (isModalOpen(aboutModal)) {
+                closeModal(aboutModal);
                 return;
             }
             closeAllMenus();
@@ -283,21 +314,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (closeBtn && helpModal) {
-        closeBtn.addEventListener("click", () => {
-            helpModal.style.display = "none";
-        });
+        closeBtn.addEventListener("click", () => closeModal(helpModal));
     }
 
     if (exportCloseBtn && exportSettingsModal) {
-        exportCloseBtn.addEventListener("click", () => {
-            exportSettingsModal.style.display = "none";
-        });
+        exportCloseBtn.addEventListener("click", () => closeModal(exportSettingsModal));
     }
 
     if (aboutCloseBtn && aboutModal) {
-        aboutCloseBtn.addEventListener("click", () => {
-            aboutModal.style.display = "none";
-        });
+        aboutCloseBtn.addEventListener("click", () => closeModal(aboutModal));
     }
 
     if (nodeGraphCloseBtn) {

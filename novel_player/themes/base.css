@@ -40,6 +40,7 @@
     --if-bg: color-mix(in srgb, var(--t-accent) 14%, var(--t-panel));
     --if-fg: color-mix(in srgb, var(--t-accent) 40%, var(--t-fg));
     --if-border: color-mix(in srgb, var(--t-accent) 50%, transparent);
+    --if-bg-hover: color-mix(in srgb, var(--if-bg) 52%, var(--control-bg-hover) 48%);
 
     /* プレビュー枠・エディタ枠 */
     --preview-hover: color-mix(in srgb, var(--t-panel) 88%, var(--t-fg));
@@ -48,6 +49,9 @@
     --editor-line: color-mix(in srgb, var(--t-accent) 10%, transparent);
 
     --overlay: var(--t-overlay);
+    --scrim: color-mix(in srgb, var(--t-overlay) 50%, transparent);
+    /* 行番号欄 — preset で上書き可。未設定時はメニューバーとパネルの中間 */
+    --t-gutter: color-mix(in srgb, var(--t-surface) 50%, var(--t-panel) 50%);
     /* 面の段階: panel(プレビュー枠) < field(モーダル) < control(ボタン) — preset の階段に乗せる */
     --modal-content-bg: var(--t-field);
     --modal-inset-bg: var(--t-panel);
@@ -87,7 +91,7 @@
     --preview-if-accent: var(--if-border);
     --editor-shell-bg: var(--t-panel);
     --editor-fg: var(--t-fg);
-    --editor-gutter-bg: var(--t-surface);
+    --editor-gutter-bg: var(--t-gutter);
     --editor-gutter-fg: var(--t-muted);
     --editor-border: var(--border-soft);
     --editor-active-line: var(--editor-line);
@@ -159,7 +163,7 @@ body {
 
 .menu-drawer-backdrop,
 .modal {
-    background: var(--overlay);
+    background: var(--scrim);
 }
 
 .menu-drawer-panel {
@@ -172,7 +176,7 @@ body {
     background: var(--modal-content-bg);
     color: var(--t-fg);
     border-color: var(--border-input);
-    box-shadow: 0 10px 36px color-mix(in srgb, var(--t-bg) 50%, transparent);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
 }
 
 .menu-drawer-header {
@@ -202,7 +206,9 @@ body {
 .import-choice-message,
 .help-panel > p,
 .meta-settings-item,
-.export-setting-item label {
+.export-setting-item label,
+.menu-drawer--novel .preview-unit-row label,
+.menu-drawer--novel .preview-option-row label {
     color: var(--muted-2);
 }
 
@@ -310,6 +316,11 @@ body {
     background: var(--if-bg);
     border-color: var(--if-border);
     border-left-color: var(--if-border);
+    color: var(--if-fg);
+}
+
+.choices--if button.if-branch-btn:hover:not(:disabled) {
+    background: var(--if-bg-hover);
     color: var(--if-fg);
 }
 
@@ -522,7 +533,7 @@ body {
 }
 
 .node-graph-help-overlay {
-    background: var(--overlay);
+    background: var(--scrim);
 }
 
 .node-graph-help-overlay__panel,

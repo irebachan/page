@@ -23173,13 +23173,17 @@ var ScenarioEditorModule = (() => {
       },
       ".cm-selectionMatch": {
         backgroundColor: "rgba(120, 180, 255, 0.2)"
+      },
+      ".tok-comment": {
+        color: "var(--t-muted, #888)",
+        fontStyle: "italic"
       }
     });
   }
   function buildHighlightStyle(colors) {
     return HighlightStyle.define([
-      { tag: tags.lineComment, color: "#888", fontStyle: "italic" },
-      { tag: tags.comment, color: "#888", fontStyle: "italic" },
+      { tag: tags.lineComment, class: "tok-comment" },
+      { tag: tags.comment, class: "tok-comment" },
       { tag: tags.heading, color: colors.character },
       { tag: tags.keyword, color: colors.if },
       { tag: tags.name, color: colors.if, fontStyle: "italic" },
