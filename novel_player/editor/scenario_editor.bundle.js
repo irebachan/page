@@ -23222,10 +23222,112 @@ var ScenarioEditorModule = (() => {
     const sel = window.getSelection?.();
     if (sel?.rangeCount) sel.removeAllRanges();
   }
+  function isCoarsePointer() {
+    return typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+  }
+  function getKeyboardOverlap() {
+    const vv = window.visualViewport;
+    if (!vv) return 0;
+    return Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  }
+  var TOUCH_SCROLL_Y_MARGIN = 120;
+  var KEYBOARD_SCROLL_PADDING = 16;
+  function estimatedKeyboardReserve() {
+    const overlap = getKeyboardOverlap();
+    if (overlap > 8) return overlap + KEYBOARD_SCROLL_PADDING;
+    return TOUCH_SCROLL_Y_MARGIN;
+  }
+  function nudgeCursorIntoVisualViewport(view) {
+    const head = view.state.selection.main.head;
+    const coords = view.coordsAtPos(head);
+    if (!coords) return;
+    const vv = window.visualViewport;
+    const visTop = (vv?.offsetTop ?? 0) + KEYBOARD_SCROLL_PADDING;
+    const visBottom = (vv?.offsetTop ?? 0) + (vv?.height ?? window.innerHeight) - KEYBOARD_SCROLL_PADDING;
+    if (coords.bottom > visBottom) {
+      window.scrollBy(0, coords.bottom - visBottom);
+    } else if (coords.top < visTop) {
+      window.scrollBy(0, coords.top - visTop);
+    }
+    const host = view.dom.closest(".script-editor-host");
+    if (!host) return;
+    const hostRect = host.getBoundingClientRect();
+    const clipBottom = Math.min(hostRect.bottom, visBottom);
+    if (coords.bottom > clipBottom - KEYBOARD_SCROLL_PADDING) {
+      host.scrollTop += coords.bottom - clipBottom + KEYBOARD_SCROLL_PADDING;
+    } else if (coords.top < Math.max(hostRect.top, visTop)) {
+      host.scrollTop += coords.top - Math.max(hostRect.top, visTop);
+    }
+  }
+  function scrollSelectionIntoView(view) {
+    view.dispatch({
+      effects: EditorView.scrollIntoView(view.state.selection.main.head, {
+        y: "start",
+        yMargin: estimatedKeyboardReserve()
+      })
+    });
+    requestAnimationFrame(() => nudgeCursorIntoVisualViewport(view));
+  }
+  function buildMobileTouchScrollExtensions() {
+    if (!isCoarsePointer()) return [];
+    let keyboardOverlap = getKeyboardOverlap();
+    const viewportPlugin = ViewPlugin.fromClass(
+      class MobileViewportSync {
+        constructor(view) {
+          this.view = view;
+          this._scrollTimer = null;
+          this._onViewportChange = () => {
+            const next = getKeyboardOverlap();
+            const changed = Math.abs(next - keyboardOverlap) >= 2;
+            keyboardOverlap = next;
+            if (changed && view.hasFocus) {
+              this.scheduleScroll();
+            }
+          };
+          const vv = window.visualViewport;
+          vv?.addEventListener("resize", this._onViewportChange);
+          vv?.addEventListener("scroll", this._onViewportChange);
+        }
+        scheduleScroll() {
+          clearTimeout(this._scrollTimer);
+          this._scrollTimer = setTimeout(() => {
+            this._scrollTimer = null;
+            if (!this.view.hasFocus) return;
+            scrollSelectionIntoView(this.view);
+          }, 80);
+        }
+        destroy() {
+          clearTimeout(this._scrollTimer);
+          const vv = window.visualViewport;
+          vv?.removeEventListener("resize", this._onViewportChange);
+          vv?.removeEventListener("scroll", this._onViewportChange);
+        }
+      }
+    );
+    return [
+      EditorView.scrollMargins.of(() => {
+        if (keyboardOverlap <= 8) return null;
+        return { bottom: keyboardOverlap + KEYBOARD_SCROLL_PADDING };
+      }),
+      EditorView.updateListener.of((update) => {
+        if (!update.selectionSet) return;
+        if (!update.transactions.some(
+          (tr) => tr.isUserEvent("select.pointer")
+        )) {
+          return;
+        }
+        requestAnimationFrame(() => {
+          scrollSelectionIntoView(update.view);
+        });
+      }),
+      viewportPlugin
+    ];
+  }
   var colorThemeCompartment = new Compartment();
   function createScenarioEditor(parent, options = {}) {
     const { onChange, onPreviewShortcut, onSyncEditorShortcut, onCursorChange } = options;
     const initialTheme = getStoredThemeId();
+    let backgroundPaused = false;
     const previewKeymap = keymap.of([
       {
         key: "Mod-Enter",
@@ -23251,10 +23353,12 @@ var ScenarioEditorModule = (() => {
         colorThemeCompartment.of(buildColorThemeExtensions(initialTheme)),
         EditorView.lineWrapping,
         previewKeymap,
+        ...buildMobileTouchScrollExtensions(),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChange?.();
           }
+          if (backgroundPaused) return;
           if (update.selectionSet || update.docChanged) {
             onCursorChange?.();
           }
@@ -23325,6 +23429,9 @@ var ScenarioEditorModule = (() => {
             buildColorThemeExtensions(themeId)
           )
         });
+      },
+      setBackgroundPaused(paused) {
+        backgroundPaused = Boolean(paused);
       }
     };
   }

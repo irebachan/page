@@ -111,6 +111,10 @@ class NovelPlayer {
             if (!this.isPageForeground()) return;
             void this.persistProject();
         }, 2000);
+        this.updateEditorStatusBarDebounced = this.debounce(() => {
+            if (!this.isPageForeground()) return;
+            this.updateEditorStatusBarNow();
+        }, 100);
         this.initScenarioEditor();
         if (this.saveButton) {
             this.saveButton.addEventListener("click", () => this.saveScriptToFile());
@@ -403,6 +407,7 @@ class NovelPlayer {
 `;
 
         this._scriptParseDeferred = false;
+        this._scriptUpdateGen = 0;
         this._pageInForeground = this.isPageForeground();
         this.bindPageLifecycle();
         void this.init();
@@ -482,7 +487,7 @@ class NovelPlayer {
 
     bindPageLifecycle() {
         const sync = () => this.syncPageActivityState();
-        document.addEventListener("visibilitychange", sync);
+        document.addEventListener("visibilitychange", sync, true);
         window.addEventListener("blur", sync);
         window.addEventListener("focus", sync);
         window.addEventListener("pagehide", () => {
@@ -494,15 +499,19 @@ class NovelPlayer {
     }
 
     onPageBackground() {
+        this._scriptUpdateGen += 1;
         if (this.updateScriptDebounced.pending()) {
             this._scriptParseDeferred = true;
         }
         this.updateScriptDebounced.cancel();
         this.persistProjectDebounced.cancel();
+        this.updateEditorStatusBarDebounced.cancel();
         this.labelGraphView?.cancelScheduledFit?.();
+        this.scenarioEditor?.setBackgroundPaused?.(true);
     }
 
     onPageForeground() {
+        this.scenarioEditor?.setBackgroundPaused?.(false);
         const runCatchUp = () => {
             if (!this.isPageForeground()) return;
             if (this._scriptParseDeferred) {
@@ -514,12 +523,17 @@ class NovelPlayer {
             if (this.projectSavePending) {
                 this.persistProjectDebounced();
             }
+            this.updateEditorStatusBarDebounced();
         };
-        // 復帰直後に同期パースすると UI が固まるため、アイドル時に実行
+        const deferCatchUp = () => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(runCatchUp);
+            });
+        };
         if (typeof requestIdleCallback === "function") {
-            requestIdleCallback(runCatchUp, { timeout: 1200 });
+            requestIdleCallback(deferCatchUp, { timeout: 1500 });
         } else {
-            setTimeout(runCatchUp, 80);
+            setTimeout(deferCatchUp, 100);
         }
     }
 
@@ -539,7 +553,7 @@ class NovelPlayer {
             },
             onPreviewShortcut: () => this.previewFromEditorLine(),
             onSyncEditorShortcut: () => this.syncEditorToPreview(),
-            onCursorChange: () => this.updateEditorStatusBar(),
+            onCursorChange: () => this.updateEditorStatusBarDebounced(),
         });
         this.initAppThemeSelect();
     }
@@ -812,10 +826,16 @@ class NovelPlayer {
             return;
         }
 
+        const gen = ++this._scriptUpdateGen;
         const preservePosition = options.preservePreviewPosition !== false;
         const anchor = preservePosition ? this.capturePreviewAnchor() : null;
-
         const rawScript = this.getScriptText();
+
+        if (gen !== this._scriptUpdateGen || !this.isPageForeground()) {
+            this._scriptParseDeferred = true;
+            return;
+        }
+
         this.previewMeta = this.parsePreviewMeta(rawScript);
         this.applyPreviewMetaToUI();
         const parseResult = this.parser.parse(rawScript);
@@ -832,18 +852,30 @@ class NovelPlayer {
         this.viewIndex = resolved.viewIndex;
         this.viewLineUnit = resolved.viewLineUnit;
         this._scriptParseDeferred = false;
-        this.renderCurrentView();
-        this.updateEditorStatusBar();
-        // 参照エラー・ノードグラフはプレビュー表示後に遅延（メインスレッドの長時間占有を避ける）
-        const deferHeavyFollowUp = () => {
-            if (!this.isPageForeground()) return;
-            this.refreshReferenceErrors();
-            this.refreshNodeGraphIfOpen();
+
+        const finish = () => {
+            if (gen !== this._scriptUpdateGen || !this.isPageForeground()) {
+                this._scriptParseDeferred = true;
+                return;
+            }
+            this.renderCurrentView();
+            this.updateEditorStatusBarDebounced();
+            const deferHeavyFollowUp = () => {
+                if (gen !== this._scriptUpdateGen || !this.isPageForeground()) return;
+                this.refreshReferenceErrors();
+                this.refreshNodeGraphIfOpen();
+            };
+            if (typeof requestAnimationFrame === "function") {
+                requestAnimationFrame(deferHeavyFollowUp);
+            } else {
+                deferHeavyFollowUp();
+            }
         };
+
         if (typeof requestAnimationFrame === "function") {
-            requestAnimationFrame(deferHeavyFollowUp);
+            requestAnimationFrame(finish);
         } else {
-            deferHeavyFollowUp();
+            finish();
         }
     }
 
@@ -1312,13 +1344,20 @@ class NovelPlayer {
     }
 
     updateEditorStatusBar() {
+        this.updateEditorStatusBarDebounced();
+    }
+
+    updateEditorStatusBarNow() {
         if (!this.editorStatusBar) return;
         const line = this.getEditorSourceLine();
         const displayLine = line + 1;
-        const lines = this.getScriptText().split("\n");
+        const text = this.getScriptText();
+        const lines = text.split("\n");
+        const totalLines = lines.length;
+        const charCount = text.length;
         const trimmed = (lines[line] || "").trim();
         const draftSuffix = this.getProjectStatusSuffix();
-        const base = this.formatEditorStatusBase(displayLine);
+        const base = `${displayLine}/${totalLines}行 · ${charCount.toLocaleString("ja-JP")}字`;
         let main = base;
         if (
             trimmed.startsWith("@") &&
@@ -1329,7 +1368,7 @@ class NovelPlayer {
         ) {
             main = `${base} · ${trimmed}`;
         } else {
-            const pos = this.findPreviewIndexForSourceLine(line);
+            const pos = this.findPreviewIndexForSourceLine(line, lines);
             const label = pos ? this.getLabelForIndex(pos.viewIndex) : null;
             if (label) {
                 main = `${base} · @${label}`;
@@ -1955,8 +1994,8 @@ class NovelPlayer {
         return null;
     }
 
-    findPreviewIndexForSourceLine(targetLine) {
-        const lines = this.getScriptText().split("\n");
+    findPreviewIndexForSourceLine(targetLine, sourceLines) {
+        const lines = sourceLines ?? this.getScriptText().split("\n");
         const trimmed = (lines[targetLine] || "").trim();
         if (
             typeof ScriptParser !== "undefined" &&

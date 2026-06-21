@@ -271,9 +271,18 @@
         });
         if (!project) return null;
 
+        let wroteIdb = false;
         await withDb(async (db) => {
-            if (db) await idbPut(db, project);
+            if (db) {
+                await idbPut(db, project);
+                wroteIdb = true;
+            }
         });
+
+        // IDB が使える環境では通常保存で LS を触らない（pagehide 時のみ novel-player 側で IDB 保存）
+        if (wroteIdb && deferFallbackMirror) {
+            return project;
+        }
 
         if (deferFallbackMirror) {
             scheduleFallbackMirror(() => mirrorProjectToFallback(project));
