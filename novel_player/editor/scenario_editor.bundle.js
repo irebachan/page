@@ -23226,36 +23226,55 @@ var ScenarioEditorModule = (() => {
     return typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   }
   var KEYBOARD_SCROLL_PADDING = 12;
+  var KEYBOARD_HIDDEN_SCREEN_RATIO = 0.45;
+  var LINE_TARGET_RATIO = 0.75;
   function isKeyboardVisible() {
     const vv = window.visualViewport;
     if (!vv) return false;
     return window.innerHeight - vv.height - vv.offsetTop > 8;
   }
-  function getEditorVisibleRect(view) {
-    const host = view.dom.closest(".script-editor-host");
-    if (!host) return null;
-    const hostRect = host.getBoundingClientRect();
-    if (hostRect.height <= 0) return null;
+  function getScreenVisibleBand() {
     const vv = window.visualViewport;
     const screenTop = vv?.offsetTop ?? 0;
-    const screenHeight = vv?.height ?? window.innerHeight;
-    const screenBottom = isKeyboardVisible() ? screenTop + screenHeight : screenTop + screenHeight * 0.5;
-    return {
-      top: Math.max(hostRect.top, screenTop),
-      bottom: Math.min(hostRect.bottom, screenBottom)
-    };
+    const layoutHeight = window.innerHeight;
+    const vvHeight = vv?.height ?? layoutHeight;
+    const bottom = isKeyboardVisible() ? screenTop + vvHeight : screenTop + layoutHeight * (1 - KEYBOARD_HIDDEN_SCREEN_RATIO);
+    return { top: screenTop, bottom };
+  }
+  function getLineClientRect(view, pos) {
+    const line = view.lineBlockAt(pos);
+    const top2 = view.coordsAtPos(line.from)?.top;
+    const bottom = view.coordsAtPos(line.to, 1)?.bottom ?? view.coordsAtPos(pos)?.bottom;
+    if (top2 == null || bottom == null) return null;
+    return { top: top2, bottom, height: bottom - top2 };
   }
   function keepCursorInEditorVisibleArea(view) {
-    const coords = view.coordsAtPos(view.state.selection.main.head);
-    const area = getEditorVisibleRect(view);
-    if (!coords || !area || area.bottom <= area.top) return;
-    const top2 = area.top + KEYBOARD_SCROLL_PADDING;
-    const bottom = area.bottom - KEYBOARD_SCROLL_PADDING;
-    const scrollDOM = view.scrollDOM;
-    if (coords.bottom > bottom) {
-      scrollDOM.scrollTop += coords.bottom - bottom;
-    } else if (coords.top < top2) {
-      scrollDOM.scrollTop += coords.top - top2;
+    const head = view.state.selection.main.head;
+    const line = getLineClientRect(view, head);
+    const band = getScreenVisibleBand();
+    if (!line || band.bottom <= band.top) return;
+    const pad = KEYBOARD_SCROLL_PADDING;
+    const safeTop = band.top + pad;
+    const safeBottom = band.bottom - pad;
+    const safeHeight = safeBottom - safeTop;
+    if (safeHeight <= 0) return;
+    const targetBottom = safeTop + safeHeight * LINE_TARGET_RATIO;
+    let targetTop = targetBottom - line.height;
+    if (targetTop < safeTop) {
+      targetTop = safeTop;
+    }
+    let delta = 0;
+    if (line.bottom > targetBottom) {
+      delta = line.bottom - targetBottom;
+    } else if (line.top < targetTop) {
+      delta = line.top - targetTop;
+    } else if (line.bottom > safeBottom) {
+      delta = line.bottom - safeBottom;
+    } else if (line.top < safeTop) {
+      delta = line.top - safeTop;
+    }
+    if (delta !== 0) {
+      view.scrollDOM.scrollTop += delta;
     }
   }
   function buildMobileTouchScrollExtensions() {
@@ -23290,8 +23309,8 @@ var ScenarioEditorModule = (() => {
           return;
         }
         const view = update.view;
-        keepCursorInEditorVisibleArea(view);
-        setTimeout(() => keepCursorInEditorVisibleArea(view), 150);
+        requestAnimationFrame(() => keepCursorInEditorVisibleArea(view));
+        setTimeout(() => keepCursorInEditorVisibleArea(view), 200);
       })
     ];
   }
