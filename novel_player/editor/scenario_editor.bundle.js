@@ -23230,40 +23230,29 @@ var ScenarioEditorModule = (() => {
     if (!vv) return 0;
     return Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
   }
-  var TOUCH_SCROLL_Y_MARGIN = 120;
   var KEYBOARD_SCROLL_PADDING = 16;
-  function estimatedKeyboardReserve() {
-    const overlap = getKeyboardOverlap();
-    if (overlap > 8) return overlap + KEYBOARD_SCROLL_PADDING;
-    return TOUCH_SCROLL_Y_MARGIN;
-  }
+  var TOUCH_SCROLL_Y_MARGIN = 32;
   function nudgeCursorIntoVisualViewport(view) {
     const head = view.state.selection.main.head;
     const coords = view.coordsAtPos(head);
     if (!coords) return;
     const vv = window.visualViewport;
-    const visTop = (vv?.offsetTop ?? 0) + KEYBOARD_SCROLL_PADDING;
     const visBottom = (vv?.offsetTop ?? 0) + (vv?.height ?? window.innerHeight) - KEYBOARD_SCROLL_PADDING;
-    if (coords.bottom > visBottom) {
-      window.scrollBy(0, coords.bottom - visBottom);
-    } else if (coords.top < visTop) {
-      window.scrollBy(0, coords.top - visTop);
-    }
+    if (coords.bottom <= visBottom) return;
+    window.scrollBy(0, coords.bottom - visBottom);
     const host = view.dom.closest(".script-editor-host");
     if (!host) return;
     const hostRect = host.getBoundingClientRect();
     const clipBottom = Math.min(hostRect.bottom, visBottom);
     if (coords.bottom > clipBottom - KEYBOARD_SCROLL_PADDING) {
       host.scrollTop += coords.bottom - clipBottom + KEYBOARD_SCROLL_PADDING;
-    } else if (coords.top < Math.max(hostRect.top, visTop)) {
-      host.scrollTop += coords.top - Math.max(hostRect.top, visTop);
     }
   }
   function scrollSelectionIntoView(view) {
     view.dispatch({
       effects: EditorView.scrollIntoView(view.state.selection.main.head, {
-        y: "start",
-        yMargin: estimatedKeyboardReserve()
+        y: "nearest",
+        yMargin: TOUCH_SCROLL_Y_MARGIN
       })
     });
     requestAnimationFrame(() => nudgeCursorIntoVisualViewport(view));
