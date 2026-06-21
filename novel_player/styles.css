@@ -2443,7 +2443,7 @@ body.node-graph-open .cm-scroller {
         min-height: 0;
         height: auto;
         margin-bottom: 0;
-        overflow-y: auto;
+        overflow: hidden;
         font-size: 0.95rem;
     }
 }

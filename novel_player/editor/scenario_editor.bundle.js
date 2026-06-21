@@ -23225,79 +23225,63 @@ var ScenarioEditorModule = (() => {
   function isCoarsePointer() {
     return typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   }
-  function getKeyboardOverlap() {
+  var KEYBOARD_SCROLL_PADDING = 12;
+  function isKeyboardVisible() {
     const vv = window.visualViewport;
-    if (!vv) return 0;
-    return Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    if (!vv) return false;
+    return window.innerHeight - vv.height - vv.offsetTop > 8;
   }
-  var KEYBOARD_SCROLL_PADDING = 16;
-  var TOUCH_SCROLL_Y_MARGIN = 32;
-  function nudgeCursorIntoVisualViewport(view) {
-    const head = view.state.selection.main.head;
-    const coords = view.coordsAtPos(head);
-    if (!coords) return;
-    const vv = window.visualViewport;
-    const visBottom = (vv?.offsetTop ?? 0) + (vv?.height ?? window.innerHeight) - KEYBOARD_SCROLL_PADDING;
-    if (coords.bottom <= visBottom) return;
-    window.scrollBy(0, coords.bottom - visBottom);
+  function getEditorVisibleRect(view) {
     const host = view.dom.closest(".script-editor-host");
-    if (!host) return;
+    if (!host) return null;
     const hostRect = host.getBoundingClientRect();
-    const clipBottom = Math.min(hostRect.bottom, visBottom);
-    if (coords.bottom > clipBottom - KEYBOARD_SCROLL_PADDING) {
-      host.scrollTop += coords.bottom - clipBottom + KEYBOARD_SCROLL_PADDING;
-    }
+    if (hostRect.height <= 0) return null;
+    const vv = window.visualViewport;
+    const screenTop = vv?.offsetTop ?? 0;
+    const screenHeight = vv?.height ?? window.innerHeight;
+    const screenBottom = isKeyboardVisible() ? screenTop + screenHeight : screenTop + screenHeight * 0.5;
+    return {
+      top: Math.max(hostRect.top, screenTop),
+      bottom: Math.min(hostRect.bottom, screenBottom)
+    };
   }
-  function scrollSelectionIntoView(view) {
-    view.dispatch({
-      effects: EditorView.scrollIntoView(view.state.selection.main.head, {
-        y: "nearest",
-        yMargin: TOUCH_SCROLL_Y_MARGIN
-      })
-    });
-    requestAnimationFrame(() => nudgeCursorIntoVisualViewport(view));
+  function keepCursorInEditorVisibleArea(view) {
+    const coords = view.coordsAtPos(view.state.selection.main.head);
+    const area = getEditorVisibleRect(view);
+    if (!coords || !area || area.bottom <= area.top) return;
+    const top2 = area.top + KEYBOARD_SCROLL_PADDING;
+    const bottom = area.bottom - KEYBOARD_SCROLL_PADDING;
+    const scrollDOM = view.scrollDOM;
+    if (coords.bottom > bottom) {
+      scrollDOM.scrollTop += coords.bottom - bottom;
+    } else if (coords.top < top2) {
+      scrollDOM.scrollTop += coords.top - top2;
+    }
   }
   function buildMobileTouchScrollExtensions() {
     if (!isCoarsePointer()) return [];
-    let keyboardOverlap = getKeyboardOverlap();
     const viewportPlugin = ViewPlugin.fromClass(
-      class MobileViewportSync {
+      class MobileKeyboardScroll {
         constructor(view) {
           this.view = view;
-          this._scrollTimer = null;
-          this._onViewportChange = () => {
-            const next = getKeyboardOverlap();
-            const changed = Math.abs(next - keyboardOverlap) >= 2;
-            keyboardOverlap = next;
-            if (changed && view.hasFocus) {
-              this.scheduleScroll();
-            }
+          this._onResize = () => {
+            if (view.hasFocus) keepCursorInEditorVisibleArea(view);
           };
-          const vv = window.visualViewport;
-          vv?.addEventListener("resize", this._onViewportChange);
-          vv?.addEventListener("scroll", this._onViewportChange);
-        }
-        scheduleScroll() {
-          clearTimeout(this._scrollTimer);
-          this._scrollTimer = setTimeout(() => {
-            this._scrollTimer = null;
-            if (!this.view.hasFocus) return;
-            scrollSelectionIntoView(this.view);
-          }, 80);
+          window.visualViewport?.addEventListener(
+            "resize",
+            this._onResize
+          );
         }
         destroy() {
-          clearTimeout(this._scrollTimer);
-          const vv = window.visualViewport;
-          vv?.removeEventListener("resize", this._onViewportChange);
-          vv?.removeEventListener("scroll", this._onViewportChange);
+          window.visualViewport?.removeEventListener(
+            "resize",
+            this._onResize
+          );
         }
       }
     );
     return [
-      EditorView.scrollMargins.of(() => {
-        if (keyboardOverlap <= 8) return null;
-        return { bottom: keyboardOverlap + KEYBOARD_SCROLL_PADDING };
-      }),
+      viewportPlugin,
       EditorView.updateListener.of((update) => {
         if (!update.selectionSet) return;
         if (!update.transactions.some(
@@ -23305,11 +23289,10 @@ var ScenarioEditorModule = (() => {
         )) {
           return;
         }
-        requestAnimationFrame(() => {
-          scrollSelectionIntoView(update.view);
-        });
-      }),
-      viewportPlugin
+        const view = update.view;
+        keepCursorInEditorVisibleArea(view);
+        setTimeout(() => keepCursorInEditorVisibleArea(view), 150);
+      })
     ];
   }
   var colorThemeCompartment = new Compartment();
