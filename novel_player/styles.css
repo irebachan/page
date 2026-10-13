@@ -827,7 +827,7 @@ body.menu-drawer-open {
     width: 100%;
 }
 
-/* 印（@set の値）: 1行・横スクロール */
+/* 変数（@set の値）: 1行・横スクロール */
 .preview-vars {
     display: flex;
     align-items: center;

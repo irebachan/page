@@ -85,13 +85,13 @@ class NovelPlayer {
         /** @if 枝を抜けたあと @endif へ進むためのスタック */
         this.ifSkipStack = [];
         this.previewMeta = {};
-        /** @set の印（プレビュー内だけの値。f. 等は外した名前） */
+        /** @set の変数（プレビュー内だけの値。f. 等は外した名前） */
         this.previewVars = {};
-        /** 表示中の画面に入った時点の印（戻る用の履歴に保存） */
+        /** 表示中の画面に入った時点の変数（戻る用の履歴に保存） */
         this._viewVars = {};
         this._flagNames = [];
         this._lastAutoIf = null;
-        /** 最初から通しで再生中なら true（未設定の印はエンジン同様に偽）。途中から始めたら false */
+        /** 最初から通しで再生中なら true（未設定の変数はエンジン同様に偽）。途中から始めたら false */
         this._playedFromStart = true;
         this.previewVarsBar = document.getElementById("previewVars");
 
@@ -2530,7 +2530,7 @@ class NovelPlayer {
     }
 
     /**
-     * 印の値で @if を判定できれば、入る枝の先頭（または @endif の続き）を返す。
+     * 変数の値で @if を判定できれば、入る枝の先頭（または @endif の続き）を返す。
      * 判定できない条件に当たったら null（従来どおり枝ボタンを出す）
      */
     autoEnterIfChain(chain) {
@@ -2588,7 +2588,7 @@ class NovelPlayer {
         if (typeof fromStart === "boolean") this._playedFromStart = fromStart;
     }
 
-    /** 途中から再生を始めた（未設定の印は「分からない」扱いにして枝ボタンで聞く） */
+    /** 途中から再生を始めた（未設定の変数は「分からない」扱いにして枝ボタンで聞く） */
     markPreviewJumped() {
         this._playedFromStart = false;
     }
@@ -2636,7 +2636,7 @@ class NovelPlayer {
         const frag = document.createDocumentFragment();
         const title = document.createElement("span");
         title.className = "preview-vars__title";
-        title.textContent = "印";
+        title.textContent = "変数";
         title.title =
             "@set の値（プレビュー内だけ）。タップで切り替え・編集。@if はこの値で自動判定";
         frag.appendChild(title);
@@ -2681,7 +2681,7 @@ class NovelPlayer {
         reset.type = "button";
         reset.className = "preview-vars__reset";
         reset.textContent = "↺";
-        reset.title = "印をすべて未設定に戻す";
+        reset.title = "変数をすべて未設定に戻す";
         reset.addEventListener("click", () => {
             this.previewVars = {};
             this._viewVars = {};

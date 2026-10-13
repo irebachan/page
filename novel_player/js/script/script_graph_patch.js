@@ -386,7 +386,7 @@ function validateLabelName(name, labels, excludeName) {
         return { ok: false, error: "メタ記法と衝突する名前は使えません" };
     }
     if (/^@set(\s|$)/.test(defLine)) {
-        return { ok: false, error: "「set」は @set（印）と解釈されるため使えません" };
+        return { ok: false, error: "「set」は @set（変数）と解釈されるため使えません" };
     }
     if (labels.hasOwnProperty(n) && n !== excludeName) {
         return { ok: false, error: `ラベル「${n}」は既にあります` };

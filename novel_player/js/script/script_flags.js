@@ -1,4 +1,4 @@
-// 作者用の印（@set）と @if 条件の簡易評価・出力変換
+// 変数（@set）と @if 条件の簡易評価・出力変換
 (function (global) {
     "use strict";
 

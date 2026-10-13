@@ -102,7 +102,7 @@
 
         <!-- 下部: 固定ボタンエリア（次へは常に表示） -->
         <div class="button-area">
-            <div class="preview-vars" id="previewVars" role="group" aria-label="印（@set の値）" hidden></div>
+            <div class="preview-vars" id="previewVars" role="group" aria-label="変数（@set の値）" hidden></div>
             <div class="preview-nav">
                 <button type="button" id="prev" disabled>◀ 戻る</button>
                 <button type="button" id="previewRestart" style="display:none"
@@ -312,8 +312,8 @@
 セリフ内容（複数行可能）
                 </pre>
 
-                <h3>印（@set）</h3>
-                <p>作者用の印です。プレビューは通った <code>@set</code> を覚えて、<code>@if</code> を自動で判定します。</p>
+                <h3>変数（@set）</h3>
+                <p>変数に値を入れます。プレビューは通った <code>@set</code> の値を覚えて、<code>@if</code> を自動で判定します。</p>
                 <pre>
 @set 好感度 = 0
 @set 好感度 += 2
@@ -324,16 +324,16 @@
                 <ul>
                     <li><code>@set 名前</code> は true、<code>@set !名前</code> は false。<code>=</code> / <code>+=</code> / <code>-=</code> が使えます（文字列は引用符で囲む）</li>
                     <li>条件式は <code>== != &gt; &lt; &gt;= &lt;=</code>、<code>&amp;&amp; || !</code>（<code>and or not</code> も可）、括弧、<code>+ - * /</code></li>
-                    <li><code>f.好感度</code> と <code>好感度</code> は同じ印として扱います</li>
-                    <li>プレビュー下の <strong>印</strong> の列に今の値が出ます。タップで true/false 切り替え・値の編集、↺ で全部未設定に</li>
-                    <li>最初から通しで再生しているときは、未設定の印は偽として判定（エンジンと同じ）</li>
-                    <li>この行から・ラベルへジャンプなど途中から始めたときは、未設定の印が絡む <code>@if</code> だけ従来どおり枝ボタンで聞きます</li>
+                    <li><code>f.好感度</code> と <code>好感度</code> は同じ変数として扱います</li>
+                    <li>プレビュー下の <strong>変数</strong> の列に今の値が出ます。タップで true/false 切り替え・値の編集、↺ で全部未設定に</li>
+                    <li>最初から通しで再生しているときは、未設定の変数は偽として判定（エンジンと同じ）</li>
+                    <li>この行から・ラベルへジャンプなど途中から始めたときは、未設定の変数が絡む <code>@if</code> だけ従来どおり枝ボタンで聞きます</li>
                     <li>読めない条件式（関数呼び出しなど）も枝ボタンで聞きます</li>
                     <li>特殊出力: ティラノ <code>[eval exp="f.好感度+=2"]</code>、Ren'Py <code>$ 好感度 += 2</code></li>
                 </ul>
 
                 <h3>条件分岐（@if）</h3>
-                <p>印（<code>@set</code>）の値で判定できる条件は自動で枝に入ります。判定できないときは条件式ごとのボタンが出ます（見た目は選択肢に近いが、プレイヤー向けの選択肢ではありません）。</p>
+                <p>変数（<code>@set</code>）の値で判定できる条件は自動で枝に入ります。判定できないときは条件式ごとのボタンが出ます（見た目は選択肢に近いが、プレイヤー向けの選択肢ではありません）。</p>
                 <pre>
 @if 条件式
 #キャラ
