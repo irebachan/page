@@ -420,6 +420,285 @@ function parseChoiceLineTarget(line) {
     return { target: targetRaw };
 }
 
+function isSkippableTailLine(trimmed) {
+    return trimmed === "" || trimmed.startsWith("//");
+}
+
+function isBlockExitLine(trimmed) {
+    return (
+        trimmed === "@end" ||
+        trimmed === "@return" ||
+        parseJumpLineTarget(trimmed, "goto") !== null
+    );
+}
+
+function nextLabelInDefinitionOrder(labelSourceLines, labelName) {
+    const start = labelSourceLines[labelName];
+    if (start == null) return null;
+    let best = null;
+    let bestPos = Infinity;
+    for (const [name, pos] of Object.entries(labelSourceLines)) {
+        if (pos > start && pos < bestPos) {
+            best = name;
+            bestPos = pos;
+        }
+    }
+    return best;
+}
+
+/**
+ * ラベルブロック末尾の構造を調べる
+ * - tail: 末尾に連続する @goto / @end / @return 行（空行・コメントは飛ばす）
+ * - continuation: このブロックの「続き」（tail、なければ次ラベルへの @goto、最後のブロックなら @end）
+ */
+function analyzeBlockEnding(lines, labelSourceLines, labelName) {
+    const range = getLabelBlockRange(labelSourceLines, labelName, lines.length);
+    if (!range) return null;
+
+    let i = range.end - 1;
+    while (i > range.start && isSkippableTailLine(lines[i].trim())) i--;
+    const contentEnd = i + 1;
+
+    let tailStart = contentEnd;
+    while (i > range.start && isBlockExitLine(lines[i].trim())) {
+        tailStart = i;
+        i--;
+    }
+    const tailLines = lines.slice(tailStart, contentEnd).map((l) => l.trim());
+
+    let lastChoiceEnd = null;
+    for (let j = range.start + 1; j < contentEnd; j++) {
+        if (lines[j].trim().startsWith("-")) lastChoiceEnd = j + 1;
+    }
+    const endsWithChoices =
+        lastChoiceEnd != null && lastChoiceEnd === contentEnd;
+
+    let continuation;
+    if (endsWithChoices) {
+        continuation = [];
+    } else if (tailLines.length) {
+        continuation = tailLines;
+    } else {
+        const next = nextLabelInDefinitionOrder(labelSourceLines, labelName);
+        continuation = next ? [`@goto ${next}`] : ["@end"];
+    }
+
+    return {
+        range,
+        contentEnd,
+        tailStart,
+        tailLines,
+        lastChoiceEnd,
+        endsWithChoices,
+        continuation,
+    };
+}
+
+/** 既存の選択肢の行き先がすべて同じラベルへ @goto で終わっていれば、その合流先 */
+function findCommonChoiceMerge(lines, labelSourceLines, range) {
+    let common = null;
+    for (let j = range.start + 1; j < range.end; j++) {
+        if (!lines[j].trim().startsWith("-")) continue;
+        const target = parseChoiceLineTarget(lines[j])?.target;
+        if (!target || labelSourceLines[target] == null) return null;
+        const info = analyzeBlockEnding(lines, labelSourceLines, target);
+        if (!info || info.tailLines.length !== 1) return null;
+        const to = parseJumpLineTarget(info.tailLines[0], "goto");
+        if (!to || (common && common !== to)) return null;
+        common = to;
+    }
+    return common;
+}
+
+/** 選択肢ダイアログ用: 起点ラベルの末尾状態 */
+function describeBranchContext(text, labelSourceLines, labelName) {
+    const lines = text.split("\n");
+    const info = analyzeBlockEnding(lines, labelSourceLines, labelName);
+    if (!info) return null;
+    const hasChoices = info.lastChoiceEnd != null;
+    let choiceCount = 0;
+    for (let j = info.range.start + 1; j < info.range.end; j++) {
+        if (lines[j].trim().startsWith("-")) choiceCount++;
+    }
+    return {
+        hasChoices,
+        choiceCount,
+        continuation: info.continuation,
+        commonMerge: hasChoices
+            ? findCommonChoiceMerge(lines, labelSourceLines, info.range)
+            : null,
+    };
+}
+
+/** `${base}_1`, `${base}_2` … で未使用の名前 */
+function suggestBranchLabelName(labels, base, taken) {
+    const used = (name) =>
+        labels.hasOwnProperty(name) || (taken && taken.has(name));
+    let n = 1;
+    let name;
+    do {
+        name = `${base}_${n++}`;
+    } while (used(name));
+    return name;
+}
+
+function insertLabelBlocksAt(lines, index, blocks) {
+    const out = [];
+    if (index > 0 && lines[index - 1].trim() !== "") out.push("");
+    blocks.forEach((block) => {
+        out.push(...block);
+        if (out[out.length - 1] !== "") out.push("");
+    });
+    lines.splice(index, 0, ...out);
+}
+
+function newBranchBlock(name, bodyLines) {
+    const block = [`@${name}`, ""];
+    if (bodyLines.length) block.push(...bodyLines);
+    return block;
+}
+
+/**
+ * 起点ラベルに選択肢をまとめて追加する。
+ * 行き先が未定義なら起点ブロックの直後に新ラベルを作り、merge に従って各枝の末尾を書く。
+ * spec: { choices: [{ text, target }], merge: { mode: "keep" | "none" | "label", label? } }
+ */
+function patchAddChoiceBranches(text, _script, labels, labelSourceLines, fromLabel, spec) {
+    const choices = spec?.choices || [];
+    if (!fromLabel || !labels.hasOwnProperty(fromLabel)) {
+        return { ok: false, error: `ラベル「${fromLabel}」が見つかりません`, text };
+    }
+    if (choices.length === 0) {
+        return { ok: false, error: "選択肢がありません", text };
+    }
+
+    const newNames = [];
+    const taken = new Set();
+    for (const c of choices) {
+        const t = (c.text || "").trim();
+        if (!t) return { ok: false, error: "選択肢の文言を入力してください", text };
+        if (t.includes("=>")) {
+            return { ok: false, error: "選択肢の文言に「=>」は使えません", text };
+        }
+        const target = (c.target || "").trim();
+        if (!target) return { ok: false, error: `「${t}」の行き先を入力してください`, text };
+        if (labels.hasOwnProperty(target) || taken.has(target)) continue;
+        const v = validateLabelName(target, labels);
+        if (!v.ok) return { ok: false, error: v.error, text };
+        taken.add(v.name);
+        newNames.push(v.name);
+    }
+
+    const lines = text.split("\n");
+    const info = analyzeBlockEnding(lines, labelSourceLines, fromLabel);
+    if (!info) {
+        return { ok: false, error: `ラベル「${fromLabel}」が見つかりません`, text };
+    }
+
+    const merge = spec.merge || { mode: "keep" };
+    let branchTail = [];
+    if (merge.mode === "keep") {
+        branchTail = info.continuation;
+    } else if (merge.mode === "label") {
+        const to = (merge.label || "").trim();
+        if (!labels.hasOwnProperty(to) && !taken.has(to)) {
+            return { ok: false, error: `合流先「${to}」が見つかりません`, text };
+        }
+        branchTail = [`@goto ${to}`];
+    }
+
+    const choiceLines = choices.map(
+        (c) => `- ${c.text.trim()} => ${c.target.trim()}`
+    );
+
+    let delta;
+    if (info.lastChoiceEnd != null) {
+        lines.splice(info.lastChoiceEnd, 0, ...choiceLines);
+        delta = choiceLines.length;
+    } else {
+        const removeCount = info.contentEnd - info.tailStart;
+        lines.splice(info.tailStart, removeCount, ...choiceLines);
+        delta = choiceLines.length - removeCount;
+    }
+
+    if (newNames.length) {
+        const blocks = newNames.map((name) =>
+            newBranchBlock(
+                name,
+                branchTail.filter((l) => l !== `@goto ${name}`)
+            )
+        );
+        insertLabelBlocksAt(lines, info.range.end + delta, blocks);
+    }
+
+    return { ok: true, text: lines.join("\n"), createdLabels: newNames };
+}
+
+/**
+ * 起点の直後に新ラベルを作って @goto / @call でつなぐ。
+ * goto: 起点の「続き」を新ラベルへ移す（間に1ノード挟む）
+ * call: 新ラベルは @return で戻り、起点の続きは明示的に残す
+ */
+function patchJumpToNewLabel(text, _script, labels, labelSourceLines, fromLabel, newName, kind) {
+    if (!labels.hasOwnProperty(fromLabel)) {
+        return { ok: false, error: `ラベル「${fromLabel}」が見つかりません`, text };
+    }
+    const v = validateLabelName(newName, labels);
+    if (!v.ok) return { ok: false, error: v.error, text };
+    const name = v.name;
+
+    const lines = text.split("\n");
+    const info = analyzeBlockEnding(lines, labelSourceLines, fromLabel);
+    if (!info) {
+        return { ok: false, error: `ラベル「${fromLabel}」が見つかりません`, text };
+    }
+
+    let fromTail;
+    let body;
+    if (kind === "call") {
+        fromTail = [`@call ${name}`, ...info.continuation];
+        body = ["@return"];
+    } else {
+        fromTail = [`@goto ${name}`];
+        body = info.continuation;
+    }
+
+    const removeCount = info.contentEnd - info.tailStart;
+    lines.splice(info.tailStart, removeCount, ...fromTail);
+    const delta = fromTail.length - removeCount;
+    insertLabelBlocksAt(lines, info.range.end + delta, [newBranchBlock(name, body)]);
+
+    return { ok: true, text: lines.join("\n"), createdLabels: [name] };
+}
+
+/** ブロック末尾の @goto / @end / @return を @goto toLabel に置き換える（合流） */
+function patchMergeInto(text, _script, labels, labelSourceLines, fromLabel, toLabel) {
+    if (!fromLabel || !toLabel) {
+        return { ok: false, error: "合流元・合流先のラベルが必要です", text };
+    }
+    if (fromLabel === toLabel) {
+        return { ok: false, error: "合流先と同じラベルです", text };
+    }
+    if (!labels.hasOwnProperty(toLabel)) {
+        return { ok: false, error: `ラベル「${toLabel}」が見つかりません`, text };
+    }
+    const lines = text.split("\n");
+    const info = analyzeBlockEnding(lines, labelSourceLines, fromLabel);
+    if (!info) {
+        return { ok: false, error: `ラベル「${fromLabel}」が見つかりません`, text };
+    }
+    if (info.endsWithChoices) {
+        return {
+            ok: false,
+            error: `「${fromLabel}」は選択肢で終わっているため合流できません（枝のラベルをタップしてください）`,
+            text,
+        };
+    }
+    const removeCount = info.contentEnd - info.tailStart;
+    lines.splice(info.tailStart, removeCount, `@goto ${toLabel}`);
+    return { ok: true, text: lines.join("\n") };
+}
+
 /** ファイル末尾に空のラベルブロックを追加 */
 function patchAddLabel(text, _script, labels, _labelSourceLines, labelName) {
     const v = validateLabelName(labelName, labels);

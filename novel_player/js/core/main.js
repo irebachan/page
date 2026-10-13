@@ -116,6 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
             if (novelPlayer.isNodeGraphOpen()) {
+                if (novelPlayer.labelGraphView?.closeOverlays()) return;
                 novelPlayer.closeNodeGraph();
                 return;
             }

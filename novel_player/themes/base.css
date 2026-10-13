@@ -607,3 +607,47 @@ body {
     border-color: var(--active-border);
     background: color-mix(in srgb, var(--active-bg) 92%, transparent);
 }
+
+.label-graph-drop-menu,
+.label-graph-dialog {
+    color: var(--t-fg);
+    background: var(--modal-content-bg);
+    border-color: var(--border-soft);
+}
+
+.label-graph-drop-menu__title,
+.label-graph-dialog__note,
+.label-graph-dialog__hint {
+    color: var(--t-muted);
+}
+
+.label-graph-drop-menu button {
+    color: var(--control-fg);
+}
+
+.label-graph-drop-menu button:hover,
+.label-graph-drop-menu button:focus-visible {
+    background: var(--active-bg);
+    border-color: var(--active-border);
+    color: var(--active-fg);
+}
+
+.label-graph-choice-row input,
+.label-graph-dialog__field select {
+    color: var(--t-fg);
+    background: var(--field-bg);
+    border-color: var(--control-border);
+}
+
+.label-graph-choice-row__del,
+.label-graph-dialog__actions button {
+    color: var(--control-fg);
+    background: var(--field-bg);
+    border-color: var(--control-border);
+}
+
+.label-graph-dialog__actions button.is-primary {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-fg);
+    border-color: var(--active-border);
+}

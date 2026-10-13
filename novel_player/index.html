@@ -275,6 +275,9 @@
                             <li><strong>表示</strong> … ドラッグ＝パン、2本指ピンチ＝ズーム（PCはホイールも可）、「全体」でフィット</li>
                             <li><strong>＋ラベル</strong> … 脚本の末尾に追加</li>
                             <li><strong>改名・削除</strong> … ボタンを押してからノードをタップ</li>
+                            <li><strong>選択肢</strong> … 起点を1タップ → 文言と行き先を入力（新しい名前ならラベルも作成）</li>
+                            <li><strong>合流</strong> … 合流先 → 枝を順にタップ（末尾を <code>@goto 合流先</code> に）</li>
+                            <li><strong>ノードをドラッグ</strong> … 別ノードへ＝選択肢 / goto / call / 合流、空きへ＝新ラベルを作って分岐・goto・call</li>
                             <li><strong>goto / call</strong> … 2タップ（出発→行き先）</li>
                             <li><strong>end / return</strong> … 1タップ</li>
                             <li><strong>線</strong> … タップで切断（選択肢の未接続はドラッグでつなぐ）</li>
@@ -472,6 +475,9 @@ export.replace.【仮】=
                         <li><strong>表示</strong> … パン・2本指ピンチでズーム・「全体」。ラベル名フィルタ</li>
                         <li><strong>＋ラベル</strong> … 脚本末尾に空ブロックを追加</li>
                         <li><strong>改名・削除</strong> … ツールオン → ノード1タップ（削除は確認あり。参照も整理）</li>
+                        <li><strong>選択肢</strong> … ツールオン → 起点ラベル1タップ → 文言と行き先を入力。行き先が新しい名前ならラベルを起点の直後に作成し、各枝の最後を「元の続き」などへ合流</li>
+                        <li><strong>合流</strong> … ツールオン → 合流先をタップ → 枝を順にタップ（末尾の @goto / @end / @return を @goto 合流先 に置き換え）</li>
+                        <li><strong>ノードをドラッグ</strong> … 別のノードで離す＝選択肢 / goto / call / 合流を選択、何もない所で離す＝新ラベルを作って選択肢・goto・call</li>
                         <li><strong>goto</strong> … 2タップ（既存 @goto は差し替え）／<strong>call</strong> … 2タップ（@call 行を追加）</li>
                         <li><strong>end / return</strong> … ラベル1タップ。ツールのやめ方は同じボタンをもう一度、または Esc</li>
                         <li><strong>線タップ</strong> … 接続を切断。未接続選択肢の線はドラッグで接続</li>

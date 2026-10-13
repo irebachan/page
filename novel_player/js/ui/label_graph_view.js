@@ -27,6 +27,12 @@ class LabelGraphView {
         this.onDeleteLabel = options.onDeleteLabel || null;
         this.onUndo = options.onUndo || null;
         this.canUndo = options.canUndo || null;
+        this.onAddChoices = options.onAddChoices || null;
+        this.onJumpToNewLabel = options.onJumpToNewLabel || null;
+        this.onMergeInto = options.onMergeInto || null;
+        this.getBranchContext = options.getBranchContext || null;
+        this._overlay = null;
+        this._toastTimer = 0;
         this.data = null;
         this.state = { filter: "", currentLabel: null };
         this.layout = null;
@@ -73,6 +79,11 @@ class LabelGraphView {
                 <button type="button" data-action="cmd-delete" aria-label="ラベルをタップして削除">削除</button>
             </span>
             <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
+            <span class="label-graph-toolbar__group" role="group" aria-label="分岐">
+                <button type="button" data-action="cmd-choice" aria-label="ラベルをタップして選択肢を追加">選択肢</button>
+                <button type="button" data-action="cmd-merge" aria-label="合流先をタップしてから枝を順にタップ">合流</button>
+            </span>
+            <span class="label-graph-toolbar__sep" aria-hidden="true"></span>
             <span class="label-graph-toolbar__group" role="group" aria-label="接続">
                 <button type="button" data-action="cmd-goto" aria-label="2つのラベルをタップして goto">goto</button>
                 <button type="button" data-action="cmd-call" aria-label="2つのラベルをタップして call">call</button>
@@ -89,6 +100,8 @@ class LabelGraphView {
             return: this.toolbar.querySelector('[data-action="cmd-return"]'),
             rename: this.toolbar.querySelector('[data-action="cmd-rename"]'),
             delete: this.toolbar.querySelector('[data-action="cmd-delete"]'),
+            choice: this.toolbar.querySelector('[data-action="cmd-choice"]'),
+            merge: this.toolbar.querySelector('[data-action="cmd-merge"]'),
         };
         this.undoBtn = this.toolbar.querySelector('[data-action="undo"]');
 
@@ -129,6 +142,12 @@ class LabelGraphView {
             "グラフレイアウト用ライブラリが未配置です。README の手順で dagre を取得してください。";
         container.appendChild(this.missingLibEl);
 
+        this.toastEl = document.createElement("p");
+        this.toastEl.className = "label-graph-toast";
+        this.toastEl.setAttribute("role", "status");
+        this.toastEl.hidden = true;
+        container.appendChild(this.toastEl);
+
         this.floatUI = document.createElement("div");
         this.floatUI.className = "label-graph-float-ui";
         this.floatToggle = document.createElement("button");
@@ -165,6 +184,8 @@ class LabelGraphView {
             else if (action === "cmd-return") this.setCommandMode("return");
             else if (action === "cmd-rename") this.setCommandMode("rename");
             else if (action === "cmd-delete") this.setCommandMode("delete");
+            else if (action === "cmd-choice") this.setCommandMode("choice");
+            else if (action === "cmd-merge") this.setCommandMode("merge");
             else if (action === "undo") this.onUndo?.();
             this.updateUndoButton();
         });
@@ -221,6 +242,15 @@ class LabelGraphView {
         if (m === "return") return `選択中: @return → ラベルを1つタップ ${cancel}`;
         if (m === "rename") return `選択中: 改名 → ラベルを1つタップ ${cancel}`;
         if (m === "delete") return `選択中: 削除 → ラベルを1つタップ（確認あり） ${cancel}`;
+        if (m === "choice") {
+            return `選択中: 選択肢 → 起点ラベルをタップ（文言と行き先を入力。新しい名前ならラベルも作成） ${cancel}`;
+        }
+        if (m === "merge") {
+            if (this._connectFrom) {
+                return `合流先: ${this._connectFrom} → 枝のラベルを順にタップ（末尾を @goto ${this._connectFrom} に置き換え） ${cancel}`;
+            }
+            return `選択中: 合流 → まず合流先のラベルをタップ ${cancel}`;
+        }
         if (m === "goto") {
             if (this._connectFrom) {
                 return `選択中: @goto → 行き先をタップ（起点: ${this._connectFrom}） ${cancel}`;
@@ -250,11 +280,15 @@ class LabelGraphView {
             this.container.classList.add("is-float-expanded");
         }
         this.syncFloatUI();
-        const twoStep = m === "goto" || m === "call";
+        const twoStep = m === "goto" || m === "call" || m === "merge";
         this.viewport.classList.toggle("is-connect-mode", twoStep);
         this.viewport.classList.toggle(
             "is-exit-mode",
-            m === "end" || m === "return" || m === "rename" || m === "delete"
+            m === "end" ||
+                m === "return" ||
+                m === "rename" ||
+                m === "delete" ||
+                m === "choice"
         );
         this.viewport.classList.toggle("is-tool-mode", !!m);
     }
@@ -266,6 +300,10 @@ class LabelGraphView {
             return;
         }
         if (e.key === "Escape") {
+            if (this.closeOverlays()) {
+                e.stopPropagation();
+                return;
+            }
             this.clearCommandMode();
             this.cancelLinkDrag();
             this._nodePointerDown = null;
@@ -433,6 +471,17 @@ class LabelGraphView {
             return;
         }
 
+        if (this._commandMode === "choice") {
+            this.clearCommandMode();
+            this.openChoiceDialog(name);
+            return;
+        }
+
+        if (this._commandMode === "merge") {
+            this.handleMergeNodeClick(name);
+            return;
+        }
+
         if (this._commandMode !== "goto" && this._commandMode !== "call") return;
 
         const connectFn =
@@ -455,6 +504,298 @@ class LabelGraphView {
         connectFn(from, name);
         this.updateUndoButton();
         this.updateCommandModeUI();
+    }
+
+    /** 1タップ目＝合流先、以降のタップで枝を合流（ツールを解除するまで続く） */
+    handleMergeNodeClick(name) {
+        const target = this._connectFrom;
+        if (!target) {
+            this._connectFrom = name;
+            this.highlightConnectFrom(name);
+            this.updateCommandModeUI();
+            return;
+        }
+        if (name === target) {
+            this.clearCommandMode();
+            return;
+        }
+        const result = this.onMergeInto?.(name, target);
+        if (result?.ok) {
+            this.showToast(`「${name}」→「${target}」へ合流`);
+        } else if (result?.error) {
+            this.showToast(result.error, { error: true });
+        }
+        this.updateUndoButton();
+    }
+
+    showToast(message, options = {}) {
+        if (!this.toastEl) return;
+        clearTimeout(this._toastTimer);
+        this.toastEl.textContent = message;
+        this.toastEl.classList.toggle("is-error", !!options.error);
+        this.toastEl.hidden = false;
+        this._toastTimer = setTimeout(() => {
+            this.toastEl.hidden = true;
+        }, options.error ? 4000 : 2200);
+    }
+
+    /** グラフ内オーバーレイ（ドロップメニュー・選択肢ダイアログ）を閉じたら true */
+    closeOverlays() {
+        if (!this._overlay) return false;
+        this._overlay.remove();
+        this._overlay = null;
+        return true;
+    }
+
+    openOverlay(className) {
+        this.closeOverlays();
+        const backdrop = document.createElement("div");
+        backdrop.className = `label-graph-overlay ${className}`;
+        backdrop.addEventListener("pointerdown", (e) => {
+            e.stopPropagation();
+            if (e.target === backdrop) this.closeOverlays();
+        });
+        backdrop.addEventListener("keydown", (e) => {
+            e.stopPropagation();
+            if (e.key === "Escape") {
+                e.preventDefault();
+                this.closeOverlays();
+            }
+        });
+        this.container.appendChild(backdrop);
+        this._overlay = backdrop;
+        return backdrop;
+    }
+
+    /** ノードからドラッグして離した位置に出す操作メニュー（target null＝何もない場所） */
+    openDropMenu(from, target, clientX, clientY) {
+        const backdrop = this.openOverlay("label-graph-overlay--menu");
+        const menu = document.createElement("div");
+        menu.className = "label-graph-drop-menu";
+        menu.setAttribute("role", "menu");
+
+        const title = document.createElement("p");
+        title.className = "label-graph-drop-menu__title";
+        title.textContent = target ? `${from} → ${target}` : `${from} → 新しいラベル`;
+        menu.appendChild(title);
+
+        const items = target
+            ? [
+                  ["選択肢でつなぐ…", () => this.openChoiceDialog(from, { target })],
+                  ["goto", () => this.onConnect?.(from, target)],
+                  ["call", () => this.onConnectCall?.(from, target)],
+                  ["合流（末尾を goto に置換）", () => this.runMerge(from, target)],
+              ]
+            : [
+                  ["選択肢で分岐…", () => this.openChoiceDialog(from)],
+                  ["goto で新ラベルを挟む…", () => this.onJumpToNewLabel?.(from, "goto")],
+                  ["call で新ラベルを呼ぶ…", () => this.onJumpToNewLabel?.(from, "call")],
+              ];
+        items.push(["キャンセル", null]);
+
+        for (const [label, run] of items) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.setAttribute("role", "menuitem");
+            btn.textContent = label;
+            if (!run) btn.classList.add("is-cancel");
+            btn.addEventListener("click", () => {
+                this.closeOverlays();
+                run?.();
+                this.updateUndoButton();
+            });
+            menu.appendChild(btn);
+        }
+        backdrop.appendChild(menu);
+
+        const rect = this.container.getBoundingClientRect();
+        const mw = menu.offsetWidth;
+        const mh = menu.offsetHeight;
+        const x = Math.min(Math.max(8, clientX - rect.left), rect.width - mw - 8);
+        const y = Math.min(Math.max(8, clientY - rect.top), rect.height - mh - 8);
+        menu.style.left = `${Math.max(8, x)}px`;
+        menu.style.top = `${Math.max(8, y)}px`;
+        menu.querySelector("button")?.focus({ preventScroll: true });
+    }
+
+    runMerge(from, target) {
+        const result = this.onMergeInto?.(from, target);
+        if (result?.ok) {
+            this.showToast(`「${from}」→「${target}」へ合流`);
+        } else if (result?.error) {
+            this.showToast(result.error, { error: true });
+        }
+    }
+
+    /**
+     * 選択肢をまとめて追加するダイアログ
+     * options.target … 1行目の行き先を既存ラベルで固定（ドラッグで接続したとき）
+     */
+    openChoiceDialog(from, options = {}) {
+        if (!this.isRealTargetNode(from)) return;
+        const ctx = this.getBranchContext?.(from);
+        if (!ctx) return;
+        const labels = ctx.labels || {};
+        const labelNames = Object.keys(labels).sort((a, b) => labels[a] - labels[b]);
+
+        const backdrop = this.openOverlay("label-graph-overlay--dialog");
+        const form = document.createElement("form");
+        form.className = "label-graph-dialog";
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-modal", "true");
+        form.setAttribute("aria-label", `選択肢を追加: ${from}`);
+
+        const listId = `label-graph-labels-${Date.now()}`;
+        form.innerHTML = `
+            <h3 class="label-graph-dialog__title">選択肢を追加 <code></code></h3>
+            <p class="label-graph-dialog__note" hidden>既存の選択肢の後ろに追加します。</p>
+            <div class="label-graph-choice-rows"></div>
+            <button type="button" class="label-graph-dialog__add" data-act="add">＋ 選択肢を増やす</button>
+            <label class="label-graph-dialog__field">
+                <span>新しく作る枝の最後</span>
+                <select data-role="merge"></select>
+            </label>
+            <p class="label-graph-dialog__hint">行き先が新しい名前ならラベルを作成します（起点のすぐ後ろ）。既存のラベル名なら接続だけします。文言が空なら薄字の仮文言を使います。</p>
+            <p class="label-graph-dialog__error" role="alert" hidden></p>
+            <div class="label-graph-dialog__actions">
+                <button type="button" data-act="cancel">キャンセル</button>
+                <button type="submit" class="is-primary">作成</button>
+            </div>
+            <datalist id="${listId}"></datalist>
+        `;
+        form.querySelector(".label-graph-dialog__title code").textContent = `@${from}`;
+        form.querySelector(".label-graph-dialog__note").hidden = !ctx.hasChoices;
+        const datalist = form.querySelector("datalist");
+        for (const name of labelNames) {
+            const opt = document.createElement("option");
+            opt.value = name;
+            datalist.appendChild(opt);
+        }
+
+        const mergeSel = form.querySelector('[data-role="merge"]');
+        const addOption = (parent, value, text) => {
+            const opt = document.createElement("option");
+            opt.value = value;
+            opt.textContent = text;
+            parent.appendChild(opt);
+            return opt;
+        };
+        if (!ctx.hasChoices) {
+            const cont = (ctx.continuation || []).join(" / ");
+            addOption(mergeSel, "keep", `元の続きへ合流（${cont}）`);
+        }
+        if (ctx.commonMerge) {
+            addOption(
+                mergeSel,
+                `label:${ctx.commonMerge}`,
+                `「${ctx.commonMerge}」へ合流（既存の枝と同じ）`
+            );
+        }
+        addOption(mergeSel, "none", "何も書かない（あとでつなぐ）");
+        const group = document.createElement("optgroup");
+        group.label = "指定したラベルへ合流（@goto）";
+        for (const name of labelNames) {
+            if (name !== from) addOption(group, `label:${name}`, name);
+        }
+        mergeSel.appendChild(group);
+
+        const rowsEl = form.querySelector(".label-graph-choice-rows");
+        const errorEl = form.querySelector(".label-graph-dialog__error");
+        const choiceNo = () => rowsEl.children.length + 1 + (ctx.choiceCount || 0);
+
+        const takenTargets = () =>
+            new Set(
+                Array.from(rowsEl.querySelectorAll('[data-role="target"]'))
+                    .map((el) => el.value.trim())
+                    .filter(Boolean)
+            );
+
+        const addRow = (target) => {
+            const row = document.createElement("div");
+            row.className = "label-graph-choice-row";
+            const text = document.createElement("input");
+            text.type = "text";
+            text.dataset.role = "text";
+            text.placeholder = `選択肢${choiceNo()}`;
+            text.setAttribute("aria-label", "選択肢の文言");
+            const arrow = document.createElement("span");
+            arrow.className = "label-graph-choice-row__arrow";
+            arrow.textContent = "→";
+            const dest = document.createElement("input");
+            dest.type = "text";
+            dest.dataset.role = "target";
+            dest.setAttribute("list", listId);
+            dest.setAttribute("aria-label", "行き先ラベル");
+            dest.autocomplete = "off";
+            dest.spellcheck = false;
+            dest.value =
+                target ||
+                (typeof suggestBranchLabelName === "function"
+                    ? suggestBranchLabelName(labels, from, takenTargets())
+                    : "");
+            const updateKind = () => {
+                const v = dest.value.trim();
+                row.classList.toggle("is-new-label", !!v && !labels.hasOwnProperty(v));
+            };
+            dest.addEventListener("input", updateKind);
+            updateKind();
+            const del = document.createElement("button");
+            del.type = "button";
+            del.className = "label-graph-choice-row__del";
+            del.setAttribute("aria-label", "この選択肢を消す");
+            del.textContent = "×";
+            del.addEventListener("click", () => {
+                if (rowsEl.children.length > 1) row.remove();
+            });
+            row.append(text, arrow, dest, del);
+            rowsEl.appendChild(row);
+            return row;
+        };
+
+        if (options.target) {
+            addRow(options.target);
+        } else {
+            addRow();
+            if (!ctx.hasChoices) addRow();
+        }
+
+        form.querySelector('[data-act="add"]').addEventListener("click", () => {
+            addRow().querySelector('[data-role="text"]').focus();
+        });
+        form.querySelector('[data-act="cancel"]').addEventListener("click", () =>
+            this.closeOverlays()
+        );
+        form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const choices = Array.from(rowsEl.children).map((row) => {
+                const textEl = row.querySelector('[data-role="text"]');
+                return {
+                    text: textEl.value.trim() || textEl.placeholder,
+                    target: row.querySelector('[data-role="target"]').value.trim(),
+                };
+            });
+            const mv = mergeSel.value;
+            const merge = mv.startsWith("label:")
+                ? { mode: "label", label: mv.slice(6) }
+                : { mode: mv };
+            const result = this.onAddChoices?.(from, { choices, merge });
+            if (!result?.ok) {
+                errorEl.textContent = result?.error || "追加できませんでした";
+                errorEl.hidden = false;
+                return;
+            }
+            this.closeOverlays();
+            this.updateUndoButton();
+            const created = result.createdLabels || [];
+            this.showToast(
+                created.length
+                    ? `選択肢を追加（新ラベル: ${created.join(", ")}）`
+                    : "選択肢を追加しました"
+            );
+        });
+
+        backdrop.appendChild(form);
+        rowsEl.querySelector('[data-role="text"]')?.focus({ preventScroll: true });
     }
 
     highlightConnectFrom(name) {
@@ -798,6 +1139,7 @@ class LabelGraphView {
             g.setAttribute("data-name", node.name);
             g.setAttribute("transform", `translate(${lay.x - lay.width / 2},${lay.y - lay.height / 2})`);
             if (node.name === this.state.currentLabel) g.classList.add("is-current");
+            if (node.name === this._connectFrom) g.classList.add("is-link-source");
             if (node.ghost) g.classList.add("is-ghost");
             if (!this.nodeMatchesFilter(node.name)) g.classList.add("is-dimmed");
 
@@ -1162,8 +1504,18 @@ class LabelGraphView {
             const nodeG = targetEl?.closest?.(".label-graph-node");
             const targetName = nodeG?.getAttribute("data-name");
 
+            const from = this._linkDragFrom;
             if (moved) this.noteGraphGesture();
-            if (moved && targetName && this.isRealTargetNode(targetName)) {
+            if (moved && from && !edge) {
+                this.cancelLinkDrag();
+                const target =
+                    targetName && this.isRealTargetNode(targetName)
+                        ? targetName
+                        : null;
+                if (target !== from) {
+                    this.openDropMenu(from, target, e.clientX, e.clientY);
+                }
+            } else if (moved && targetName && this.isRealTargetNode(targetName)) {
                 this._suppressNextNodeClick = true;
                 this.finishLinkDrag(targetName);
             } else {

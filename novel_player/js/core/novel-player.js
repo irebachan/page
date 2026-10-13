@@ -224,6 +224,12 @@ class NovelPlayer {
                 onDeleteLabel: (name) => this.promptDeleteLabel(name),
                 onUndo: () => this.scriptUndo(),
                 canUndo: () => this.graphUndoStack.length > 0,
+                getBranchContext: (label) => this.getGraphBranchContext(label),
+                onAddChoices: (label, spec) =>
+                    this.applyGraphTextPatchResult(patchAddChoiceBranches, label, spec),
+                onJumpToNewLabel: (label, kind) => this.promptJumpToNewLabel(label, kind),
+                onMergeInto: (label, target) =>
+                    this.applyGraphTextPatchResult(patchMergeInto, label, target),
             });
         }
 
@@ -915,7 +921,16 @@ class NovelPlayer {
     }
 
     applyGraphTextPatch(patchFn, ...args) {
-        if (typeof patchFn !== "function") return false;
+        const result = this.applyGraphTextPatchResult(patchFn, ...args);
+        if (!result.ok && result.error) console.warn(result.error);
+        return result.ok;
+    }
+
+    /** グラフ操作の脚本パッチを適用し、パッチ関数の結果（ok / error / createdLabels 等）を返す */
+    applyGraphTextPatchResult(patchFn, ...args) {
+        if (typeof patchFn !== "function") {
+            return { ok: false, error: "編集機能を読み込めません" };
+        }
         const text = this.getScriptText();
         const result = patchFn(
             text,
@@ -924,16 +939,45 @@ class NovelPlayer {
             this.labelSourceLines,
             ...args
         );
-        if (!result?.ok) {
-            if (result?.error) console.warn(result.error);
-            return false;
-        }
+        if (!result?.ok) return result || { ok: false };
         if (result.text !== text) {
             this.pushGraphUndo();
         }
         this.setScriptText(result.text);
         this.updateScript({ preservePreviewPosition: true });
-        return true;
+        return result;
+    }
+
+    getGraphBranchContext(labelName) {
+        if (typeof describeBranchContext !== "function") return null;
+        const ctx = describeBranchContext(
+            this.getScriptText(),
+            this.labelSourceLines,
+            labelName
+        );
+        if (!ctx) return null;
+        return { ...ctx, labels: this.labels };
+    }
+
+    promptJumpToNewLabel(fromLabel, kind) {
+        const suggested =
+            typeof suggestBranchLabelName === "function"
+                ? suggestBranchLabelName(this.labels, fromLabel)
+                : "";
+        const title =
+            kind === "call"
+                ? `「${fromLabel}」から @call する新しいラベル名（末尾に @return）`
+                : `「${fromLabel}」の直後に挟む新しいラベル名（元の続きは新ラベルへ移ります）`;
+        const name = this.promptForLabelName(title, suggested);
+        if (!name) return null;
+        const result = this.applyGraphTextPatchResult(
+            patchJumpToNewLabel,
+            fromLabel,
+            name,
+            kind
+        );
+        if (!result.ok && result.error) window.alert(result.error);
+        return result;
     }
 
     graphConnectLabels(fromLabel, toLabel) {
