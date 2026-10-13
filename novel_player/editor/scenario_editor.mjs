@@ -36,41 +36,39 @@ function getHiddenScrollerInsets(view) {
     };
 }
 
-/** カーソル行の上端の、スクロール領域上端からの距離(px)。取れなければ null */
-function getCursorOffsetInScroller(view) {
-    const coords = view.coordsAtPos(view.state.selection.main.head);
-    if (!coords) return null;
-    const rect = view.scrollDOM.getBoundingClientRect();
-    return { offset: coords.top - rect.top, height: coords.bottom - coords.top, rect };
-}
-
 /**
- * キーボード開閉などで表示領域が変わったとき、カーソル行をなるべく元の位置に留める。
- * 隠れてしまう場合だけ、見える範囲の端（キーボードの真上など）まで最小限動かす。
+ * baseScrollTop のままでカーソルが見えていればそれを、見えなければ見える位置まで最小限ずらした scrollTop を返す
  */
-function keepCursorLineInPlace(view, anchorOffset) {
-    if (!view.hasFocus) return;
-    const cur = getCursorOffsetInScroller(view);
-    if (!cur) {
-        view.dispatch({
-            effects: EditorView.scrollIntoView(view.state.selection.main.head, {
-                y: "nearest",
-            }),
-        });
-        return;
+function scrollTopKeepingCursorVisible(view, baseScrollTop) {
+    const scroller = view.scrollDOM;
+    const head = view.state.selection.main.head;
+    const rect = scroller.getBoundingClientRect();
+    const coords = view.coordsAtPos(head);
+    let lineTop;
+    let lineBottom;
+    if (coords) {
+        lineTop = coords.top - rect.top + scroller.scrollTop;
+        lineBottom = coords.bottom - rect.top + scroller.scrollTop;
+    } else {
+        const block = view.lineBlockAt(head);
+        const docTop = view.documentTop - rect.top + scroller.scrollTop;
+        lineTop = docTop + block.top;
+        lineBottom = docTop + block.bottom;
     }
     const hidden = getHiddenScrollerInsets(view) ?? { top: 0, bottom: 0 };
-    const minOffset = hidden.top + KEYBOARD_SCROLL_PADDING;
-    const maxOffset =
-        cur.rect.height - hidden.bottom - KEYBOARD_SCROLL_PADDING - cur.height;
-    if (maxOffset < minOffset) return;
-    const want = Math.min(Math.max(anchorOffset ?? cur.offset, minOffset), maxOffset);
-    const delta = cur.offset - want;
-    if (Math.abs(delta) >= 1) view.scrollDOM.scrollTop += delta;
+    const viewTop = hidden.top + KEYBOARD_SCROLL_PADDING;
+    const viewBottom = scroller.clientHeight - hidden.bottom - KEYBOARD_SCROLL_PADDING;
+    let target = baseScrollTop;
+    if (lineBottom - target > viewBottom) target = lineBottom - viewBottom;
+    if (lineTop - target < viewTop) target = lineTop - viewTop;
+    const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+    return Math.max(0, Math.min(target, maxScroll));
 }
 
-/** キーボード開閉アニメーション中とみなす、最後の viewport 変化からの時間(ms) */
-const VIEWPORT_SETTLE_MS = 400;
+/** タップ後、ブラウザ等による自動スクロールを打ち消す時間(ms) */
+const TAP_SCROLL_GUARD_MS = 800;
+/** これ以上指が動いたらタップではなくスクロール操作とみなす(px) */
+const TAP_MOVE_TOLERANCE = 10;
 
 function buildMobileTouchScrollExtensions() {
     if (!isCoarsePointer()) return [];
@@ -85,58 +83,88 @@ function buildMobileTouchScrollExtensions() {
         };
     });
 
+    /**
+     * Android Chrome はキーボード表示中に入力欄をタップするたび「入力欄をカーソルが見える位置へ」
+     * 独自にスクロールし、大きな入力欄だと本文が大きく飛ぶ。タップ直後のスクロールは打ち消し、
+     * タップした行が隠れる場合だけ見える端まで最小限動かす。
+     */
     const viewportPlugin = ViewPlugin.fromClass(
         class MobileKeyboardScroll {
             constructor(view) {
                 this.view = view;
                 this.padBottom = 0;
                 this.attrs = null;
+                this._touch = null;
+                this._base = 0;
+                this._guardUntil = 0;
                 this._raf = 0;
                 this._timer = 0;
-                /** 表示領域が変わる直前の、カーソル行の位置（スクロール領域上端から） */
-                this._anchorOffset = null;
-                this._settlingUntil = 0;
+                const scroller = view.scrollDOM;
+
+                this._onTouchStart = (e) => {
+                    this._guardUntil = 0;
+                    const t = e.touches.length === 1 ? e.touches[0] : null;
+                    this._touch = t ? { x: t.clientX, y: t.clientY, moved: false } : null;
+                };
+                this._onTouchMove = (e) => {
+                    const t = e.touches[0];
+                    if (!this._touch || !t) return;
+                    if (
+                        Math.abs(t.clientX - this._touch.x) > TAP_MOVE_TOLERANCE ||
+                        Math.abs(t.clientY - this._touch.y) > TAP_MOVE_TOLERANCE
+                    ) {
+                        this._touch.moved = true;
+                    }
+                };
+                this._onTouchEnd = () => {
+                    const touch = this._touch;
+                    this._touch = null;
+                    if (!touch || touch.moved) return;
+                    this._base = scroller.scrollTop;
+                    this._guardUntil = Date.now() + TAP_SCROLL_GUARD_MS;
+                };
+                this._onScroll = () => {
+                    if (this._touch || Date.now() > this._guardUntil) return;
+                    this.enforce(this._base);
+                };
+                this._vvHeight = window.visualViewport?.height ?? 0;
                 this._onViewportChange = () => {
-                    this._settlingUntil = Date.now() + VIEWPORT_SETTLE_MS;
+                    const height = window.visualViewport?.height ?? 0;
+                    const shrank = height < this._vvHeight - 1;
+                    this._vvHeight = height;
+                    const guarding = Date.now() <= this._guardUntil;
+                    if (guarding) {
+                        this._guardUntil = Date.now() + TAP_SCROLL_GUARD_MS;
+                    } else if (!shrank) {
+                        return;
+                    }
                     cancelAnimationFrame(this._raf);
                     clearTimeout(this._timer);
-                    this._raf = requestAnimationFrame(() =>
-                        keepCursorLineInPlace(view, this._anchorOffset)
-                    );
-                    // ブラウザ自身のカーソル追従スクロールが後から入るので、収まったあとにもう一度
-                    this._timer = setTimeout(
-                        () => keepCursorLineInPlace(view, this._anchorOffset),
-                        VIEWPORT_SETTLE_MS - 100
-                    );
+                    const run = () => {
+                        if (!view.hasFocus || this._touch) return;
+                        this.enforce(guarding ? this._base : scroller.scrollTop);
+                    };
+                    this._raf = requestAnimationFrame(run);
+                    this._timer = setTimeout(run, 300);
                 };
-                this._onScroll = () => this.recordAnchor();
-                view.scrollDOM.addEventListener("scroll", this._onScroll, {
-                    passive: true,
-                });
-                window.visualViewport?.addEventListener(
-                    "resize",
-                    this._onViewportChange
-                );
-                window.visualViewport?.addEventListener(
-                    "scroll",
-                    this._onViewportChange
-                );
+
+                scroller.addEventListener("touchstart", this._onTouchStart, { passive: true });
+                scroller.addEventListener("touchmove", this._onTouchMove, { passive: true });
+                scroller.addEventListener("touchend", this._onTouchEnd, { passive: true });
+                scroller.addEventListener("touchcancel", this._onTouchStart, { passive: true });
+                scroller.addEventListener("scroll", this._onScroll, { passive: true });
+                window.visualViewport?.addEventListener("resize", this._onViewportChange);
             }
 
-            recordAnchor() {
-                if (Date.now() < this._settlingUntil) return;
-                const cur = getCursorOffsetInScroller(this.view);
-                if (cur) this._anchorOffset = cur.offset;
+            enforce(base) {
+                const scroller = this.view.scrollDOM;
+                const target = scrollTopKeepingCursorVisible(this.view, base);
+                this._base = target;
+                if (Math.abs(scroller.scrollTop - target) >= 1) scroller.scrollTop = target;
             }
 
             /** 文末でもカーソル行をキーボードの上まで持ち上げられるよう、隠れた分だけ下に余白を足す */
             update(update) {
-                if (update.selectionSet || update.docChanged || update.focusChanged) {
-                    update.view.requestMeasure({
-                        key: this,
-                        read: () => this.recordAnchor(),
-                    });
-                }
                 const hidden = update.view.hasFocus
                     ? getHiddenScrollerInsets(update.view)
                     : null;
@@ -151,15 +179,13 @@ function buildMobileTouchScrollExtensions() {
             destroy() {
                 cancelAnimationFrame(this._raf);
                 clearTimeout(this._timer);
-                this.view.scrollDOM.removeEventListener("scroll", this._onScroll);
-                window.visualViewport?.removeEventListener(
-                    "resize",
-                    this._onViewportChange
-                );
-                window.visualViewport?.removeEventListener(
-                    "scroll",
-                    this._onViewportChange
-                );
+                const scroller = this.view.scrollDOM;
+                scroller.removeEventListener("touchstart", this._onTouchStart);
+                scroller.removeEventListener("touchmove", this._onTouchMove);
+                scroller.removeEventListener("touchend", this._onTouchEnd);
+                scroller.removeEventListener("touchcancel", this._onTouchStart);
+                scroller.removeEventListener("scroll", this._onScroll);
+                window.visualViewport?.removeEventListener("resize", this._onViewportChange);
             }
         },
         {
