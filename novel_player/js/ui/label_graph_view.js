@@ -241,9 +241,11 @@ class LabelGraphView {
         if (m === "end") return `選択中: @end → ラベルを1つタップ ${cancel}`;
         if (m === "return") return `選択中: @return → ラベルを1つタップ ${cancel}`;
         if (m === "rename") return `選択中: 改名 → ラベルを1つタップ ${cancel}`;
-        if (m === "delete") return `選択中: 削除 → ラベルを1つタップ（確認あり） ${cancel}`;
+        if (m === "delete") {
+            return `選択中: 削除 → ラベルをタップ（確認あり）／線をタップでその接続をすぐ削除 ${cancel}`;
+        }
         if (m === "choice") {
-            return `選択中: 選択肢 → 起点ラベルをタップ（文言と行き先を入力。新しい名前ならラベルも作成） ${cancel}`;
+            return `選択中: 選択肢 → ラベルをタップ（追加・編集。新しい行き先名ならラベルも作成） ${cancel}`;
         }
         if (m === "merge") {
             if (this._connectFrom) {
@@ -372,11 +374,9 @@ class LabelGraphView {
                 const dx = e.clientX - down.x;
                 const dy = e.clientY - down.y;
                 down = null;
+                this._pendingEdgeAction = null;
                 if (dx * dx + dy * dy > 28 * 28) return;
-                if (this.onRemoveEdge) {
-                    this.onRemoveEdge(edge);
-                    this.updateUndoButton();
-                }
+                this.handleEdgeTap(edge, e.clientX, e.clientY);
             });
             el.addEventListener("pointercancel", () => {
                 down = null;
@@ -410,6 +410,36 @@ class LabelGraphView {
                 };
             });
         }
+    }
+
+    /** 選択肢の線は編集ダイアログ。それ以外は削除ツール中なら即削除、通常は確認メニュー */
+    handleEdgeTap(edge, clientX, clientY) {
+        if (edge.kind === "choice" && this._commandMode !== "delete") {
+            this.openChoiceDialog(edge.from, {
+                groupLine: edge.sourceLine,
+                choiceIndex: edge.choiceIndex,
+            });
+            return;
+        }
+        if (!this.onRemoveEdge) return;
+        const remove = () => {
+            this.onRemoveEdge(edge);
+            this.updateUndoButton();
+        };
+        if (this._commandMode === "delete") {
+            remove();
+            return;
+        }
+        const label =
+            edge.kind === "exit"
+                ? `@${edge.exitKind} を削除`
+                : `@${edge.kind} ${edge.to} を削除`;
+        this.openMenu(
+            `${edge.from} の接続`,
+            [[label, remove, { danger: true }]],
+            clientX,
+            clientY
+        );
     }
 
     bindIfBranchTap(el, edge) {
@@ -569,6 +599,27 @@ class LabelGraphView {
 
     /** ノードからドラッグして離した位置に出す操作メニュー（target null＝何もない場所） */
     openDropMenu(from, target, clientX, clientY) {
+        const items = target
+            ? [
+                  ["選択肢でつなぐ…", () => this.openChoiceDialog(from, { target })],
+                  ["goto", () => this.onConnect?.(from, target)],
+                  ["call", () => this.onConnectCall?.(from, target)],
+              ]
+            : [
+                  ["選択肢で分岐…", () => this.openChoiceDialog(from)],
+                  ["goto で新ラベルを挟む…", () => this.onJumpToNewLabel?.(from, "goto")],
+                  ["call で新ラベルを呼ぶ…", () => this.onJumpToNewLabel?.(from, "call")],
+              ];
+        this.openMenu(
+            target ? `${from} → ${target}` : `${from} → 新しいラベル`,
+            items,
+            clientX,
+            clientY
+        );
+    }
+
+    /** items: [ラベル, 実行関数, { danger }?]。末尾に「キャンセル」を足して表示 */
+    openMenu(titleText, items, clientX, clientY) {
         const backdrop = this.openOverlay("label-graph-overlay--menu");
         const menu = document.createElement("div");
         menu.className = "label-graph-drop-menu";
@@ -576,29 +627,16 @@ class LabelGraphView {
 
         const title = document.createElement("p");
         title.className = "label-graph-drop-menu__title";
-        title.textContent = target ? `${from} → ${target}` : `${from} → 新しいラベル`;
+        title.textContent = titleText;
         menu.appendChild(title);
 
-        const items = target
-            ? [
-                  ["選択肢でつなぐ…", () => this.openChoiceDialog(from, { target })],
-                  ["goto", () => this.onConnect?.(from, target)],
-                  ["call", () => this.onConnectCall?.(from, target)],
-                  ["合流（末尾を goto に置換）", () => this.runMerge(from, target)],
-              ]
-            : [
-                  ["選択肢で分岐…", () => this.openChoiceDialog(from)],
-                  ["goto で新ラベルを挟む…", () => this.onJumpToNewLabel?.(from, "goto")],
-                  ["call で新ラベルを呼ぶ…", () => this.onJumpToNewLabel?.(from, "call")],
-              ];
-        items.push(["キャンセル", null]);
-
-        for (const [label, run] of items) {
+        for (const [label, run, opts] of [...items, ["キャンセル", null]]) {
             const btn = document.createElement("button");
             btn.type = "button";
             btn.setAttribute("role", "menuitem");
             btn.textContent = label;
             if (!run) btn.classList.add("is-cancel");
+            if (opts?.danger) btn.classList.add("is-danger");
             btn.addEventListener("click", () => {
                 this.closeOverlays();
                 run?.();
@@ -615,21 +653,14 @@ class LabelGraphView {
         const y = Math.min(Math.max(8, clientY - rect.top), rect.height - mh - 8);
         menu.style.left = `${Math.max(8, x)}px`;
         menu.style.top = `${Math.max(8, y)}px`;
-        menu.querySelector("button")?.focus({ preventScroll: true });
-    }
-
-    runMerge(from, target) {
-        const result = this.onMergeInto?.(from, target);
-        if (result?.ok) {
-            this.showToast(`「${from}」→「${target}」へ合流`);
-        } else if (result?.error) {
-            this.showToast(result.error, { error: true });
-        }
+        menu.querySelector("button:not(.is-danger)")?.focus({ preventScroll: true });
     }
 
     /**
-     * 選択肢をまとめて追加するダイアログ
-     * options.target … 1行目の行き先を既存ラベルで固定（ドラッグで接続したとき）
+     * 選択肢の追加・編集ダイアログ（ラベルに選択肢があれば既存の行を読み込んで編集）
+     * options.groupLine … 編集する選択肢グループの先頭行（省略時はブロック内の最後のグループ）
+     * options.choiceIndex … 開いたときにフォーカスする既存の行
+     * options.target … 行き先をこのラベルにした新しい行を足す（ドラッグで接続したとき）
      */
     openChoiceDialog(from, options = {}) {
         if (!this.isRealTargetNode(from)) return;
@@ -637,34 +668,62 @@ class LabelGraphView {
         if (!ctx) return;
         const labels = ctx.labels || {};
         const labelNames = Object.keys(labels).sort((a, b) => labels[a] - labels[b]);
+        const groups = ctx.groups || [];
+        const editGroup =
+            (options.groupLine != null &&
+                groups.find((g) => g.line === options.groupLine)) ||
+            groups[groups.length - 1] ||
+            null;
+        const editing = !!editGroup;
+        const labelNameOf = (target) =>
+            typeof choiceTargetLabelName === "function"
+                ? choiceTargetLabelName(target)
+                : String(target || "").trim();
 
         const backdrop = this.openOverlay("label-graph-overlay--dialog");
         const form = document.createElement("form");
         form.className = "label-graph-dialog";
         form.setAttribute("role", "dialog");
         form.setAttribute("aria-modal", "true");
-        form.setAttribute("aria-label", `選択肢を追加: ${from}`);
+        form.setAttribute(
+            "aria-label",
+            `${editing ? "選択肢を編集" : "選択肢を追加"}: ${from}`
+        );
 
         const listId = `label-graph-labels-${Date.now()}`;
         form.innerHTML = `
-            <h3 class="label-graph-dialog__title">選択肢を追加 <code></code></h3>
-            <p class="label-graph-dialog__note" hidden>既存の選択肢の後ろに追加します。</p>
+            <h3 class="label-graph-dialog__title"><span></span> <code></code></h3>
+            <p class="label-graph-dialog__note" hidden></p>
             <div class="label-graph-choice-rows"></div>
             <button type="button" class="label-graph-dialog__add" data-act="add">＋ 選択肢を増やす</button>
             <label class="label-graph-dialog__field">
                 <span>新しく作る枝の最後</span>
                 <select data-role="merge"></select>
             </label>
-            <p class="label-graph-dialog__hint">行き先が新しい名前ならラベルを作成します（起点のすぐ後ろ）。既存のラベル名なら接続だけします。文言が空なら薄字の仮文言を使います。</p>
+            <p class="label-graph-dialog__hint">行き先が新しい名前ならラベルを作成します（起点のすぐ後ろ）。既存のラベル名なら接続だけ、空なら未接続の選択肢になります。文言が空なら薄字の仮文言を使います。</p>
             <p class="label-graph-dialog__error" role="alert" hidden></p>
             <div class="label-graph-dialog__actions">
                 <button type="button" data-act="cancel">キャンセル</button>
-                <button type="submit" class="is-primary">作成</button>
+                <button type="submit" class="is-primary"></button>
             </div>
             <datalist id="${listId}"></datalist>
         `;
+        form.querySelector(".label-graph-dialog__title span").textContent = editing
+            ? "選択肢を編集"
+            : "選択肢を追加";
         form.querySelector(".label-graph-dialog__title code").textContent = `@${from}`;
-        form.querySelector(".label-graph-dialog__note").hidden = !ctx.hasChoices;
+        form.querySelector('button[type="submit"]').textContent = editing
+            ? "更新"
+            : "作成";
+        const noteEl = form.querySelector(".label-graph-dialog__note");
+        if (editing) {
+            const nth =
+                groups.length > 1
+                    ? `このラベルの ${groups.indexOf(editGroup) + 1} / ${groups.length} 個目の選択肢。`
+                    : "";
+            noteEl.textContent = `${nth}↑ で並べ替え、× で削除できます。`;
+            noteEl.hidden = false;
+        }
         const datalist = form.querySelector("datalist");
         for (const name of labelNames) {
             const opt = document.createElement("option");
@@ -701,23 +760,24 @@ class LabelGraphView {
 
         const rowsEl = form.querySelector(".label-graph-choice-rows");
         const errorEl = form.querySelector(".label-graph-dialog__error");
-        const choiceNo = () => rowsEl.children.length + 1 + (ctx.choiceCount || 0);
 
         const takenTargets = () =>
             new Set(
                 Array.from(rowsEl.querySelectorAll('[data-role="target"]'))
-                    .map((el) => el.value.trim())
+                    .map((el) => labelNameOf(el.value))
                     .filter(Boolean)
             );
 
-        const addRow = (target) => {
+        /** existing: { text, target } を渡すと既存の選択肢として行を作る */
+        const addRow = (existing, newTarget) => {
             const row = document.createElement("div");
             row.className = "label-graph-choice-row";
             const text = document.createElement("input");
             text.type = "text";
             text.dataset.role = "text";
-            text.placeholder = `選択肢${choiceNo()}`;
+            text.placeholder = `選択肢${rowsEl.children.length + 1}`;
             text.setAttribute("aria-label", "選択肢の文言");
+            if (existing) text.value = existing.text;
             const arrow = document.createElement("span");
             arrow.className = "label-graph-choice-row__arrow";
             arrow.textContent = "→";
@@ -726,37 +786,61 @@ class LabelGraphView {
             dest.dataset.role = "target";
             dest.setAttribute("list", listId);
             dest.setAttribute("aria-label", "行き先ラベル");
+            dest.placeholder = "（未接続）";
             dest.autocomplete = "off";
             dest.spellcheck = false;
-            dest.value =
-                target ||
-                (typeof suggestBranchLabelName === "function"
-                    ? suggestBranchLabelName(labels, from, takenTargets())
-                    : "");
+            if (existing) {
+                dest.value = existing.target;
+            } else {
+                dest.value =
+                    newTarget ||
+                    (typeof suggestBranchLabelName === "function"
+                        ? suggestBranchLabelName(labels, from, takenTargets())
+                        : "");
+            }
             const updateKind = () => {
-                const v = dest.value.trim();
-                row.classList.toggle("is-new-label", !!v && !labels.hasOwnProperty(v));
+                const name = labelNameOf(dest.value);
+                row.classList.toggle(
+                    "is-new-label",
+                    !!name && !labels.hasOwnProperty(name)
+                );
             };
             dest.addEventListener("input", updateKind);
             updateKind();
+            const up = document.createElement("button");
+            up.type = "button";
+            up.className = "label-graph-choice-row__btn";
+            up.setAttribute("aria-label", "上へ移動");
+            up.textContent = "↑";
+            up.addEventListener("click", () => {
+                const prev = row.previousElementSibling;
+                if (prev) rowsEl.insertBefore(row, prev);
+            });
             const del = document.createElement("button");
             del.type = "button";
-            del.className = "label-graph-choice-row__del";
+            del.className = "label-graph-choice-row__btn";
             del.setAttribute("aria-label", "この選択肢を消す");
             del.textContent = "×";
             del.addEventListener("click", () => {
-                if (rowsEl.children.length > 1) row.remove();
+                if (editing || rowsEl.children.length > 1) row.remove();
             });
-            row.append(text, arrow, dest, del);
+            row.append(text, arrow, dest, up, del);
             rowsEl.appendChild(row);
             return row;
         };
 
-        if (options.target) {
-            addRow(options.target);
+        let focusRow = null;
+        if (editing) {
+            editGroup.choices.forEach((c, i) => {
+                const row = addRow(c);
+                if (i === options.choiceIndex) focusRow = row;
+            });
+            if (options.target) focusRow = addRow(null, options.target);
+        } else if (options.target) {
+            addRow(null, options.target);
         } else {
             addRow();
-            if (!ctx.hasChoices) addRow();
+            addRow();
         }
 
         form.querySelector('[data-act="add"]').addEventListener("click", () => {
@@ -778,24 +862,31 @@ class LabelGraphView {
             const merge = mv.startsWith("label:")
                 ? { mode: "label", label: mv.slice(6) }
                 : { mode: mv };
-            const result = this.onAddChoices?.(from, { choices, merge });
+            const result = this.onAddChoices?.(from, {
+                choices,
+                merge,
+                groupLine: editing ? editGroup.line : undefined,
+            });
             if (!result?.ok) {
-                errorEl.textContent = result?.error || "追加できませんでした";
+                errorEl.textContent = result?.error || "保存できませんでした";
                 errorEl.hidden = false;
                 return;
             }
             this.closeOverlays();
             this.updateUndoButton();
             const created = result.createdLabels || [];
+            const done = editing ? "選択肢を更新" : "選択肢を追加";
             this.showToast(
-                created.length
-                    ? `選択肢を追加（新ラベル: ${created.join(", ")}）`
-                    : "選択肢を追加しました"
+                created.length ? `${done}（新ラベル: ${created.join(", ")}）` : done
             );
         });
 
         backdrop.appendChild(form);
-        rowsEl.querySelector('[data-role="text"]')?.focus({ preventScroll: true });
+        const focusEl =
+            focusRow?.querySelector('[data-role="text"]') ||
+            rowsEl.querySelector('[data-role="text"]');
+        focusEl?.focus({ preventScroll: true });
+        focusEl?.select?.();
     }
 
     highlightConnectFrom(name) {
@@ -1480,8 +1571,8 @@ class LabelGraphView {
                 const dx = e.clientX - p.x;
                 const dy = e.clientY - p.y;
                 const slop = this._edgeDragSlopPx;
-                if (dx * dx + dy * dy <= slop * slop && this.onRemoveEdge) {
-                    this.onRemoveEdge(p.edge);
+                if (dx * dx + dy * dy <= slop * slop) {
+                    this.handleEdgeTap(p.edge, e.clientX, e.clientY);
                 }
             }
             this.updateUndoButton();
@@ -1650,25 +1741,20 @@ class LabelGraphView {
         if (title) {
             const t = document.createElementNS("http://www.w3.org/2000/svg", "title");
             let hint = "";
-            if (edge.kind === "exit") {
-                hint = "（クリックで行を削除）";
-            } else if (edge.kind === "goto" || edge.kind === "call") {
-                hint = "（クリックで行削除）";
-            } else if (edge.disconnected) {
-                hint = "（クリックで行削除・ドラッグでつなぐ）";
-            } else if (edge.kind === "choice") {
-                hint = "（クリックで接続を切る）";
-            } else if (edge.kind === "if_inline" && edge.bodyPreview) {
-                hint = "（クリックで @if へ）";
-            } else if (
-                edge.kind === "if_inline" ||
-                edge.kind === "if_rejoin"
+            if (
+                edge.kind === "exit" ||
+                edge.kind === "goto" ||
+                edge.kind === "call"
             ) {
-                hint = "";
-            } else if (edge.kind === "if_branch") {
-                hint = "（条件が真のときだけ別ラベルへ）";
+                hint = "削除";
+            } else if (edge.kind === "choice" && edge.disconnected) {
+                hint = "編集／ドラッグで接続";
+            } else if (edge.kind === "choice") {
+                hint = "編集";
+            } else if (edge.kind === "if_inline" && edge.bodyPreview) {
+                hint = "@if へ";
             }
-            t.textContent = title + hint;
+            t.textContent = hint ? `${title} · ${hint}` : title;
             hit.appendChild(t);
         }
         this.bindEdgeInteractions(edge, hit, points);
@@ -1921,28 +2007,26 @@ function pointsToPath(points) {
 
 function edgeTitle(edge) {
     if (edge.kind === "choice") {
-        return `「${edge.detail}」→ ${edge.to}`;
+        return edge.to ? `「${edge.detail}」→ ${edge.to}` : `「${edge.detail}」（未接続）`;
     }
     if (edge.kind === "if_branch") {
         const mode = edge.mode === "call" ? "call " : "";
-        return `if ${edge.detail} → ${mode}${edge.to}（条件が真のとき）`;
+        return `if ${edge.detail} → ${mode}${edge.to}`;
     }
     if (edge.kind === "if_inline") {
-        return `if ${edge.detail}（このラベル内・@endif で続き）`;
+        return `if ${edge.detail}`;
     }
     if (edge.kind === "if_rejoin") {
-        return "@endif 合流（このラベルの続きへ）";
+        return "@endif";
     }
     if (edge.kind === "goto" || edge.kind === "call") {
         return `@${edge.kind} ${edge.to}`;
     }
     if (edge.kind === "fallthrough") {
-        return `「${edge.from}」の次の定義「${edge.to}」へ（@goto なし）`;
+        return `→ ${edge.to}（続き）`;
     }
     if (edge.kind === "exit") {
-        return edge.exitKind === "end"
-            ? "@end（このラベルで終了）"
-            : "@return（呼び出し元へ戻る）";
+        return edge.exitKind === "end" ? "@end" : "@return";
     }
     return "";
 }

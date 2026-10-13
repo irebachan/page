@@ -38,7 +38,7 @@ function appendLabelStub(lines, labelName) {
 }
 
 /**
- * fromLabel ブロックに @goto toLabel を追加、または既存 @goto の先を差し替え
+ * fromLabel ブロック末尾の @goto / @end / @return を @goto toLabel に置き換え（なければ追加）
  */
 function patchLabelGoto(text, script, labels, labelSourceLines, fromLabel, toLabel) {
     return patchLabelJump(
@@ -80,12 +80,18 @@ function patchLabelJump(text, _script, labels, labelSourceLines, fromLabel, toLa
         return { ok: true, text: lines.join("\n") };
     }
 
+    const ending = analyzeBlockEnding(lines, sourceLines, fromLabel);
+    if (ending && !ending.endsWithChoices) {
+        lines.splice(ending.tailStart, ending.contentEnd - ending.tailStart, `${cmd} ${toLabel}`);
+        return { ok: true, text: lines.join("\n") };
+    }
+
     const existing = listJumpLinesInBlock(lines, range, "goto");
     if (existing.length > 0) {
         const g = existing[existing.length - 1];
         lines[g.lineIndex] = `${cmd} ${toLabel}`;
     } else {
-        lines.splice(range.end, 0, `${cmd} ${toLabel}`);
+        lines.splice(ending ? ending.contentEnd : range.end, 0, `${cmd} ${toLabel}`);
     }
 
     return { ok: true, text: lines.join("\n") };
@@ -499,8 +505,10 @@ function findCommonChoiceMerge(lines, labelSourceLines, range) {
     let common = null;
     for (let j = range.start + 1; j < range.end; j++) {
         if (!lines[j].trim().startsWith("-")) continue;
-        const target = parseChoiceLineTarget(lines[j])?.target;
-        if (!target || labelSourceLines[target] == null) return null;
+        const raw = splitChoiceLine(lines[j]).target;
+        const target = choiceTargetLabelName(raw);
+        if (!target || target !== raw) continue;
+        if (labelSourceLines[target] == null) return null;
         const info = analyzeBlockEnding(lines, labelSourceLines, target);
         if (!info || info.tailLines.length !== 1) return null;
         const to = parseJumpLineTarget(info.tailLines[0], "goto");
@@ -510,19 +518,61 @@ function findCommonChoiceMerge(lines, labelSourceLines, range) {
     return common;
 }
 
-/** 選択肢ダイアログ用: 起点ラベルの末尾状態 */
+/** 選択肢行を { indent, text, target } に分解（target は `@call x` 等も含む生の文字列） */
+function splitChoiceLine(line) {
+    const raw = line.trim();
+    if (!raw.startsWith("-")) return null;
+    const body = raw.slice(1).trim();
+    const arrow = body.indexOf("=>");
+    return {
+        indent: line.match(/^\s*/)[0],
+        text: arrow >= 0 ? body.slice(0, arrow).trim() : body,
+        target: arrow >= 0 ? body.slice(arrow + 2).trim() : "",
+    };
+}
+
+/** 選択肢の行き先からラベル名を取り出す（`@call x` / `call x` → x） */
+function choiceTargetLabelName(target) {
+    let t = (target || "").trim();
+    if (t.startsWith("@call ")) t = t.slice(6).trim();
+    else if (t.startsWith("call ")) t = t.slice(5).trim();
+    return t;
+}
+
+/** ブロック内の連続した選択肢行のまとまりを列挙 */
+function listChoiceGroups(lines, range) {
+    const groups = [];
+    let j = range.start + 1;
+    while (j < range.end) {
+        if (!lines[j].trim().startsWith("-")) {
+            j++;
+            continue;
+        }
+        const start = j;
+        const choices = [];
+        while (j < range.end && lines[j].trim().startsWith("-")) {
+            const c = splitChoiceLine(lines[j]);
+            choices.push({ text: c.text, target: c.target });
+            j++;
+        }
+        groups.push({ start, end: j, choices });
+    }
+    return groups;
+}
+
+/** 選択肢ダイアログ用: 起点ラベルの末尾状態と既存の選択肢 */
 function describeBranchContext(text, labelSourceLines, labelName) {
     const lines = text.split("\n");
     const info = analyzeBlockEnding(lines, labelSourceLines, labelName);
     if (!info) return null;
     const hasChoices = info.lastChoiceEnd != null;
-    let choiceCount = 0;
-    for (let j = info.range.start + 1; j < info.range.end; j++) {
-        if (lines[j].trim().startsWith("-")) choiceCount++;
-    }
+    const groups = listChoiceGroups(lines, info.range).map((g) => ({
+        line: g.start,
+        choices: g.choices,
+    }));
     return {
         hasChoices,
-        choiceCount,
+        groups,
         continuation: info.continuation,
         commonMerge: hasChoices
             ? findCommonChoiceMerge(lines, labelSourceLines, info.range)
@@ -559,20 +609,26 @@ function newBranchBlock(name, bodyLines) {
 }
 
 /**
- * 起点ラベルに選択肢をまとめて追加する。
+ * 起点ラベルの選択肢を追加・編集する。
  * 行き先が未定義なら起点ブロックの直後に新ラベルを作り、merge に従って各枝の末尾を書く。
- * spec: { choices: [{ text, target }], merge: { mode: "keep" | "none" | "label", label? } }
+ * spec: {
+ *   choices: [{ text, target }],   // target 空なら未接続の選択肢
+ *   merge: { mode: "keep" | "none" | "label", label? },
+ *   groupLine?: number,            // 指定時はその選択肢グループを choices で丸ごと置き換える
+ * }
  */
 function patchAddChoiceBranches(text, _script, labels, labelSourceLines, fromLabel, spec) {
     const choices = spec?.choices || [];
+    const editing = spec?.groupLine != null;
     if (!fromLabel || !labels.hasOwnProperty(fromLabel)) {
         return { ok: false, error: `ラベル「${fromLabel}」が見つかりません`, text };
     }
-    if (choices.length === 0) {
+    if (choices.length === 0 && !editing) {
         return { ok: false, error: "選択肢がありません", text };
     }
 
     const newNames = [];
+    const callNames = new Set();
     const taken = new Set();
     for (const c of choices) {
         const t = (c.text || "").trim();
@@ -580,19 +636,33 @@ function patchAddChoiceBranches(text, _script, labels, labelSourceLines, fromLab
         if (t.includes("=>")) {
             return { ok: false, error: "選択肢の文言に「=>」は使えません", text };
         }
-        const target = (c.target || "").trim();
-        if (!target) return { ok: false, error: `「${t}」の行き先を入力してください`, text };
-        if (labels.hasOwnProperty(target) || taken.has(target)) continue;
-        const v = validateLabelName(target, labels);
+        const name = choiceTargetLabelName(c.target);
+        if (!name || labels.hasOwnProperty(name) || taken.has(name)) continue;
+        const v = validateLabelName(name, labels);
         if (!v.ok) return { ok: false, error: v.error, text };
         taken.add(v.name);
         newNames.push(v.name);
+        if (name !== (c.target || "").trim()) callNames.add(v.name);
     }
 
     const lines = text.split("\n");
     const info = analyzeBlockEnding(lines, labelSourceLines, fromLabel);
     if (!info) {
         return { ok: false, error: `ラベル「${fromLabel}」が見つかりません`, text };
+    }
+
+    let group = null;
+    if (editing) {
+        group = listChoiceGroups(lines, info.range).find(
+            (g) => g.start === spec.groupLine
+        );
+        if (!group) {
+            return {
+                ok: false,
+                error: "選択肢の行が見つかりません（脚本が変更されています）",
+                text,
+            };
+        }
     }
 
     const merge = spec.merge || { mode: "keep" };
@@ -607,12 +677,20 @@ function patchAddChoiceBranches(text, _script, labels, labelSourceLines, fromLab
         branchTail = [`@goto ${to}`];
     }
 
-    const choiceLines = choices.map(
-        (c) => `- ${c.text.trim()} => ${c.target.trim()}`
-    );
+    const indent = group ? lines[group.start].match(/^\s*/)[0] : "";
+    const choiceLines = choices.map((c) => {
+        const target = (c.target || "").trim();
+        return target
+            ? `${indent}- ${c.text.trim()} => ${target}`
+            : `${indent}- ${c.text.trim()}`;
+    });
 
     let delta;
-    if (info.lastChoiceEnd != null) {
+    if (group) {
+        const removeCount = group.end - group.start;
+        lines.splice(group.start, removeCount, ...choiceLines);
+        delta = choiceLines.length - removeCount;
+    } else if (info.lastChoiceEnd != null) {
         lines.splice(info.lastChoiceEnd, 0, ...choiceLines);
         delta = choiceLines.length;
     } else {
@@ -625,7 +703,9 @@ function patchAddChoiceBranches(text, _script, labels, labelSourceLines, fromLab
         const blocks = newNames.map((name) =>
             newBranchBlock(
                 name,
-                branchTail.filter((l) => l !== `@goto ${name}`)
+                callNames.has(name)
+                    ? ["@return"]
+                    : branchTail.filter((l) => l !== `@goto ${name}`)
             )
         );
         insertLabelBlocksAt(lines, info.range.end + delta, blocks);

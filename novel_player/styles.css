@@ -1597,6 +1597,17 @@ body.node-graph-open .cm-scroller {
     color: #999;
 }
 
+.label-graph-drop-menu button.is-danger {
+    color: #f0b0b0;
+}
+
+.label-graph-drop-menu button.is-danger:hover,
+.label-graph-drop-menu button.is-danger:focus-visible {
+    background: #5a2a2a;
+    border-color: #a86868;
+    color: #fff;
+}
+
 .label-graph-dialog {
     width: min(100%, 34rem);
     max-height: 100%;
@@ -1643,7 +1654,7 @@ body.node-graph-open .cm-scroller {
 
 .label-graph-choice-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 0.35em;
 }
@@ -1672,7 +1683,19 @@ body.node-graph-open .cm-scroller {
     color: #7ab89a;
 }
 
-.label-graph-choice-row__del {
+@media (max-width: 520px) {
+    .label-graph-choice-row {
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        padding-bottom: 0.35em;
+        border-bottom: 1px solid #3a3a3a;
+    }
+
+    .label-graph-choice-row input[data-role="text"] {
+        grid-column: 1 / -1;
+    }
+}
+
+.label-graph-choice-row__btn {
     width: 2.25rem;
     height: 2.25rem;
     padding: 0;

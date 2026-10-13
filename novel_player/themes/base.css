@@ -639,7 +639,7 @@ body {
     border-color: var(--control-border);
 }
 
-.label-graph-choice-row__del,
+.label-graph-choice-row__btn,
 .label-graph-dialog__actions button {
     color: var(--control-fg);
     background: var(--field-bg);
