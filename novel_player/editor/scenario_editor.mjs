@@ -17,115 +17,112 @@ function isCoarsePointer() {
     );
 }
 
+/** カーソルとキーボード上端・画面上端の間に空ける余白(px) */
 const KEYBOARD_SCROLL_PADDING = 12;
-/** キーボード非表示時に「隠れる」とみなす画面下側の割合 */
-const KEYBOARD_HIDDEN_SCREEN_RATIO = 0.45;
-/** 行を置く表示帯内の位置（下寄り） */
-const LINE_TARGET_RATIO = 0.75;
 
-function isKeyboardVisible() {
+/**
+ * エディタのスクロール領域のうち、実際の画面（visualViewport）の外にはみ出している上下の幅。
+ * iOS などキーボードがレイアウトを縮めず上に被さる環境で、被さった分を「見えない」と扱う。
+ */
+function getHiddenScrollerInsets(view) {
     const vv = window.visualViewport;
-    if (!vv) return false;
-    return window.innerHeight - vv.height - vv.offsetTop > 8;
+    if (!vv) return null;
+    const rect = view.scrollDOM.getBoundingClientRect();
+    const visibleTop = vv.offsetTop;
+    const visibleBottom = vv.offsetTop + vv.height;
+    return {
+        top: Math.max(0, visibleTop - rect.top),
+        bottom: Math.max(0, rect.bottom - visibleBottom),
+    };
 }
 
-/** キーボードで下半分が隠れたあと残る、画面上の表示帯 */
-function getScreenVisibleBand() {
-    const vv = window.visualViewport;
-    const screenTop = vv?.offsetTop ?? 0;
-    const layoutHeight = window.innerHeight;
-    const vvHeight = vv?.height ?? layoutHeight;
-    const bottom = isKeyboardVisible()
-        ? screenTop + vvHeight
-        : screenTop + layoutHeight * (1 - KEYBOARD_HIDDEN_SCREEN_RATIO);
-    return { top: screenTop, bottom };
-}
-
-function getLineClientRect(view, pos) {
-    const line = view.lineBlockAt(pos);
-    const top = view.coordsAtPos(line.from)?.top;
-    const bottom =
-        view.coordsAtPos(line.to, 1)?.bottom ??
-        view.coordsAtPos(pos)?.bottom;
-    if (top == null || bottom == null) return null;
-    return { top, bottom, height: bottom - top };
-}
-
-/** カーソル行全体を、画面上の表示帯内（下寄り）に収める */
-function keepCursorInEditorVisibleArea(view) {
-    const head = view.state.selection.main.head;
-    const line = getLineClientRect(view, head);
-    const band = getScreenVisibleBand();
-    if (!line || band.bottom <= band.top) return;
-
-    const pad = KEYBOARD_SCROLL_PADDING;
-    const safeTop = band.top + pad;
-    const safeBottom = band.bottom - pad;
-    const safeHeight = safeBottom - safeTop;
-    if (safeHeight <= 0) return;
-
-    const targetBottom = safeTop + safeHeight * LINE_TARGET_RATIO;
-    let targetTop = targetBottom - line.height;
-    if (targetTop < safeTop) {
-        targetTop = safeTop;
-    }
-
-    let delta = 0;
-    if (line.bottom > targetBottom) {
-        delta = line.bottom - targetBottom;
-    } else if (line.top < targetTop) {
-        delta = line.top - targetTop;
-    } else if (line.bottom > safeBottom) {
-        delta = line.bottom - safeBottom;
-    } else if (line.top < safeTop) {
-        delta = line.top - safeTop;
-    }
-    if (delta !== 0) {
-        view.scrollDOM.scrollTop += delta;
-    }
+function scrollCursorIntoVisibleArea(view) {
+    if (!view.hasFocus) return;
+    view.dispatch({
+        effects: EditorView.scrollIntoView(view.state.selection.main.head, {
+            y: "nearest",
+        }),
+    });
 }
 
 function buildMobileTouchScrollExtensions() {
     if (!isCoarsePointer()) return [];
 
+    const scrollMargins = EditorView.scrollMargins.of((view) => {
+        if (!view.hasFocus) return null;
+        const hidden = getHiddenScrollerInsets(view);
+        if (!hidden) return null;
+        return {
+            top: hidden.top + KEYBOARD_SCROLL_PADDING,
+            bottom: hidden.bottom + KEYBOARD_SCROLL_PADDING,
+        };
+    });
+
     const viewportPlugin = ViewPlugin.fromClass(
         class MobileKeyboardScroll {
             constructor(view) {
                 this.view = view;
-                this._onResize = () => {
-                    if (view.hasFocus) keepCursorInEditorVisibleArea(view);
+                this.padBottom = 0;
+                this.attrs = null;
+                this._raf = 0;
+                this._timer = 0;
+                this._onViewportChange = () => {
+                    cancelAnimationFrame(this._raf);
+                    clearTimeout(this._timer);
+                    this._raf = requestAnimationFrame(() =>
+                        scrollCursorIntoVisibleArea(view)
+                    );
+                    // キーボードのアニメーション完了後の最終サイズで取り直す
+                    this._timer = setTimeout(
+                        () => scrollCursorIntoVisibleArea(view),
+                        250
+                    );
                 };
                 window.visualViewport?.addEventListener(
                     "resize",
-                    this._onResize
+                    this._onViewportChange
                 );
+                window.visualViewport?.addEventListener(
+                    "scroll",
+                    this._onViewportChange
+                );
+            }
+
+            /** 文末でもカーソル行をキーボードの上まで持ち上げられるよう、隠れた分だけ下に余白を足す */
+            update(update) {
+                const hidden = update.view.hasFocus
+                    ? getHiddenScrollerInsets(update.view)
+                    : null;
+                const pad = hidden?.bottom
+                    ? Math.round(hidden.bottom + KEYBOARD_SCROLL_PADDING * 2)
+                    : 0;
+                if (pad === this.padBottom) return;
+                this.padBottom = pad;
+                this.attrs = pad > 0 ? { style: `padding-bottom: ${pad}px` } : null;
             }
 
             destroy() {
+                cancelAnimationFrame(this._raf);
+                clearTimeout(this._timer);
                 window.visualViewport?.removeEventListener(
                     "resize",
-                    this._onResize
+                    this._onViewportChange
+                );
+                window.visualViewport?.removeEventListener(
+                    "scroll",
+                    this._onViewportChange
                 );
             }
+        },
+        {
+            provide: (plugin) =>
+                EditorView.contentAttributes.of(
+                    (view) => view.plugin(plugin)?.attrs ?? null
+                ),
         }
     );
 
-    return [
-        viewportPlugin,
-        EditorView.updateListener.of((update) => {
-            if (!update.selectionSet) return;
-            if (
-                !update.transactions.some((tr) =>
-                    tr.isUserEvent("select.pointer")
-                )
-            ) {
-                return;
-            }
-            const view = update.view;
-            requestAnimationFrame(() => keepCursorInEditorVisibleArea(view));
-            setTimeout(() => keepCursorInEditorVisibleArea(view), 200);
-        }),
-    ];
+    return [scrollMargins, viewportPlugin];
 }
 
 const colorThemeCompartment = new Compartment();
