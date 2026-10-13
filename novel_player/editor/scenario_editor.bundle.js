@@ -23237,14 +23237,32 @@ var ScenarioEditorModule = (() => {
       bottom: Math.max(0, rect.bottom - visibleBottom)
     };
   }
-  function scrollCursorIntoVisibleArea(view) {
-    if (!view.hasFocus) return;
-    view.dispatch({
-      effects: EditorView.scrollIntoView(view.state.selection.main.head, {
-        y: "nearest"
-      })
-    });
+  function getCursorOffsetInScroller(view) {
+    const coords = view.coordsAtPos(view.state.selection.main.head);
+    if (!coords) return null;
+    const rect = view.scrollDOM.getBoundingClientRect();
+    return { offset: coords.top - rect.top, height: coords.bottom - coords.top, rect };
   }
+  function keepCursorLineInPlace(view, anchorOffset) {
+    if (!view.hasFocus) return;
+    const cur2 = getCursorOffsetInScroller(view);
+    if (!cur2) {
+      view.dispatch({
+        effects: EditorView.scrollIntoView(view.state.selection.main.head, {
+          y: "nearest"
+        })
+      });
+      return;
+    }
+    const hidden = getHiddenScrollerInsets(view) ?? { top: 0, bottom: 0 };
+    const minOffset = hidden.top + KEYBOARD_SCROLL_PADDING;
+    const maxOffset2 = cur2.rect.height - hidden.bottom - KEYBOARD_SCROLL_PADDING - cur2.height;
+    if (maxOffset2 < minOffset) return;
+    const want = Math.min(Math.max(anchorOffset ?? cur2.offset, minOffset), maxOffset2);
+    const delta = cur2.offset - want;
+    if (Math.abs(delta) >= 1) view.scrollDOM.scrollTop += delta;
+  }
+  var VIEWPORT_SETTLE_MS = 400;
   function buildMobileTouchScrollExtensions() {
     if (!isCoarsePointer()) return [];
     const scrollMargins2 = EditorView.scrollMargins.of((view) => {
@@ -23264,17 +23282,24 @@ var ScenarioEditorModule = (() => {
           this.attrs = null;
           this._raf = 0;
           this._timer = 0;
+          this._anchorOffset = null;
+          this._settlingUntil = 0;
           this._onViewportChange = () => {
+            this._settlingUntil = Date.now() + VIEWPORT_SETTLE_MS;
             cancelAnimationFrame(this._raf);
             clearTimeout(this._timer);
             this._raf = requestAnimationFrame(
-              () => scrollCursorIntoVisibleArea(view)
+              () => keepCursorLineInPlace(view, this._anchorOffset)
             );
             this._timer = setTimeout(
-              () => scrollCursorIntoVisibleArea(view),
-              250
+              () => keepCursorLineInPlace(view, this._anchorOffset),
+              VIEWPORT_SETTLE_MS - 100
             );
           };
+          this._onScroll = () => this.recordAnchor();
+          view.scrollDOM.addEventListener("scroll", this._onScroll, {
+            passive: true
+          });
           window.visualViewport?.addEventListener(
             "resize",
             this._onViewportChange
@@ -23284,8 +23309,19 @@ var ScenarioEditorModule = (() => {
             this._onViewportChange
           );
         }
+        recordAnchor() {
+          if (Date.now() < this._settlingUntil) return;
+          const cur2 = getCursorOffsetInScroller(this.view);
+          if (cur2) this._anchorOffset = cur2.offset;
+        }
         /** 文末でもカーソル行をキーボードの上まで持ち上げられるよう、隠れた分だけ下に余白を足す */
         update(update) {
+          if (update.selectionSet || update.docChanged || update.focusChanged) {
+            update.view.requestMeasure({
+              key: this,
+              read: () => this.recordAnchor()
+            });
+          }
           const hidden = update.view.hasFocus ? getHiddenScrollerInsets(update.view) : null;
           const pad = hidden?.bottom ? Math.round(hidden.bottom + KEYBOARD_SCROLL_PADDING * 2) : 0;
           if (pad === this.padBottom) return;
@@ -23295,6 +23331,7 @@ var ScenarioEditorModule = (() => {
         destroy() {
           cancelAnimationFrame(this._raf);
           clearTimeout(this._timer);
+          this.view.scrollDOM.removeEventListener("scroll", this._onScroll);
           window.visualViewport?.removeEventListener(
             "resize",
             this._onViewportChange

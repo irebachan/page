@@ -36,14 +36,41 @@ function getHiddenScrollerInsets(view) {
     };
 }
 
-function scrollCursorIntoVisibleArea(view) {
-    if (!view.hasFocus) return;
-    view.dispatch({
-        effects: EditorView.scrollIntoView(view.state.selection.main.head, {
-            y: "nearest",
-        }),
-    });
+/** カーソル行の上端の、スクロール領域上端からの距離(px)。取れなければ null */
+function getCursorOffsetInScroller(view) {
+    const coords = view.coordsAtPos(view.state.selection.main.head);
+    if (!coords) return null;
+    const rect = view.scrollDOM.getBoundingClientRect();
+    return { offset: coords.top - rect.top, height: coords.bottom - coords.top, rect };
 }
+
+/**
+ * キーボード開閉などで表示領域が変わったとき、カーソル行をなるべく元の位置に留める。
+ * 隠れてしまう場合だけ、見える範囲の端（キーボードの真上など）まで最小限動かす。
+ */
+function keepCursorLineInPlace(view, anchorOffset) {
+    if (!view.hasFocus) return;
+    const cur = getCursorOffsetInScroller(view);
+    if (!cur) {
+        view.dispatch({
+            effects: EditorView.scrollIntoView(view.state.selection.main.head, {
+                y: "nearest",
+            }),
+        });
+        return;
+    }
+    const hidden = getHiddenScrollerInsets(view) ?? { top: 0, bottom: 0 };
+    const minOffset = hidden.top + KEYBOARD_SCROLL_PADDING;
+    const maxOffset =
+        cur.rect.height - hidden.bottom - KEYBOARD_SCROLL_PADDING - cur.height;
+    if (maxOffset < minOffset) return;
+    const want = Math.min(Math.max(anchorOffset ?? cur.offset, minOffset), maxOffset);
+    const delta = cur.offset - want;
+    if (Math.abs(delta) >= 1) view.scrollDOM.scrollTop += delta;
+}
+
+/** キーボード開閉アニメーション中とみなす、最後の viewport 変化からの時間(ms) */
+const VIEWPORT_SETTLE_MS = 400;
 
 function buildMobileTouchScrollExtensions() {
     if (!isCoarsePointer()) return [];
@@ -66,18 +93,26 @@ function buildMobileTouchScrollExtensions() {
                 this.attrs = null;
                 this._raf = 0;
                 this._timer = 0;
+                /** 表示領域が変わる直前の、カーソル行の位置（スクロール領域上端から） */
+                this._anchorOffset = null;
+                this._settlingUntil = 0;
                 this._onViewportChange = () => {
+                    this._settlingUntil = Date.now() + VIEWPORT_SETTLE_MS;
                     cancelAnimationFrame(this._raf);
                     clearTimeout(this._timer);
                     this._raf = requestAnimationFrame(() =>
-                        scrollCursorIntoVisibleArea(view)
+                        keepCursorLineInPlace(view, this._anchorOffset)
                     );
-                    // キーボードのアニメーション完了後の最終サイズで取り直す
+                    // ブラウザ自身のカーソル追従スクロールが後から入るので、収まったあとにもう一度
                     this._timer = setTimeout(
-                        () => scrollCursorIntoVisibleArea(view),
-                        250
+                        () => keepCursorLineInPlace(view, this._anchorOffset),
+                        VIEWPORT_SETTLE_MS - 100
                     );
                 };
+                this._onScroll = () => this.recordAnchor();
+                view.scrollDOM.addEventListener("scroll", this._onScroll, {
+                    passive: true,
+                });
                 window.visualViewport?.addEventListener(
                     "resize",
                     this._onViewportChange
@@ -88,8 +123,20 @@ function buildMobileTouchScrollExtensions() {
                 );
             }
 
+            recordAnchor() {
+                if (Date.now() < this._settlingUntil) return;
+                const cur = getCursorOffsetInScroller(this.view);
+                if (cur) this._anchorOffset = cur.offset;
+            }
+
             /** 文末でもカーソル行をキーボードの上まで持ち上げられるよう、隠れた分だけ下に余白を足す */
             update(update) {
+                if (update.selectionSet || update.docChanged || update.focusChanged) {
+                    update.view.requestMeasure({
+                        key: this,
+                        read: () => this.recordAnchor(),
+                    });
+                }
                 const hidden = update.view.hasFocus
                     ? getHiddenScrollerInsets(update.view)
                     : null;
@@ -104,6 +151,7 @@ function buildMobileTouchScrollExtensions() {
             destroy() {
                 cancelAnimationFrame(this._raf);
                 clearTimeout(this._timer);
+                this.view.scrollDOM.removeEventListener("scroll", this._onScroll);
                 window.visualViewport?.removeEventListener(
                     "resize",
                     this._onViewportChange
