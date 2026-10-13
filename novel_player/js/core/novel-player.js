@@ -2580,7 +2580,7 @@ class NovelPlayer {
                 idx++;
                 continue;
             }
-            if (line.type === "blank" || line.type === "comment") {
+            if (line.type === "blank" || line.type === "comment" || line.type === "raw") {
                 idx++;
                 continue;
             }
@@ -2677,7 +2677,7 @@ class NovelPlayer {
             }
             return;
         }
-        if (line.type === "blank" || line.type === "comment") {
+        if (line.type === "blank" || line.type === "comment" || line.type === "raw") {
             this.index++;
             this.showLine();
             return;

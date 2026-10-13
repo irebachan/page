@@ -79,6 +79,8 @@ function renderTyranoItem(settings, script, labels, item) {
         lines.push(labelSym + "end");
     } else if (item.type === "comment") {
         lines.push(item.text.replace(/^\/\//, ";"));
+    } else if (item.type === "raw") {
+        lines.push(item.text);
     }
 
     return lines;

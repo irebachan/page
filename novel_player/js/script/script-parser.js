@@ -110,6 +110,13 @@ class ScriptParser {
                 continue;
             }
 
+            if (line.startsWith("!")) {
+                ensureBranchFrom();
+                script.push({ type: "raw", text: line.slice(1), sourceLine: i });
+                i++;
+                continue;
+            }
+
             if (line.startsWith("@")) {
                 const sourceLine = i;
                 const ifDir = ScriptParser.matchIfDirective(line);
@@ -248,7 +255,8 @@ class ScriptParser {
                 if (
                     i > 0 &&
                     !lines[i - 1].trim().startsWith("@") &&
-                    !lines[i - 1].trim().startsWith("#")
+                    !lines[i - 1].trim().startsWith("#") &&
+                    !lines[i - 1].trim().startsWith("!")
                 ) {
                     description = lines[i - 1].trim();
                 }
@@ -287,6 +295,7 @@ class ScriptParser {
                         line.startsWith("#") ||
                         line.startsWith("@") ||
                         line.startsWith("//") ||
+                        line.startsWith("!") ||
                         line.startsWith("-")
                     ) {
                         break;
@@ -312,6 +321,7 @@ class ScriptParser {
                         line.startsWith("#") ||
                         line.startsWith("@") ||
                         line.startsWith("//") ||
+                        line.startsWith("!") ||
                         line.startsWith("-")
                     ) {
                         break;

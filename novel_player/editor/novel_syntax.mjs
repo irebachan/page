@@ -1,5 +1,8 @@
 import { StreamLanguage } from "@codemirror/language";
-import { tags } from "@lezer/highlight";
+import { Tag, tags } from "@lezer/highlight";
+
+/** 行頭 ! の出力先向け命令（そのまま出力） */
+export const rawLineTag = Tag.define();
 
 /** Novel Draft 用の簡易シンタックス */
 export const novelLanguage = StreamLanguage.define({
@@ -15,6 +18,10 @@ export const novelLanguage = StreamLanguage.define({
             if (stream.match("#")) {
                 stream.skipToEnd();
                 return "characterName";
+            }
+            if (stream.match("!")) {
+                stream.skipToEnd();
+                return "rawLine";
             }
             if (stream.match("@elseif") || stream.match("@else if")) {
                 state.lineCtx = "ifTail";
@@ -126,5 +133,6 @@ export const novelLanguage = StreamLanguage.define({
         labelDef: tags.labelName,
         choiceText: tags.string,
         choiceTarget: tags.url,
+        rawLine: rawLineTag,
     },
 });

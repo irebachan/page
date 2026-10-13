@@ -365,6 +365,13 @@
                 <h3>コメント</h3>
                 <pre>// この行はプレビューに表示されず、エクスポート後もコメントとして残ります</pre>
 
+                <h3>出力先への命令（そのまま出力）</h3>
+                <pre>
+![bg storage="room.jpg" time=500]
+!show eileen happy
+                </pre>
+                <p>行頭の <code>!</code> を取った残りを、特殊形式出力にそのまま書き出します（改ページ記号や <code>#</code> は付かない）。プレビューでは無視されます。Ren'Py ではラベル内のインデントだけ付きます。</p>
+
                 <h3>表示ルール（作品ごと）</h3>
                 <p>ファイル内の <code>@meta</code> 〜 <code>@endmeta</code> にプレビュー用の表示ルールを書けます（位置は先頭固定ではありません）。</p>
                 <pre>
@@ -450,7 +457,7 @@ export.replace.【仮】=
                     <ul class="help-compact">
                         <li>起動時は<strong>最後に開いていた作品</strong>を自動で開く（空ならサンプル）</li>
                         <li>作品は<strong>画面上部</strong>で切り替え（ブラウザ内に自動保存）</li>
-                        <li>外に出すときは <strong>エクスポート</strong>（UTF-8。Android は共有シート推奨）</li>
+                        <li>外に出すときは <strong>エクスポート</strong>（UTF-8。対応ブラウザでは保存先を選べる。選べない Android では共有シート）</li>
                         <li>渡すときは <strong>コピー / 共有</strong>（コピー済みのうえ共有シートが開きます）</li>
                         <li><strong>インポート</strong>／<strong>貼り付け</strong> … 新規作品 or 上書きを選択（貼り付けは HTTPS / localhost のみ）</li>
                         <li><strong>流れに整列</strong> … @ラベル ブロックを goto / 選択肢 / call の流れどおりに並べ替え（要確認。元の並びは自動では戻せない。「戻す」で1手のみ）</li>

@@ -72,6 +72,8 @@ function renderRenpyItem(settings, script, labels, item, indent) {
         lines.push(pad + "return");
     } else if (item.type === "comment") {
         lines.push(item.text.replace(/^\/\//, "#"));
+    } else if (item.type === "raw") {
+        lines.push(pad + item.text);
     }
 
     return lines;

@@ -22994,6 +22994,7 @@ var ScenarioEditorModule = (() => {
   ])();
 
   // editor/novel_syntax.mjs
+  var rawLineTag = Tag.define();
   var novelLanguage = StreamLanguage.define({
     name: "novel",
     startState: () => ({ lineCtx: null }),
@@ -23007,6 +23008,10 @@ var ScenarioEditorModule = (() => {
         if (stream.match("#")) {
           stream.skipToEnd();
           return "characterName";
+        }
+        if (stream.match("!")) {
+          stream.skipToEnd();
+          return "rawLine";
         }
         if (stream.match("@elseif") || stream.match("@else if")) {
           state.lineCtx = "ifTail";
@@ -23115,7 +23120,8 @@ var ScenarioEditorModule = (() => {
       metaKeyword: tags.comment,
       labelDef: tags.labelName,
       choiceText: tags.string,
-      choiceTarget: tags.url
+      choiceTarget: tags.url,
+      rawLine: rawLineTag
     }
   });
 
@@ -23185,12 +23191,17 @@ var ScenarioEditorModule = (() => {
       ".tok-comment": {
         color: "var(--t-muted, #888)",
         fontStyle: "italic"
+      },
+      ".tok-raw": {
+        color: "var(--syntax-raw, #d9a6d0)",
+        backgroundColor: "rgba(255, 255, 255, 0.05)"
       }
     });
   }
   function buildHighlightStyle(colors) {
     return HighlightStyle.define([
       { tag: tags.lineComment, class: "tok-comment" },
+      { tag: rawLineTag, class: "tok-raw" },
       { tag: tags.comment, class: "tok-comment" },
       { tag: tags.heading, color: colors.character },
       { tag: tags.keyword, color: colors.if },
@@ -23483,7 +23494,7 @@ var ScenarioEditorModule = (() => {
       }
     };
   }
-  var EDITOR_BUILD = true ? "2026-10-13 22:26:53" : "dev";
+  var EDITOR_BUILD = true ? "2026-10-14 00:37:24" : "dev";
   if (typeof window !== "undefined") {
     window.ScenarioEditor = { create: createScenarioEditor, build: EDITOR_BUILD };
     const showBuild = () => {

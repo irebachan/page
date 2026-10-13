@@ -129,12 +129,53 @@ function isAndroidDevice() {
     return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 }
 
+/** HTTPS / localhost / file:// で使える（http の LAN アドレスでは関数自体が無い） */
+function canUseSaveFilePicker() {
+    return typeof window !== "undefined" && typeof window.showSaveFilePicker === "function";
+}
+
+/**
+ * 保存先を選ぶダイアログで保存する。
+ * 戻り値: "saved" | "cancelled" | "unavailable"（使えない・失敗したときは他の手段へ）
+ */
+async function saveWithFilePicker(text, filename, extension) {
+    if (!canUseSaveFilePicker()) return "unavailable";
+    const ext = (extension || "txt").replace(/^\.+/, "");
+    const options = {
+        suggestedName: filename,
+        // 同じ id なら前回選んだフォルダから開く
+        id: "novel-player-export",
+    };
+    if (/^[a-z0-9]{1,15}$/i.test(ext)) {
+        options.types = [{ description: "テキスト", accept: { "text/plain": ["." + ext] } }];
+    }
+    try {
+        const handle = await window.showSaveFilePicker(options);
+        const writable = await handle.createWritable();
+        await writable.write(createUtf8TextBlob(text));
+        await writable.close();
+        return "saved";
+    } catch (err) {
+        if (err && err.name === "AbortError") return "cancelled";
+        console.warn("保存ダイアログで保存できませんでした:", err);
+        return "unavailable";
+    }
+}
+
 /**
  * UTF-8 テキストをファイルとして渡す。
- * Android では Chrome のダウンロードプレビューが化けるため、共有シートを優先する。
+ * 保存先を選べるブラウザではダイアログ、Android では共有シート、それ以外はダウンロード。
  */
 async function exportTextFile(text, titleOrPrefix, extension) {
     const filename = buildExportFilename(titleOrPrefix, extension);
+
+    const picked = await saveWithFilePicker(text, filename, extension);
+    if (picked === "saved") {
+        showTemporaryNotification("保存しました");
+        return;
+    }
+    if (picked === "cancelled") return;
+
     const file = createUtf8TextFile(text, filename);
     const android = isAndroidDevice();
 

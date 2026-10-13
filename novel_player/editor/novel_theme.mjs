@@ -2,6 +2,7 @@ import { EditorView } from "@codemirror/view";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { resolveSyntaxColors } from "./novel_editor_colors.mjs";
+import { rawLineTag } from "./novel_syntax.mjs";
 
 /** UI テーマの CSS 変数に追従するエディタ枠 */
 export function createEditorTheme() {
@@ -47,12 +48,17 @@ export function createEditorTheme() {
             color: "var(--t-muted, #888)",
             fontStyle: "italic",
         },
+        ".tok-raw": {
+            color: "var(--syntax-raw, #d9a6d0)",
+            backgroundColor: "rgba(255, 255, 255, 0.05)",
+        },
     });
 }
 
 export function buildHighlightStyle(colors) {
     return HighlightStyle.define([
         { tag: tags.lineComment, class: "tok-comment" },
+        { tag: rawLineTag, class: "tok-raw" },
         { tag: tags.comment, class: "tok-comment" },
         { tag: tags.heading, color: colors.character },
         { tag: tags.keyword, color: colors.if },

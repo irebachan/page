@@ -129,7 +129,7 @@ function analyzeLabelBlockExit(script, labels, labelName) {
 
     for (let i = start; i < end; i++) {
         const item = script[i];
-        if (item.type === "blank" || item.type === "comment") continue;
+        if (item.type === "blank" || item.type === "comment" || item.type === "raw") continue;
         if (item.type === "end") {
             hasEndCmd = true;
             endSourceLine = item.sourceLine;
@@ -202,7 +202,7 @@ function previewFromIfBranchBody(script, from, to, maxLen = IF_STUB_BODY_MAX) {
     if (from == null || to == null || from >= to) return "";
     for (let i = from; i < to && i < script.length; i++) {
         const item = script[i];
-        if (item.type === "blank" || item.type === "comment") continue;
+        if (item.type === "blank" || item.type === "comment" || item.type === "raw") continue;
         if (item.type === "line") {
             const t = (item.text || "").replace(/\s+/g, " ").trim();
             if (!t) continue;
@@ -276,7 +276,7 @@ function buildLabelPreviewSnippet(script, labels, labelName, maxLen = 22) {
 
     for (let i = start; i < end; i++) {
         const item = script[i];
-        if (item.type === "blank" || item.type === "comment") continue;
+        if (item.type === "blank" || item.type === "comment" || item.type === "raw") continue;
 
         if (item.type === "line") {
             const t = (item.text || "").replace(/\s+/g, " ").trim();
