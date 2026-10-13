@@ -23462,8 +23462,18 @@ var ScenarioEditorModule = (() => {
       }
     };
   }
+  var EDITOR_BUILD = true ? "2026-10-13 22:19:36" : "dev";
   if (typeof window !== "undefined") {
-    window.ScenarioEditor = { create: createScenarioEditor };
+    window.ScenarioEditor = { create: createScenarioEditor, build: EDITOR_BUILD };
+    const showBuild = () => {
+      const el = document.getElementById("editorBuildStamp");
+      if (el) el.textContent = EDITOR_BUILD;
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", showBuild);
+    } else {
+      showBuild();
+    }
   }
   return __toCommonJS(scenario_editor_exports);
 })();

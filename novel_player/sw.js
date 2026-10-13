@@ -2,7 +2,7 @@
  * 静的アセットのオフライン用キャッシュ（作品データは IndexedDB）。
  * オンライン時はネットワーク優先（デプロイ後も最新を表示）。オフライン時のみキャッシュ。
  */
-const CACHE_NAME = "novel-player-shell-v60";
+const CACHE_NAME = "novel-player-shell-v61";
 
 const SHELL_FILES = [
     "./",
@@ -49,7 +49,8 @@ async function putInCache(request, response) {
 /** オンライン: 常にサーバーから取得し、成功分だけオフライン用に保存 */
 async function networkFirstWithCache(request) {
     try {
-        const response = await fetch(request);
+        // HTTP キャッシュ（GitHub Pages は max-age=600）を経由すると push 直後に古いファイルが返る
+        const response = await fetch(request, { cache: "no-cache" });
         if (isCacheableResponse(response)) {
             await putInCache(request, response.clone());
         }
@@ -66,7 +67,9 @@ self.addEventListener("install", (event) => {
         (async () => {
             const cache = await caches.open(CACHE_NAME);
             await Promise.allSettled(
-                SHELL_FILES.map((p) => cache.add(assetUrl(p)))
+                SHELL_FILES.map((p) =>
+                    cache.add(new Request(assetUrl(p), { cache: "no-cache" }))
+                )
             );
             await self.skipWaiting();
         })()
@@ -103,7 +106,7 @@ self.addEventListener("fetch", (event) => {
 
     if (event.request.mode === "navigate") {
         event.respondWith(
-            fetch(event.request)
+            fetch(event.request.url, { cache: "no-cache", credentials: "same-origin" })
                 .then(async (response) => {
                     if (isCacheableResponse(response)) {
                         await putInCache(event.request, response.clone());

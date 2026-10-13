@@ -12,6 +12,11 @@ esbuild
         globalName: "ScenarioEditorModule",
         outfile: join(__dirname, "editor/scenario_editor.bundle.js"),
         target: ["es2020"],
+        define: {
+            __EDITOR_BUILD__: JSON.stringify(
+                new Date().toLocaleString("sv-SE", { timeZone: "Asia/Tokyo" })
+            ),
+        },
         logLevel: "info",
     })
     .catch(() => process.exit(1));

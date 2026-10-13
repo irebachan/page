@@ -303,6 +303,18 @@ export function createScenarioEditor(parent, options = {}) {
     };
 }
 
+/* global __EDITOR_BUILD__ */
+const EDITOR_BUILD = typeof __EDITOR_BUILD__ === "string" ? __EDITOR_BUILD__ : "dev";
+
 if (typeof window !== "undefined") {
-    window.ScenarioEditor = { create: createScenarioEditor };
+    window.ScenarioEditor = { create: createScenarioEditor, build: EDITOR_BUILD };
+    const showBuild = () => {
+        const el = document.getElementById("editorBuildStamp");
+        if (el) el.textContent = EDITOR_BUILD;
+    };
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", showBuild);
+    } else {
+        showBuild();
+    }
 }
