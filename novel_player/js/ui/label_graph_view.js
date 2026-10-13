@@ -1191,11 +1191,10 @@ class LabelGraphView {
 
             const fromLay = graph.node(edge.from);
             const fromNode = nodeByName.get(edge.from);
-            const points = adjustDagreEdgePoints(
-                lay.points,
-                edge,
-                fromLay,
-                fromNode
+            const points = clampEdgeEndToNodeBox(
+                adjustDagreEdgePoints(lay.points, edge, fromLay, fromNode),
+                graph.node(edge.to),
+                nodeByName.get(edge.to)
             );
             this.appendEdgePaths(edge, points, dimmed);
         }
@@ -1212,7 +1211,7 @@ class LabelGraphView {
                       : edge.kind === "if_rejoin"
                         ? computeIfRejoinStubPoints(edge, fromLay, fromNode)
                         : computeChoiceStubPoints(edge, fromLay, fromNode);
-            this.appendEdgePaths(edge, stubPoints, dimmed);
+            this.appendEdgePaths(edge, withIfRowConnector(stubPoints, edge, fromLay), dimmed);
         }
 
         this._nodeCenters.clear();
@@ -1223,12 +1222,16 @@ class LabelGraphView {
             this._nodeCenters.set(node.name, { x: lay.x, y: lay.y });
 
             const displayH = node.preview ? 50 : 36;
-            const box = { width: lay.width, height: displayH };
+            const nodeW = Math.min(
+                lay.width,
+                measureNodeWidth(node.displayName || node.name, node.preview)
+            );
+            const box = { width: nodeW, height: displayH };
 
             const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
             g.setAttribute("class", "label-graph-node");
             g.setAttribute("data-name", node.name);
-            g.setAttribute("transform", `translate(${lay.x - lay.width / 2},${lay.y - lay.height / 2})`);
+            g.setAttribute("transform", `translate(${lay.x - nodeW / 2},${lay.y - lay.height / 2})`);
             if (node.name === this.state.currentLabel) g.classList.add("is-current");
             if (node.name === this._connectFrom) g.classList.add("is-link-source");
             if (node.ghost) g.classList.add("is-ghost");
@@ -1718,7 +1721,7 @@ class LabelGraphView {
         path.setAttribute("d", d);
         if (edge.disconnected) path.classList.add("is-stub");
         if (edge.kind === "if_inline" || edge.kind === "if_rejoin") {
-            path.setAttribute("marker-end", "url(#label-graph-dot-if-rejoin)");
+            if (edge.virtual) path.classList.add("is-virtual");
         } else if (edge.kind === "exit") {
             const dotId =
                 edge.exitKind === "return"
@@ -1766,11 +1769,10 @@ class LabelGraphView {
             labelPt = exitStubLabelPoint(points);
         } else if (edge.kind === "if_rejoin") {
             labelPt = ifRejoinLabelPoint(points);
+        } else if (edge.kind === "if_inline") {
+            labelPt = ifStubLabelPoint(points);
         } else if (edge.disconnected) {
-            labelPt =
-                edge.kind === "if_inline" && edge.bodyPreview
-                    ? ifStubLabelPoint(points)
-                    : choiceStubLabelPoint(points);
+            labelPt = choiceStubLabelPoint(points);
         }
 
         if (edge.kind === "if_inline" && edge.detail) {
@@ -1789,7 +1791,7 @@ class LabelGraphView {
                     points,
                     dimmed,
                     labelPt,
-                    edge.kind
+                    edge.virtual ? "if_virtual" : edge.kind
                 );
             }
             return;
@@ -1866,10 +1868,49 @@ function adjustDagreEdgePoints(points, edge, fromLay, fromNode) {
     const pts = points.map((p) => ({ x: p.x, y: p.y }));
     const y = stubBaseY(fromLay, fromNode, edge);
     const x = stubAttachX(edge, fromLay, fromNode);
+    if (edge.ifSlotId) {
+        return routeAroundIfFlow(pts, { x, y }, fromLay);
+    }
     pts[0] = { x, y };
     if (pts.length > 1 && pts[1].y < y + 12) {
         pts[1] = { x: pts[1].x, y: y + 12 };
     }
+    return pts;
+}
+
+/** @if の枝から抜ける線: 図の横へ逃がしてから下へ（他の段を突っ切らない） */
+function routeAroundIfFlow(dagrePts, start, fromLay) {
+    const bottom = fromLay.y + fromLay.height / 2;
+    const rest = dagrePts.filter((p) => p.y > bottom + 1);
+    const target = rest[rest.length - 1] || dagrePts[dagrePts.length - 1];
+    const dx = target.x - fromLay.x;
+    const side = Math.abs(dx) > 4 ? Math.sign(dx) : start.x < fromLay.x ? -1 : 1;
+    const sideX = fromLay.x + side * (fromLay.width / 2 + 6);
+    const runY = start.y + 6;
+    const out = [
+        start,
+        { x: start.x, y: runY },
+        { x: sideX, y: runY },
+        { x: sideX, y: bottom },
+    ];
+    if (rest.length) {
+        out.push(...rest);
+    } else {
+        out.push({ x: target.x, y: target.y });
+    }
+    return out;
+}
+
+/** @if 図で横に広げたノードでも、矢印の先は見た目の箱の幅に収める */
+function clampEdgeEndToNodeBox(points, toLay, toNode) {
+    if (!points?.length || !toLay || !toNode?.layoutMinWidth) return points;
+    const half =
+        measureNodeWidth(toNode.displayName || toNode.name, toNode.preview) / 2 - 8;
+    const last = points[points.length - 1];
+    const x = Math.max(toLay.x - half, Math.min(toLay.x + half, last.x));
+    if (x === last.x) return points;
+    const pts = points.slice();
+    pts[pts.length - 1] = { x, y: last.y };
     return pts;
 }
 
@@ -1885,26 +1926,43 @@ function computeChoiceStubPoints(edge, fromLay, fromNode) {
     ];
 }
 
+/** @if の枝: 分岐線から枝の箱を通り、戻る枝だけ @endif へ斜めに集まる */
 function computeIfInlineStubPoints(edge, fromLay, fromNode) {
-    const attachX = stubAttachX(edge, fromLay, fromNode);
+    const x = stubAttachX(edge, fromLay, fromNode);
     const y0 = stubBaseY(fromLay, fromNode, edge);
-    const drop = edge.stubDrop ?? 22;
-    return [
-        { x: attachX, y: y0 },
-        { x: attachX, y: y0 + drop },
+    const pts = [
+        { x, y: y0 + IF_FLOW.forkY },
+        { x, y: y0 + IF_FLOW.slotY + IF_FLOW.slotHalf },
     ];
+    if (edge.merges) {
+        pts.push({
+            x: fromLay.x,
+            y: y0 + (edge.ifEndifTop ?? IF_FLOW.endifY - IF_FLOW.endifHalf),
+        });
+    }
+    return pts;
 }
 
-/** @endif 合流（ラベル内で続きに戻る・ノード下の中央軸） */
+/** @if の幹と分岐線（複数の部分パス） */
 function computeIfRejoinStubPoints(edge, fromLay, fromNode) {
-    const attachX = stubAttachX(edge, fromLay, fromNode);
+    const cx = fromLay.x;
     const y0 = stubBaseY(fromLay, fromNode, edge);
-    const drop = edge.stubDrop ?? 40;
-    return [
-        { x: attachX, y: y0 },
-        { x: attachX, y: y0 + Math.min(16, drop * 0.32) },
-        { x: attachX, y: y0 + drop },
+    const fork = edge.ifForkSpan || [0, 0];
+    const pts = [
+        { x: cx, y: y0 + (edge.ifTrunkFrom ?? 0) },
+        { x: cx, y: y0 + IF_FLOW.forkY },
+        { x: cx + fork[0], y: y0 + IF_FLOW.forkY, move: true },
+        { x: cx + fork[1], y: y0 + IF_FLOW.forkY },
     ];
+    pts.labelPoint = { x: cx, y: y0 + (edge.ifEndifY ?? IF_FLOW.endifY) };
+    return pts;
+}
+
+/** @endif の下に並ぶスタブ: @endif の下端から引き出す */
+function withIfRowConnector(points, edge, fromLay) {
+    if (!edge.ifRowConnector || !points.length) return points;
+    const start = { x: fromLay.x, y: points[0].y - edge.ifRowConnector };
+    return [start, ...points];
 }
 
 /** @end / @return: ノード下端から短いスタブ（共有ノードにしない） */
@@ -1926,8 +1984,7 @@ function exitStubLabelPoint(points) {
 }
 
 function ifRejoinLabelPoint(points) {
-    const b = points[points.length - 1];
-    return { x: b.x, y: b.y + 2 };
+    return points.labelPoint || points[points.length - 1];
 }
 
 function choiceStubLabelPoint(points) {
@@ -1939,20 +1996,19 @@ function choiceStubLabelPoint(points) {
     };
 }
 
-/** if スタブ（2行ラベル）の中心 */
+/** if の枝の箱の中心 */
 function ifStubLabelPoint(points) {
     const a = points[0];
-    const b = points[points.length - 1];
     return {
         x: a.x,
-        y: a.y + (b.y - a.y) * 0.5,
+        y: a.y - IF_FLOW.forkY + IF_FLOW.slotY,
     };
 }
 
 function measureLabelNode(node) {
     const name = node.displayName || node.name || "";
     const NODE_H = node.preview ? 50 : 36;
-    const w = measureNodeWidth(name, node.preview);
+    const w = Math.max(measureNodeWidth(name, node.preview), Number(node.layoutMinWidth) || 0);
     const stubPad = Math.max(0, Number(node.layoutPadBottom) || 0);
     return {
         width: w,
@@ -2000,7 +2056,7 @@ function pointsToPath(points) {
     if (!points.length) return "";
     let d = `M ${points[0].x} ${points[0].y}`;
     for (let i = 1; i < points.length; i++) {
-        d += ` L ${points[i].x} ${points[i].y}`;
+        d += ` ${points[i].move ? "M" : "L"} ${points[i].x} ${points[i].y}`;
     }
     return d;
 }
@@ -2014,10 +2070,13 @@ function edgeTitle(edge) {
         return `if ${edge.detail} → ${mode}${edge.to}`;
     }
     if (edge.kind === "if_inline") {
-        return `if ${edge.detail}`;
+        if (edge.virtual) return "どの条件にも当てはまらない → そのまま @endif の続きへ";
+        return edge.merges
+            ? `if ${edge.detail}（終わったら @endif の続きへ）`
+            : `if ${edge.detail}（この枝から出ていく）`;
     }
     if (edge.kind === "if_rejoin") {
-        return "@endif";
+        return "@endif … 各枝はここに戻って続きへ進む";
     }
     if (edge.kind === "goto" || edge.kind === "call") {
         return `@${edge.kind} ${edge.to}`;

@@ -120,9 +120,44 @@ function labelNamesInScriptOrder(labels) {
     return Object.keys(labels).sort((a, b) => labels[a] - labels[b]);
 }
 
+/** script 添字 → その添字を本文に含む @if の枝 { chain, chainIndex, branchIndex } */
+const _ifBranchIndexCache = new WeakMap();
+
+function buildIfBranchIndexMap(script) {
+    const cached = _ifBranchIndexCache.get(script);
+    if (cached) return cached;
+    const map = new Map();
+    _ifBranchIndexCache.set(script, map);
+    script.forEach((item, chainIndex) => {
+        if (item.type !== "if_chain") return;
+        item.branches.forEach((branch, branchIndex) => {
+            if (branch.from == null || branch.to == null) return;
+            for (let j = branch.from; j < branch.to; j++) {
+                map.set(j, { chain: item, chainIndex, branchIndex });
+            }
+        });
+    });
+    return map;
+}
+
+function ifSlotEdgeId(chain, branchIndex) {
+    return `if-${chain.sourceLine}-${branchIndex}-slot`;
+}
+
+/** 枝の最後の命令が @goto / @end / @return なら、その枝は @endif に戻らない */
+function ifBranchLeaves(script, from, to) {
+    for (let i = to - 1; i >= from; i--) {
+        const t = script[i]?.type;
+        if (t === "blank" || t === "comment" || t === "raw" || t === "parse_error") continue;
+        return t === "goto" || t === "end" || t === "return" || t === "choice";
+    }
+    return false;
+}
+
 function analyzeLabelBlockExit(script, labels, labelName) {
     const start = labels[labelName];
     const end = getNextLabelBlockEnd(labels, script.length, start);
+    const inIfBranch = buildIfBranchIndexMap(script);
     let hasEndCmd = false;
     let endSourceLine = null;
     let lastSig = null;
@@ -130,6 +165,7 @@ function analyzeLabelBlockExit(script, labels, labelName) {
     for (let i = start; i < end; i++) {
         const item = script[i];
         if (item.type === "blank" || item.type === "comment" || item.type === "raw") continue;
+        if (inIfBranch.has(i)) continue;
         if (item.type === "end") {
             hasEndCmd = true;
             endSourceLine = item.sourceLine;
@@ -273,10 +309,12 @@ function buildLabelPreviewSnippet(script, labels, labelName, maxLen = 22) {
     const start = labels[labelName];
     if (start == null) return "";
     const end = getNextLabelBlockEnd(labels, script.length, start);
+    const inIfBranch = buildIfBranchIndexMap(script);
 
     for (let i = start; i < end; i++) {
         const item = script[i];
         if (item.type === "blank" || item.type === "comment" || item.type === "raw") continue;
+        if (inIfBranch.has(i)) continue;
 
         if (item.type === "line") {
             const t = (item.text || "").replace(/\s+/g, " ").trim();
@@ -311,6 +349,7 @@ function buildLabelGraphData(script, labels, labelSourceLines, options = {}) {
     const includePreview = options.includePreview !== false;
     const nodeMap = new Map();
     const edges = [];
+    const inIfBranch = buildIfBranchIndexMap(script);
 
     function ensureNode(name, asGhost) {
         if (!name) return;
@@ -351,6 +390,10 @@ function buildLabelGraphData(script, labels, labelSourceLines, options = {}) {
 
         if (item.type === "choice") {
             const groupSize = item.choices.length;
+            const inBranch = inIfBranch.get(i);
+            const ifSlotId = inBranch
+                ? ifSlotEdgeId(inBranch.chain, inBranch.branchIndex)
+                : undefined;
             item.choices.forEach((c, choiceIndex) => {
                 const target = (c.target || "").trim();
                 const disconnected = !target;
@@ -366,65 +409,54 @@ function buildLabelGraphData(script, labels, labelSourceLines, options = {}) {
                     choiceGroupSize: groupSize,
                     detail: c.text,
                     disconnected,
+                    ifSlotId,
                 });
             });
         } else if (item.type === "if_chain") {
             if (!from) continue;
-            const groupSize = item.branches.length;
+            const hasElse = item.branches.some(
+                (b) => b.condition == null || b.condition === ""
+            );
+            const slotCount = item.branches.length + (hasElse ? 0 : 1);
 
             item.branches.forEach((branch, branchIndex) => {
-                if (branch.from == null || branch.to == null || branch.from >= branch.to) {
-                    return;
-                }
-                const detail = ifBranchLabel(branch.condition);
-                const bodyPreview = previewFromIfBranchBody(
-                    script,
-                    branch.from,
-                    branch.to,
-                    IF_STUB_BODY_MAX
-                );
-                const targets = collectIfBranchTargets(
-                    script,
-                    branch.from,
-                    branch.to
-                );
-                const external = targets.filter(
-                    (t) => t.kind === "goto" || t.kind === "call"
-                );
-
-                if (external.length) {
-                    external.forEach((t, targetIndex) => {
-                        ensureNode(t.target, true);
-                        edges.push({
-                            id: `if-${item.sourceLine}-${branchIndex}-ext-${targetIndex}`,
-                            from,
-                            to: t.target,
-                            kind: "if_branch",
-                            sourceLine: item.sourceLine,
-                            branchIndex,
-                            branchGroupSize: groupSize,
-                            detail,
-                            mode: t.kind === "call" ? "call" : "goto",
-                            disconnected: false,
-                            external: true,
-                        });
-                    });
-                } else {
-                    edges.push({
-                        id: `if-${item.sourceLine}-${branchIndex}-inline`,
-                        from,
-                        to: null,
-                        kind: "if_inline",
-                        sourceLine: item.sourceLine,
-                        branchIndex,
-                        branchGroupSize: groupSize,
-                        detail,
-                        bodyPreview: bodyPreview || undefined,
-                        disconnected: true,
-                        external: false,
-                    });
-                }
+                const hasBody =
+                    branch.from != null && branch.to != null && branch.from < branch.to;
+                const bodyPreview = hasBody
+                    ? previewFromIfBranchBody(script, branch.from, branch.to, IF_STUB_BODY_MAX)
+                    : "";
+                edges.push({
+                    id: ifSlotEdgeId(item, branchIndex),
+                    from,
+                    to: null,
+                    kind: "if_inline",
+                    sourceLine: item.sourceLine,
+                    endifSourceLine: item.endifSourceLine,
+                    branchSourceLine: branch.sourceLine,
+                    branchIndex,
+                    branchGroupSize: slotCount,
+                    detail: ifBranchLabel(branch.condition),
+                    bodyPreview: bodyPreview || (hasBody ? undefined : "（空）"),
+                    merges: !(hasBody && ifBranchLeaves(script, branch.from, branch.to)),
+                    disconnected: true,
+                });
             });
+            if (!hasElse) {
+                edges.push({
+                    id: ifSlotEdgeId(item, "none"),
+                    from,
+                    to: null,
+                    kind: "if_inline",
+                    sourceLine: item.sourceLine,
+                    endifSourceLine: item.endifSourceLine,
+                    branchIndex: item.branches.length,
+                    branchGroupSize: slotCount,
+                    detail: "どれも偽",
+                    virtual: true,
+                    merges: true,
+                    disconnected: true,
+                });
+            }
 
             edges.push({
                 id: `if-rejoin-${item.sourceLine}`,
@@ -432,18 +464,23 @@ function buildLabelGraphData(script, labels, labelSourceLines, options = {}) {
                 to: null,
                 kind: "if_rejoin",
                 sourceLine: item.sourceLine,
+                endifSourceLine: item.endifSourceLine,
                 detail: "@endif",
                 disconnected: true,
             });
         } else if (item.type === "goto" || item.type === "call") {
             ensureNode(item.target, true);
             if (!from) continue;
+            const inBranch = inIfBranch.get(i);
             edges.push({
                 id: `${item.type}-${item.sourceLine}`,
                 from,
                 to: item.target,
                 kind: item.type,
                 sourceLine: item.sourceLine,
+                ifSlotId: inBranch
+                    ? ifSlotEdgeId(inBranch.chain, inBranch.branchIndex)
+                    : undefined,
             });
         }
     }
@@ -455,9 +492,13 @@ function buildLabelGraphData(script, labels, labelSourceLines, options = {}) {
         const from = getContainingLabel(labels, i);
         if (!from) continue;
         if (!exitsByLabel.has(from)) exitsByLabel.set(from, []);
+        const inBranch = inIfBranch.get(i);
         exitsByLabel.get(from).push({
             exitKind: item.type,
             sourceLine: item.sourceLine,
+            ifSlotId: inBranch
+                ? ifSlotEdgeId(inBranch.chain, inBranch.branchIndex)
+                : undefined,
         });
     }
     for (const [from, exits] of exitsByLabel) {
@@ -474,6 +515,7 @@ function buildLabelGraphData(script, labels, labelSourceLines, options = {}) {
                 detail: ex.exitKind === "end" ? "@end" : "@return",
                 exitIndex,
                 exitGroupSize: groupSize,
+                ifSlotId: ex.ifSlotId,
             });
         });
     }
@@ -502,9 +544,10 @@ function buildLabelGraphData(script, labels, labelSourceLines, options = {}) {
         return a.name.localeCompare(b.name, "ja");
     });
 
-    const padBottom = computeNodeLayoutExtras(edges);
+    const extras = computeNodeLayoutExtras(edges);
     for (const n of nodes) {
-        n.layoutPadBottom = padBottom.get(n.name) || 0;
+        n.layoutPadBottom = extras.padBottom.get(n.name) || 0;
+        n.layoutMinWidth = extras.minWidth.get(n.name) || 0;
     }
 
     return { nodes, edges };
@@ -519,7 +562,7 @@ function graphStructureSignature(graphData) {
     const nodePart = graphData.nodes
         .map(
             (n) =>
-                `${n.name}|${n.ghost ? 1 : 0}|${n.sourceLine ?? ""}|${n.layoutPadBottom ?? 0}`
+                `${n.name}|${n.ghost ? 1 : 0}|${n.sourceLine ?? ""}|${n.layoutPadBottom ?? 0}|${n.layoutMinWidth ?? 0}`
         )
         .join("\n");
     const edgePart = graphData.edges
@@ -535,15 +578,22 @@ function graphStructureSignature(graphData) {
                 e.exitIndex ?? "",
                 e.exitKind ?? "",
                 e.mode ?? "",
+                e.ifSlotId ?? "",
+                e.merges ? 1 : 0,
+                e.kind === "if_inline" ? e.detail ?? "" : "",
             ].join("|")
         )
         .join("\n");
     return `${nodePart}\n---\n${edgePart}`;
 }
 
-/** 下端スタブの縦サイズ → layoutPadBottom（if があるラベルだけ dagre 高さが伸びる） */
+/**
+ * 下端スタブの配置 → layoutPadBottom（縦）/ layoutMinWidth（横）。
+ * @if があるラベルは「分岐 → 各枝 → @endif で合流 → 続き」の形にする。
+ */
 function computeNodeLayoutExtras(edges) {
     const padBottom = new Map();
+    const minWidth = new Map();
     const bumpPad = (from, v) => {
         padBottom.set(from, Math.max(padBottom.get(from) || 0, v));
     };
@@ -551,14 +601,119 @@ function computeNodeLayoutExtras(edges) {
     const byFrom = new Map();
     for (const e of edges) {
         if (!e.from) continue;
-        if (!edgeUsesBottomStub(e)) continue;
         if (!byFrom.has(e.from)) byFrom.set(e.from, []);
         byFrom.get(e.from).push(e);
     }
     for (const [from, group] of byFrom) {
-        layoutBottomStubsForNode(from, group, bumpPad);
+        if (group.some((e) => e.kind === "if_rejoin")) {
+            const r = layoutIfFlowForNode(group);
+            bumpPad(from, r.height);
+            minWidth.set(from, r.width);
+            continue;
+        }
+        const stubs = group.filter(edgeUsesBottomStub);
+        if (stubs.length) layoutBottomStubsForNode(from, stubs, bumpPad);
     }
-    return padBottom;
+    return { padBottom, minWidth };
+}
+
+/** @if 図の縦位置（各 @if 段の上端からの距離） */
+const IF_FLOW = {
+    forkY: 12,
+    slotY: 36,
+    slotHalf: 13,
+    endifY: 80,
+    endifHalf: 8,
+    tierH: 96,
+    slotGap: 14,
+    rowH: 44,
+};
+
+function layoutIfFlowForNode(group) {
+    const rejoins = group
+        .filter((e) => e.kind === "if_rejoin")
+        .sort((a, b) => a.sourceLine - b.sourceLine);
+    const slotById = new Map();
+    let y = 0;
+    let halfWidth = 0;
+
+    rejoins.forEach((rejoin, tier) => {
+        const slots = group
+            .filter((e) => e.kind === "if_inline" && e.sourceLine === rejoin.sourceLine)
+            .sort((a, b) => (a.branchIndex ?? 0) - (b.branchIndex ?? 0));
+        layoutStubRowCentered(slots, IF_FLOW.slotGap);
+        for (const s of slots) {
+            s.stubYOffset = y;
+            s.stubTier = tier;
+            slotById.set(s.id, s);
+            halfWidth = Math.max(halfWidth, Math.abs(s.stubLayoutX) + stubLabelWidthPx(s) / 2);
+        }
+        const slotBottom = IF_FLOW.slotY + IF_FLOW.slotHalf;
+        let extra = 0;
+        for (const s of slots) {
+            const hanging = group.filter((e) => e.ifSlotId === s.id && edgeUsesBottomStub(e));
+            layoutStubRowCentered(hanging, 8, (e) => {
+                e.stubLayoutX += s.stubLayoutX;
+                e.stubYOffset = y + slotBottom;
+                e.stubDrop = e.kind === "exit" ? 10 : 18;
+                halfWidth = Math.max(halfWidth, Math.abs(e.stubLayoutX) + stubLabelWidthPx(e) / 2);
+                const need = e.stubDrop + 16 - (IF_FLOW.endifY - IF_FLOW.endifHalf - slotBottom);
+                extra = Math.max(extra, need);
+            });
+        }
+        const endifY = IF_FLOW.endifY + extra;
+        for (const s of slots) s.ifEndifTop = endifY - IF_FLOW.endifHalf;
+        const xs = slots.map((s) => s.stubLayoutX);
+        rejoin.stubLayoutX = 0;
+        rejoin.stubYOffset = y;
+        rejoin.stubTier = tier;
+        rejoin.ifEndifY = endifY;
+        rejoin.ifForkSpan = xs.length ? [Math.min(0, ...xs), Math.max(0, ...xs)] : [0, 0];
+        rejoin.virtual = !slots.some((s) => s.merges);
+        rejoin.ifTrunkFrom = tier === 0 ? 0 : -(IF_FLOW.tierH - IF_FLOW.endifY - IF_FLOW.endifHalf);
+        y += IF_FLOW.tierH + extra;
+    });
+
+    const lastEndif = rejoins.length
+        ? Math.max(...rejoins.map((r) => r.endifSourceLine ?? r.sourceLine))
+        : -1;
+    const afterY = y - (IF_FLOW.tierH - IF_FLOW.endifY - IF_FLOW.endifHalf);
+    let reach = afterY;
+
+    const rowStubs = [];
+    for (const e of group) {
+        if (e.kind === "if_inline" || e.kind === "if_rejoin") continue;
+        const slot = e.ifSlotId ? slotById.get(e.ifSlotId) : null;
+        if (slot) {
+            if (!edgeUsesBottomStub(e)) {
+                e.stubLayoutX = slot.stubLayoutX;
+                e.stubYOffset = slot.stubYOffset + IF_FLOW.slotY + IF_FLOW.slotHalf;
+            }
+            continue;
+        }
+        if (edgeUsesBottomStub(e)) {
+            rowStubs.push(e);
+            continue;
+        }
+        if (e.kind === "fallthrough" || (e.sourceLine ?? -1) > lastEndif) {
+            e.stubYOffset = afterY;
+        }
+    }
+
+    if (rowStubs.length) {
+        layoutStubRowCentered(rowStubs, 12, (e) => {
+            e.stubYOffset = y;
+            e.stubDrop = e.kind === "exit" ? STUB_DROP_EXIT : STUB_DROP_CHOICE;
+            e.ifRowConnector = IF_FLOW.tierH - IF_FLOW.endifY - IF_FLOW.endifHalf;
+            halfWidth = Math.max(halfWidth, Math.abs(e.stubLayoutX) + stubLabelWidthPx(e) / 2);
+            reach = Math.max(reach, y + e.stubDrop + 14);
+        });
+    }
+
+    return {
+        height: Math.max(reach, y) + STUB_PAD_TAIL,
+        width: Math.ceil(halfWidth * 2 + 16),
+    };
 }
 
 function edgeUsesBottomStub(e) {

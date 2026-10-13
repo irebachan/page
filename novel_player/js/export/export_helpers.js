@@ -22,7 +22,11 @@ function escapeTyranoIfExp(condition) {
 
 function tyranoIfOpenTag(branch, branchIndex) {
     if (branch.condition == null) return "[else]";
-    const exp = escapeTyranoIfExp(branch.condition);
+    const cond =
+        typeof ScriptFlags !== "undefined"
+            ? ScriptFlags.toTyranoExp(branch.condition)
+            : branch.condition;
+    const exp = escapeTyranoIfExp(cond);
     if (branchIndex === 0) return `[if exp="${exp}"]`;
     return `[elsif exp="${exp}"]`;
 }

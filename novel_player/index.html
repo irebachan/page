@@ -102,6 +102,7 @@
 
         <!-- 下部: 固定ボタンエリア（次へは常に表示） -->
         <div class="button-area">
+            <div class="preview-vars" id="previewVars" role="group" aria-label="印（@set の値）" hidden></div>
             <div class="preview-nav">
                 <button type="button" id="prev" disabled>◀ 戻る</button>
                 <button type="button" id="previewRestart" style="display:none"
@@ -271,7 +272,7 @@
                     <div class="node-graph-help__body">
                         <ul class="node-graph-help__list">
                             <li><strong>ジャンプ</strong> … タップ＝プレビューのみ（エディタのカーソルは動かない）／ダブルタップ＝移動して閉じる（閉じたあと設定どおりエディタも連動可）</li>
-                            <li><strong>if スタブ</strong> … 水色スタブをタップで <code>@if</code> へ（グラフは開いたまま）</li>
+                            <li><strong>if の枝</strong> … 水色の箱をタップで <code>@if</code> へ（グラフは開いたまま）。枝は <code>@endif</code> で合流して続きへ。<code>@goto</code> / <code>@end</code> で終わる枝は箱から外へ出る</li>
                             <li><strong>表示</strong> … ドラッグ＝パン、2本指ピンチ＝ズーム（PCはホイールも可）、「全体」でフィット</li>
                             <li><strong>＋ラベル</strong> … 脚本の末尾に追加</li>
                             <li><strong>改名・削除</strong> … ボタンを押してからノードをタップ</li>
@@ -311,8 +312,28 @@
 セリフ内容（複数行可能）
                 </pre>
 
+                <h3>印（@set）</h3>
+                <p>作者用の印です。プレビューは通った <code>@set</code> を覚えて、<code>@if</code> を自動で判定します。</p>
+                <pre>
+@set 好感度 = 0
+@set 好感度 += 2
+@set 鍵あり
+@set !鍵あり
+@set 名前 = "太郎"
+                </pre>
+                <ul>
+                    <li><code>@set 名前</code> は true、<code>@set !名前</code> は false。<code>=</code> / <code>+=</code> / <code>-=</code> が使えます（文字列は引用符で囲む）</li>
+                    <li>条件式は <code>== != &gt; &lt; &gt;= &lt;=</code>、<code>&amp;&amp; || !</code>（<code>and or not</code> も可）、括弧、<code>+ - * /</code></li>
+                    <li><code>f.好感度</code> と <code>好感度</code> は同じ印として扱います</li>
+                    <li>プレビュー下の <strong>印</strong> の列に今の値が出ます。タップで true/false 切り替え・値の編集、↺ で全部未設定に</li>
+                    <li>最初から通しで再生しているときは、未設定の印は偽として判定（エンジンと同じ）</li>
+                    <li>この行から・ラベルへジャンプなど途中から始めたときは、未設定の印が絡む <code>@if</code> だけ従来どおり枝ボタンで聞きます</li>
+                    <li>読めない条件式（関数呼び出しなど）も枝ボタンで聞きます</li>
+                    <li>特殊出力: ティラノ <code>[eval exp="f.好感度+=2"]</code>、Ren'Py <code>$ 好感度 += 2</code></li>
+                </ul>
+
                 <h3>条件分岐（@if）</h3>
-                <p>プレビューでは条件式ごとのボタンが出ます（見た目は選択肢に近いが、プレイヤー向けの選択肢ではありません）。</p>
+                <p>印（<code>@set</code>）の値で判定できる条件は自動で枝に入ります。判定できないときは条件式ごとのボタンが出ます（見た目は選択肢に近いが、プレイヤー向けの選択肢ではありません）。</p>
                 <pre>
 @if 条件式
 #キャラ
@@ -328,11 +349,11 @@
                 <ul>
                     <li><code>@elseif</code> / <code>@else if 条件</code> … 追加の条件枝（<code>@if</code> と条件の間は半角・全角スペースどちらでも可）</li>
                     <li><code>@else</code> … 上記のどれにも当てはまらないときの枝（条件式は書かない）</li>
-                    <li>押した条件の枝だけ通り、終わったら <code>@endif</code> の続きへ</li>
+                    <li>入った（押した）条件の枝だけ通り、終わったら <code>@endif</code> の続きへ</li>
                     <li>脚本に <code>@else</code> があるときは <strong>それ以外</strong> ボタンでその枝の本文へ（他の条件と同じ）</li>
                     <li><code>@else</code> が無いときだけ、プレビュー用に <strong>どれにも当てはまらない</strong> が付く（すべて偽の想定 → <code>@endif</code> 直行）</li>
-                    <li>ノードグラフ: 水色スタブ＝<code>@if</code> の枝（上＝条件、下＝本文の先頭8字）。<code>@if</code> が複数あるラベルは出現順に<strong>段を分けて</strong>表示。各段の中央が <code>@endif</code></li>
-                    <li>特殊出力（ティラノ）: <code>[if exp="条件"]</code> … <code>[elsif exp="条件"]</code> … <code>[else]</code> … <code>[endif]</code>（条件式は脚本のまま。ティラノの変数は <code>f.</code> 等を自分で書く）</li>
+                    <li>ノードグラフ: ラベルの下で <code>@if</code> が枝分かれ（箱の上＝条件、下＝本文の先頭8字。<code>@else</code> が無いときは点線の「どれも偽」）→ 各枝が <code>@endif</code> に<strong>合流</strong> → その下が続き。<code>@goto</code> / <code>@end</code> で終わる枝は合流せず、箱から外へ出る。<code>@if</code> が複数あれば上から順に縦に並ぶ</li>
+                    <li>特殊出力（ティラノ）: <code>[if exp="条件"]</code> … <code>[elsif exp="条件"]</code> … <code>[else]</code> … <code>[endif]</code>（素の名前には <code>f.</code> を付けて出力。<code>f.</code> / <code>sf.</code> 等が付いていればそのまま。<code>and</code> などは <code>&amp;&amp;</code> に）。Ren'Py は <code>f.</code> を外し、<code>&amp;&amp;</code> → <code>and</code>、<code>true</code> → <code>True</code> などに変換</li>
                 </ul>
 
                 <h3>選択肢</h3>
@@ -478,7 +499,7 @@ export.replace.【仮】=
                     <p>画面上部の <strong>ノードグラフ</strong> で分岐を俯瞰します。変更は脚本テキストへの反映です（正本はエディタの記法のまま）。</p>
                     <ul class="help-compact">
                         <li><strong>ジャンプ</strong> … タップ＝プレビューのみ／ダブルタップ＝移動してグラフを閉じる</li>
-                        <li><strong>if スタブ</strong> … タップで <code>@if</code> へ（グラフは開いたまま）</li>
+                        <li><strong>if の枝</strong> … 箱をタップで <code>@if</code> へ（グラフは開いたまま）。枝は <code>@endif</code> で合流</li>
                         <li><strong>表示</strong> … パン・2本指ピンチでズーム・「全体」。ラベル名フィルタ</li>
                         <li><strong>＋ラベル</strong> … 脚本末尾に空ブロックを追加</li>
                         <li><strong>改名・削除</strong> … ツールオン → ノード1タップ（削除は確認あり。参照も整理）</li>
@@ -634,6 +655,7 @@ export.replace.【仮】=
     <script src="js/storage/project_storage.js"></script>
     <script src="js/ui/panel_resizer.js"></script>
     <script src="js/ui/panel_layout.js"></script>
+    <script src="js/script/script_flags.js"></script>
     <script src="js/export/export_helpers.js"></script>
     <script src="js/export/export_format_custom.js"></script>
     <script src="js/export/export_render_tyrano.js"></script>

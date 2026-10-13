@@ -39,6 +39,10 @@ export const novelLanguage = StreamLanguage.define({
                 state.lineCtx = "ifTail";
                 return "ifKeyword";
             }
+            if (stream.match(/^@set(?=\s|$)/)) {
+                state.lineCtx = "ifTail";
+                return "ifKeyword";
+            }
             if (stream.match("@endmeta") || stream.match("@meta")) {
                 stream.skipToEnd();
                 return "metaKeyword";

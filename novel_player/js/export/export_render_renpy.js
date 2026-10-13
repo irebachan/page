@@ -48,12 +48,14 @@ function renderRenpyItem(settings, script, labels, item, indent) {
             if (branch.from == null || branch.to == null || branch.from >= branch.to) {
                 return;
             }
-            if (branch.condition == null) {
+            const cond =
+                branch.condition == null ? null : ScriptFlags.toRenpyExpr(branch.condition);
+            if (cond == null) {
                 lines.push(pad + "else:");
             } else if (branchIndex === 0) {
-                lines.push(pad + "if " + branch.condition + ":");
+                lines.push(pad + "if " + cond + ":");
             } else {
-                lines.push(pad + "elif " + branch.condition + ":");
+                lines.push(pad + "elif " + cond + ":");
             }
             for (let j = branch.from; j < branch.to; j++) {
                 lines.push(
@@ -74,6 +76,8 @@ function renderRenpyItem(settings, script, labels, item, indent) {
         lines.push(item.text.replace(/^\/\//, "#"));
     } else if (item.type === "raw") {
         lines.push(pad + item.text);
+    } else if (item.type === "set") {
+        lines.push(pad + ScriptFlags.renpySetLine(item));
     }
 
     return lines;

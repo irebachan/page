@@ -23029,6 +23029,10 @@ var ScenarioEditorModule = (() => {
           state.lineCtx = "ifTail";
           return "ifKeyword";
         }
+        if (stream.match(/^@set(?=\s|$)/)) {
+          state.lineCtx = "ifTail";
+          return "ifKeyword";
+        }
         if (stream.match("@endmeta") || stream.match("@meta")) {
           stream.skipToEnd();
           return "metaKeyword";
@@ -23494,7 +23498,7 @@ var ScenarioEditorModule = (() => {
       }
     };
   }
-  var EDITOR_BUILD = true ? "2026-10-14 00:37:24" : "dev";
+  var EDITOR_BUILD = true ? "2026-10-14 00:59:08" : "dev";
   if (typeof window !== "undefined") {
     window.ScenarioEditor = { create: createScenarioEditor, build: EDITOR_BUILD };
     const showBuild = () => {

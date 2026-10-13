@@ -85,6 +85,15 @@ class NovelPlayer {
         /** @if 枝を抜けたあと @endif へ進むためのスタック */
         this.ifSkipStack = [];
         this.previewMeta = {};
+        /** @set の印（プレビュー内だけの値。f. 等は外した名前） */
+        this.previewVars = {};
+        /** 表示中の画面に入った時点の印（戻る用の履歴に保存） */
+        this._viewVars = {};
+        this._flagNames = [];
+        this._lastAutoIf = null;
+        /** 最初から通しで再生中なら true（未設定の印はエンジン同様に偽）。途中から始めたら false */
+        this._playedFromStart = true;
+        this.previewVarsBar = document.getElementById("previewVars");
 
         // イベントリスナーの設定
         if (this.prevBtn) {
@@ -823,6 +832,7 @@ class NovelPlayer {
         this.lastJumpLabel = "";
         this.callStack = [];
         this.ifSkipStack = [];
+        this.clearPreviewVars();
         this.updatePrevButton();
     }
 
@@ -850,6 +860,9 @@ class NovelPlayer {
         this.labelSourceLines = parseResult.labelSourceLines || {};
         this.callStack = [];
         this.ifSkipStack = [];
+        this._flagNames =
+            typeof ScriptFlags !== "undefined" ? ScriptFlags.collectNames(this.script) : [];
+        this.previewVars = { ...this._viewVars };
 
         const resolved =
             preservePosition && anchor
@@ -1583,6 +1596,7 @@ class NovelPlayer {
             if (!t) continue;
             if (t.startsWith("@goto") || t.startsWith("@call")) continue;
             if (t === "@return" || t === "@end") continue;
+            if (/^@set(\s|$)/.test(t)) return i;
             if (t.startsWith("@")) break;
             return i;
         }
@@ -1762,7 +1776,14 @@ class NovelPlayer {
         let i = start + 1;
         while (i < rawLines.length) {
             const t = rawLines[i].trim();
-            if (t === "" || t.startsWith("#") || t.startsWith("@") || t.startsWith("//")) {
+            if (
+                t === "" ||
+                t.startsWith("#") ||
+                t.startsWith("@") ||
+                t.startsWith("//") ||
+                t.startsWith("!") ||
+                t.startsWith("-")
+            ) {
                 break;
             }
             if (i === targetSourceLine) return unit;
@@ -1786,6 +1807,8 @@ class NovelPlayer {
         this.previewHistory.push({
             viewIndex: state.viewIndex,
             viewLineUnit: state.viewLineUnit,
+            vars: { ...this._viewVars },
+            fromStart: this._playedFromStart,
         });
         if (this.previewHistory.length > 150) this.previewHistory.shift();
         this.updatePrevButton();
@@ -1845,6 +1868,7 @@ class NovelPlayer {
             if (item && item.type === "choice") {
                 this.previewHistory = this.previewHistory.slice(0, i);
                 this.callStack = [];
+                this.restorePreviewVars(state.vars, state.fromStart);
                 this.viewIndex = state.viewIndex;
                 this.viewLineUnit = state.viewLineUnit;
                 this.renderCurrentView();
@@ -1882,8 +1906,9 @@ class NovelPlayer {
         });
         this.callStack = [];
         this.ifSkipStack = [];
+        this.markPreviewJumped();
         const ctx = this.findIfBranchContext(pos.viewIndex);
-        if (ctx) {
+        if (ctx && lineNum > ctx.branch.sourceLine) {
             this.ifSkipStack.push({
                 end: ctx.branch.to,
                 endifAt: ctx.chain.endifAt,
@@ -1909,6 +1934,7 @@ class NovelPlayer {
                 t.startsWith("#") ||
                 t.startsWith("@") ||
                 t.startsWith("//") ||
+                t.startsWith("!") ||
                 t.startsWith("-")
             ) {
                 break;
@@ -2012,6 +2038,7 @@ class NovelPlayer {
         const state = this.previewHistory.pop();
         if (!state) return;
         this.ifSkipStack = [];
+        this.restorePreviewVars(state.vars, state.fromStart);
         this.viewIndex = state.viewIndex;
         this.viewLineUnit = state.viewLineUnit;
         this.renderCurrentView();
@@ -2493,6 +2520,178 @@ class NovelPlayer {
         }
         this.viewIndex = viewIndex;
         this.viewLineUnit = viewLineUnit;
+        this._viewVars = { ...this.previewVars };
+        this.renderPreviewVars();
+    }
+
+    applyPreviewSet(item) {
+        if (typeof ScriptFlags === "undefined") return;
+        ScriptFlags.applySet(item, this.previewVars);
+    }
+
+    /**
+     * 印の値で @if を判定できれば、入る枝の先頭（または @endif の続き）を返す。
+     * 判定できない条件に当たったら null（従来どおり枝ボタンを出す）
+     */
+    autoEnterIfChain(chain) {
+        if (typeof ScriptFlags === "undefined") return null;
+        let chosen = -1;
+        for (let i = 0; i < chain.branches.length; i++) {
+            const branch = chain.branches[i];
+            if (this.isIfElseBranch(branch)) {
+                chosen = i;
+                break;
+            }
+            const r = ScriptFlags.evaluate(branch.condition, this.previewVars, {
+                unsetIsUndefined: this._playedFromStart,
+            });
+            if (!r.known) {
+                this._lastAutoIf = {
+                    condition: branch.condition,
+                    result: null,
+                    missing: r.missing,
+                    syntaxError: !!r.syntaxError,
+                };
+                return null;
+            }
+            if (r.value) {
+                chosen = i;
+                break;
+            }
+        }
+        const branch = chosen >= 0 ? chain.branches[chosen] : null;
+        this._lastAutoIf = {
+            condition: branch
+                ? this.ifBranchButtonLabel(branch)
+                : "どれにも当てはまらない",
+            result: true,
+        };
+        if (branch && branch.from != null && branch.to != null && branch.from < branch.to) {
+            this.ifSkipStack.push({ end: branch.to, endifAt: chain.endifAt });
+            return branch.from;
+        }
+        return chain.endifAt;
+    }
+
+    clearPreviewVars() {
+        this.previewVars = {};
+        this._viewVars = {};
+        this._lastAutoIf = null;
+        this._playedFromStart = true;
+        this.renderPreviewVars();
+    }
+
+    restorePreviewVars(vars, fromStart) {
+        if (!vars) return;
+        this.previewVars = { ...vars };
+        this._viewVars = { ...vars };
+        if (typeof fromStart === "boolean") this._playedFromStart = fromStart;
+    }
+
+    /** 途中から再生を始めた（未設定の印は「分からない」扱いにして枝ボタンで聞く） */
+    markPreviewJumped() {
+        this._playedFromStart = false;
+    }
+
+    /** パネルで値を変えたら、今の画面に入った時点の値として扱う */
+    setPreviewVarFromPanel(name, value) {
+        if (value === undefined) delete this.previewVars[name];
+        else this.previewVars[name] = value;
+        this._viewVars = { ...this.previewVars };
+        const cur = this.script[this.viewIndex];
+        if (cur?.type === "if_chain") {
+            this.renderCurrentView();
+        } else {
+            this.renderPreviewVars();
+        }
+    }
+
+    editPreviewVar(name) {
+        const has = Object.prototype.hasOwnProperty.call(this.previewVars, name);
+        const cur = has ? this.previewVars[name] : undefined;
+        if (typeof cur === "boolean") {
+            this.setPreviewVarFromPanel(name, !cur);
+            return;
+        }
+        const input = window.prompt(
+            `「${name}」の値（数値・true/false・文字列。空欄で未設定）`,
+            has ? String(cur) : ""
+        );
+        if (input == null) return;
+        this.setPreviewVarFromPanel(name, ScriptFlags.parseLiteralInput(input));
+    }
+
+    renderPreviewVars() {
+        const bar = this.previewVarsBar;
+        if (!bar || typeof ScriptFlags === "undefined") return;
+        const names = [...this._flagNames];
+        for (const n of Object.keys(this.previewVars)) {
+            if (!names.includes(n)) names.push(n);
+        }
+        bar.hidden = names.length === 0;
+        if (!names.length) {
+            bar.replaceChildren();
+            return;
+        }
+        const frag = document.createDocumentFragment();
+        const title = document.createElement("span");
+        title.className = "preview-vars__title";
+        title.textContent = "印";
+        title.title =
+            "@set の値（プレビュー内だけ）。タップで切り替え・編集。@if はこの値で自動判定";
+        frag.appendChild(title);
+        for (const name of names) {
+            const has = Object.prototype.hasOwnProperty.call(this.previewVars, name);
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "preview-var" + (has ? "" : " is-unset");
+            const val = has ? this.previewVars[name] : undefined;
+            if (typeof val === "boolean") btn.classList.add(val ? "is-true" : "is-false");
+            const k = document.createElement("span");
+            k.className = "preview-var__name";
+            k.textContent = name;
+            const v = document.createElement("span");
+            v.className = "preview-var__value";
+            v.textContent = has ? ScriptFlags.formatValue(val) : this._playedFromStart ? "—" : "?";
+            btn.append(k, v);
+            btn.title = has
+                ? typeof val === "boolean"
+                    ? "タップで true / false を切り替え"
+                    : "タップで値を編集"
+                : this._playedFromStart
+                  ? "未設定＝偽として判定中（タップで値を入れる）"
+                  : "途中から再生中のため不明。@if で使うと枝ボタンで聞きます（タップで値を入れる）";
+            btn.addEventListener("click", () => this.editPreviewVar(name));
+            frag.appendChild(btn);
+        }
+        const last = this._lastAutoIf;
+        if (last) {
+            const note = document.createElement("span");
+            note.className = "preview-vars__last";
+            if (last.result) {
+                note.textContent = `自動: ${last.condition}`;
+            } else if (last.syntaxError) {
+                note.textContent = `判定不可: ${last.condition}`;
+            } else {
+                note.textContent = `未設定: ${(last.missing || []).join(", ")}`;
+            }
+            frag.appendChild(note);
+        }
+        const reset = document.createElement("button");
+        reset.type = "button";
+        reset.className = "preview-vars__reset";
+        reset.textContent = "↺";
+        reset.title = "印をすべて未設定に戻す";
+        reset.addEventListener("click", () => {
+            this.previewVars = {};
+            this._viewVars = {};
+            this._lastAutoIf = null;
+            this.renderPreviewVars();
+            const cur = this.script[this.viewIndex];
+            if (cur?.type === "if_chain") this.renderCurrentView();
+        });
+        frag.appendChild(reset);
+        bar.replaceChildren(frag);
     }
 
     showEndState() {
@@ -2503,6 +2702,7 @@ class NovelPlayer {
         this._previewAtEnd = this.script.length > 0;
         this.choicesBox.classList.remove("choices--if");
         this.choicesBox.removeAttribute("aria-label");
+        this.renderPreviewVars();
     }
 
     renderCurrentView() {
@@ -2584,6 +2784,19 @@ class NovelPlayer {
                 idx++;
                 continue;
             }
+            if (line.type === "set") {
+                this.applyPreviewSet(line);
+                idx++;
+                continue;
+            }
+            if (line.type === "if_chain") {
+                const next = this.autoEnterIfChain(line);
+                if (next != null) {
+                    idx = next;
+                    lu = 0;
+                    continue;
+                }
+            }
             if (line.type === "line") {
                 const parts = (line.text != null ? line.text : "").split("\n");
                 const useLineUnit = this.isPreviewLineUnit() && parts.length > 1;
@@ -2626,14 +2839,19 @@ class NovelPlayer {
             return;
         }
         if (line.type === "if_chain") {
+            this.pushPreviewHistory({
+                viewIndex: this.viewIndex,
+                viewLineUnit: this.viewLineUnit,
+            });
             this.viewIndex = this.index;
             this.viewLineUnit = 0;
-            if (this.paintAt(this.index, 0)) {
-                this.syncPlaybackIndexAfterView(this.index, 0);
-            } else {
-                this.index++;
-                this.showLine();
-            }
+            this.renderCurrentView();
+            return;
+        }
+        if (line.type === "set") {
+            this.applyPreviewSet(line);
+            this.index++;
+            this.showLine();
             return;
         }
         if (line.type === "goto") {
@@ -2716,6 +2934,7 @@ class NovelPlayer {
         this.viewLineUnit = 0;
         this.callStack = [];
         this.ifSkipStack = [];
+        this.clearPreviewVars();
         this.renderCurrentView();
         this.updatePrevButton();
     }
@@ -2738,6 +2957,7 @@ class NovelPlayer {
         });
         this.callStack = [];
         this.ifSkipStack = [];
+        this.markPreviewJumped();
         const pos = this.findPreviewIndexForSourceLine(edge.sourceLine);
         if (pos) {
             this.viewIndex = pos.viewIndex;
@@ -2808,6 +3028,7 @@ class NovelPlayer {
         });
         this.callStack = [];
         this.ifSkipStack = [];
+        this.markPreviewJumped();
         this.lastJumpLabel = labelName;
         this.viewIndex = this.labels[labelName];
         this.viewLineUnit = 0;

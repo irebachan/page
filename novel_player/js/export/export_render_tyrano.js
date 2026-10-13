@@ -81,6 +81,8 @@ function renderTyranoItem(settings, script, labels, item) {
         lines.push(item.text.replace(/^\/\//, ";"));
     } else if (item.type === "raw") {
         lines.push(item.text);
+    } else if (item.type === "set") {
+        lines.push(ScriptFlags.tyranoSetTag(item));
     }
 
     return lines;

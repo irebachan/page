@@ -827,6 +827,79 @@ body.menu-drawer-open {
     width: 100%;
 }
 
+/* 印（@set の値）: 1行・横スクロール */
+.preview-vars {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0.4em;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    font-size: 0.82rem;
+    flex: 0 0 auto;
+}
+
+.preview-vars[hidden] {
+    display: none;
+}
+
+.preview-vars__title {
+    flex: 0 0 auto;
+    opacity: 0.7;
+    font-size: 0.9em;
+}
+
+.preview-var {
+    flex: 0 0 auto;
+    display: inline-flex;
+    gap: 0.3em;
+    align-items: baseline;
+    padding: 2px 8px;
+    margin: 0;
+    border-radius: 999px;
+    border: 1px solid var(--if-border, rgba(122, 158, 184, 0.75));
+    background: var(--if-bg, rgba(122, 158, 184, 0.12));
+    color: var(--if-fg, inherit);
+    font: inherit;
+    cursor: pointer;
+}
+
+.preview-var__value {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-weight: 600;
+}
+
+.preview-var.is-unset {
+    opacity: 0.55;
+    border-style: dashed;
+}
+
+.preview-var.is-false .preview-var__value {
+    opacity: 0.6;
+    font-weight: 400;
+}
+
+.preview-vars__last {
+    flex: 0 0 auto;
+    opacity: 0.6;
+    font-size: 0.9em;
+}
+
+.preview-vars__reset {
+    flex: 0 0 auto;
+    margin: 0 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid #666;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    opacity: 0.75;
+}
+
 .preview-nav button {
     flex: 1;
     font-size: 1.2em;
@@ -1876,6 +1949,31 @@ body.node-graph-open .cm-scroller {
 .label-graph-edge.is-stub {
     stroke-dasharray: 5 4;
     opacity: 0.85;
+}
+
+/* @if 図: 分岐 → 枝 → @endif 合流は実線（実際に通る流れ） */
+.label-graph-edge.is-stub[data-kind="if_inline"],
+.label-graph-edge.is-stub[data-kind="if_rejoin"] {
+    stroke: #7a9eb8;
+    stroke-dasharray: none;
+    opacity: 0.95;
+}
+
+.label-graph-edge.is-stub[data-kind="if_inline"].is-virtual,
+.label-graph-edge.is-stub[data-kind="if_rejoin"].is-virtual {
+    stroke-dasharray: 3 3;
+    opacity: 0.7;
+}
+
+.label-graph-edge-label[data-kind="if_virtual"] rect {
+    fill: #161c22;
+    stroke: #5a7a8e;
+    stroke-dasharray: 3 2;
+}
+
+.label-graph-edge-label[data-kind="if_virtual"] text {
+    fill: #7f95a5;
+    font-size: 10px;
 }
 
 .label-graph-edge[data-kind="call"] {

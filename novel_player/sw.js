@@ -2,7 +2,7 @@
  * 静的アセットのオフライン用キャッシュ（作品データは IndexedDB）。
  * オンライン時はネットワーク優先（デプロイ後も最新を表示）。オフライン時のみキャッシュ。
  */
-const CACHE_NAME = "novel-player-shell-v63";
+const CACHE_NAME = "novel-player-shell-v66";
 
 const SHELL_FILES = [
     "./",
@@ -18,6 +18,7 @@ const SHELL_FILES = [
     "./js/storage/project_storage.js",
     "./js/ui/panel_resizer.js",
     "./js/ui/panel_layout.js",
+    "./js/script/script_flags.js",
     "./js/export/export_helpers.js",
     "./js/export/export_format_custom.js",
     "./js/export/export_render_tyrano.js",

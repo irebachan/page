@@ -25,6 +25,12 @@ class ScriptParser {
         return null;
     }
 
+    /** @set 行なら本文（空文字もあり）、違えば null */
+    static matchSetDirective(line) {
+        const m = line.match(/^@set(?:\s+(.*))?$/);
+        return m ? (m[1] || "").trim() : null;
+    }
+
     closeIfBranch(script, ifChain) {
         if (!ifChain || !ifChain.branches.length) return;
         const last = ifChain.branches[ifChain.branches.length - 1];
@@ -60,6 +66,7 @@ class ScriptParser {
             line === "@end" ||
             line === "@meta" ||
             line === "@endmeta" ||
+            ScriptParser.matchSetDirective(line) != null ||
             this.isIfDirective(line)
         );
     }
@@ -234,6 +241,25 @@ class ScriptParser {
                 if (line === "@end") {
                     ensureBranchFrom();
                     script.push({ type: "end", sourceLine });
+                    i++;
+                    continue;
+                }
+                const setBody = ScriptParser.matchSetDirective(line);
+                if (setBody != null) {
+                    ensureBranchFrom();
+                    const set =
+                        typeof ScriptFlags !== "undefined"
+                            ? ScriptFlags.parseSet(setBody)
+                            : null;
+                    if (set) {
+                        script.push({ type: "set", ...set, sourceLine });
+                    } else {
+                        script.push({
+                            type: "parse_error",
+                            message: `@set の書き方が読めません（例: @set 好感度 = 3 / @set 鍵あり）: ${line}`,
+                            sourceLine,
+                        });
+                    }
                     i++;
                     continue;
                 }

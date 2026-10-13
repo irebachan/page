@@ -385,6 +385,9 @@ function validateLabelName(name, labels, excludeName) {
     if (defLine.startsWith("@meta") || defLine === "@endmeta") {
         return { ok: false, error: "メタ記法と衝突する名前は使えません" };
     }
+    if (/^@set(\s|$)/.test(defLine)) {
+        return { ok: false, error: "「set」は @set（印）と解釈されるため使えません" };
+    }
     if (labels.hasOwnProperty(n) && n !== excludeName) {
         return { ok: false, error: `ラベル「${n}」は既にあります` };
     }
@@ -411,6 +414,7 @@ function labelNameFromDefinitionLine(trimmed) {
     if (trimmed.startsWith("@goto") || trimmed.startsWith("@call")) return null;
     if (trimmed === "@return" || trimmed === "@end") return null;
     if (trimmed.startsWith("@meta") || trimmed === "@endmeta") return null;
+    if (/^@set(\s|$)/.test(trimmed)) return null;
     return trimmed.slice(1);
 }
 
