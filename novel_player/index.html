@@ -313,47 +313,40 @@
                 </pre>
 
                 <h3>変数（@set）</h3>
-                <p>変数に値を入れます。プレビューは通った <code>@set</code> の値を覚えて、<code>@if</code> を自動で判定します。</p>
+                <p>変数に値を入れます。<code>@if</code> で使います。</p>
                 <pre>
 @set 好感度 = 0
 @set 好感度 += 2
 @set 鍵あり
 @set !鍵あり
-@set 名前 = "太郎"
                 </pre>
                 <ul>
-                    <li><code>@set 名前</code> は true、<code>@set !名前</code> は false。<code>=</code> / <code>+=</code> / <code>-=</code> が使えます（文字列は引用符で囲む）</li>
-                    <li>条件式は <code>== != &gt; &lt; &gt;= &lt;=</code>、<code>&amp;&amp; || !</code>（<code>and or not</code> も可）、括弧、<code>+ - * /</code></li>
-                    <li><code>f.好感度</code> と <code>好感度</code> は同じ変数として扱います</li>
-                    <li>プレビュー下の <strong>変数</strong> の列に今の値が出ます。タップで true/false 切り替え・値の編集、↺ で全部未設定に</li>
-                    <li>最初から通しで再生しているときは、未設定の変数は偽として判定（エンジンと同じ）</li>
-                    <li>この行から・ラベルへジャンプなど途中から始めたときは、未設定の変数が絡む <code>@if</code> だけ従来どおり枝ボタンで聞きます</li>
-                    <li>読めない条件式（関数呼び出しなど）も枝ボタンで聞きます</li>
-                    <li>特殊出力: ティラノ <code>[eval exp="f.好感度+=2"]</code>、Ren'Py <code>$ 好感度 += 2</code></li>
+                    <li><code>@set 名前</code> だけなら true、<code>@set !名前</code> は false</li>
+                    <li><code>=</code> で代入、<code>+=</code> で足す、<code>-=</code> で引く。文字列は <code>"太郎"</code> のように引用符で囲む</li>
+                    <li>プレビュー下の <strong>変数</strong> 欄に今の値が出ます。タップで値を変更、↺ でリセット</li>
                 </ul>
 
                 <h3>条件分岐（@if）</h3>
-                <p>変数（<code>@set</code>）の値で判定できる条件は自動で枝に入ります。判定できないときは条件式ごとのボタンが出ます（見た目は選択肢に近いが、プレイヤー向けの選択肢ではありません）。</p>
+                <p>変数の値によって、読む部分を分けます。</p>
                 <pre>
-@if 条件式
-#キャラ
-この枝のセリフ
-@elseif 別の条件
-#キャラ
-別の枝
+@if 好感度 >= 3
+仲良しのセリフ
+@elseif 鍵あり
+鍵を持っているときのセリフ
 @else
-#キャラ
-どの条件にも当てはまらないとき
+それ以外のセリフ
 @endif
+ここはどの場合も読む
                 </pre>
                 <ul>
-                    <li><code>@elseif</code> / <code>@else if 条件</code> … 追加の条件枝（<code>@if</code> と条件の間は半角・全角スペースどちらでも可）</li>
-                    <li><code>@else</code> … 上記のどれにも当てはまらないときの枝（条件式は書かない）</li>
-                    <li>入った（押した）条件の枝だけ通り、終わったら <code>@endif</code> の続きへ</li>
-                    <li>脚本に <code>@else</code> があるときは <strong>それ以外</strong> ボタンでその枝の本文へ（他の条件と同じ）</li>
-                    <li><code>@else</code> が無いときだけ、プレビュー用に <strong>どれにも当てはまらない</strong> が付く（すべて偽の想定 → <code>@endif</code> 直行）</li>
-                    <li>ノードグラフ: ラベルの下で <code>@if</code> が枝分かれ（箱の上＝条件、下＝本文の先頭8字。<code>@else</code> が無いときは点線の「どれも偽」）→ 各枝が <code>@endif</code> に<strong>合流</strong> → その下が続き。<code>@goto</code> / <code>@end</code> で終わる枝は合流せず、箱から外へ出る。<code>@if</code> が複数あれば上から順に縦に並ぶ</li>
-                    <li>特殊出力（ティラノ）: <code>[if exp="条件"]</code> … <code>[elsif exp="条件"]</code> … <code>[else]</code> … <code>[endif]</code>（素の名前には <code>f.</code> を付けて出力。<code>f.</code> / <code>sf.</code> 等が付いていればそのまま。<code>and</code> などは <code>&amp;&amp;</code> に）。Ren'Py は <code>f.</code> を外し、<code>&amp;&amp;</code> → <code>and</code>、<code>true</code> → <code>True</code> などに変換</li>
+                    <li><code>@if 条件</code> … 条件が当てはまるとき、次の <code>@elseif</code> / <code>@else</code> / <code>@endif</code> までを読む</li>
+                    <li><code>@elseif 条件</code> … それより上の条件が当てはまらず、この条件が当てはまるときに読む。いくつでも書ける</li>
+                    <li><code>@else</code> … どの条件にも当てはまらないときに読む。書かなければ、当てはまらないときは何も読まない</li>
+                    <li><code>@endif</code> … <code>@if</code> の終わり。どの枝を読んだあとも、ここの次へ進む</li>
+                    <li>当てはまる条件が複数あっても、読むのは上から最初の1つだけ</li>
+                    <li>枝の中で <code>@goto</code> / <code>@end</code> すると、<code>@endif</code> には戻りません</li>
+                    <li>条件に使える記号: <code>== != &gt; &lt; &gt;= &lt;=</code>、かつ <code>&amp;&amp;</code>、または <code>||</code>、否定 <code>!</code></li>
+                    <li>プレビューは変数の値を見て自動で枝に入ります。途中から再生して値が分からないときは、どの枝を読むかボタンで選びます</li>
                 </ul>
 
                 <h3>選択肢</h3>
@@ -435,8 +428,8 @@ export.replace.【仮】=
                     <li>テキストブロック内の行末に改行記号を追加</li>
                     <li>テキストブロックの最後に改ページ記号を追加</li>
                     <li>フォーマット変換の<strong>あと</strong>に、<code>export.replace.*</code> の置換を適用（上記「文字列置換」参照）</li>
-                    <li><strong>ティラノ</strong> / <strong>カスタム</strong> … 同じ変換（<code>@if</code> → <code>[if exp]</code> 等、<code>@goto</code> / <code>@call</code> / <code>@return</code> は設定のジャンプ・call・returnタグへ）。カスタムは他エンジン向けにタグ文字列を差し替えて使う想定</li>
-                    <li><strong>Ren'Py</strong> … <code>if</code> / <code>call</code> / <code>return</code> 形式</li>
+                    <li><strong>ティラノ</strong> / <strong>カスタム</strong> … 同じ変換（<code>@if</code> → <code>[if exp]</code>、<code>@set</code> → <code>[eval]</code> 等、<code>@goto</code> / <code>@call</code> / <code>@return</code> は設定のジャンプ・call・returnタグへ）。カスタムは他エンジン向けにタグ文字列を差し替えて使う想定</li>
+                    <li><strong>Ren'Py</strong> … <code>if</code> / <code>$</code>（<code>@set</code>）/ <code>call</code> / <code>return</code> 形式</li>
                 </ul>
                 <p>記号は自由にカスタマイズ可能です。</p>
 
