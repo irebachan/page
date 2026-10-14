@@ -207,21 +207,23 @@
                         <label class="meta-settings-item">
                             <span>表示単位</span>
                             <select id="metaPreviewUnit">
+                                <option value="">未設定</option>
                                 <option value="block">block</option>
                                 <option value="line">line</option>
                             </select>
                         </label>
                         <label class="meta-settings-item">
                             <span>1行あたり文字数</span>
-                            <input type="number" id="metaMaxCharsPerLine" min="1" step="1" inputmode="numeric">
+                            <input type="number" id="metaMaxCharsPerLine" min="1" step="1" inputmode="numeric" placeholder="未設定（制限なし）">
                         </label>
                         <label class="meta-settings-item">
                             <span>表示行数</span>
-                            <input type="number" id="metaMaxLines" min="1" step="1" inputmode="numeric">
+                            <input type="number" id="metaMaxLines" min="1" step="1" inputmode="numeric" placeholder="未設定（制限なし）">
                         </label>
                         <label class="meta-settings-item">
                             <span>行あふれ時の表示</span>
                             <select id="metaPreviewOverflow">
+                                <option value="">未設定</option>
                                 <option value="wrap">wrap（折り返し）</option>
                                 <option value="truncate">truncate（切り詰め）</option>
                             </select>
@@ -402,7 +404,7 @@ preview.overflow=wrap
                     <li><code>preview.maxLines</code>: 表示行数</li>
                     <li><code>preview.overflow</code>: <code>wrap</code>（折り返し）/ <code>truncate</code>（切り詰め）</li>
                 </ul>
-                <p>シナリオメニュー内の <strong>🧩 表示ルール</strong> からも編集できます。</p>
+                <p>必要な行だけ書けば足ります。書かない項目は、文字数・行数は制限なし、あふれは折り返しです。シナリオメニュー内の <strong>🧩 表示ルール</strong> からも編集でき、空欄・未設定にした項目は <code>@meta</code> から消えます。</p>
 
                 <h3>文字列置換（作品ごと）</h3>
                 <p>特殊形式出力・特殊テキストのコピー時だけ、出力テキスト中の文字列を置き換えられます。編集画面とプレビューは原文のままです。</p>
@@ -431,7 +433,18 @@ export.replace.【仮】=
                     <li><strong>ティラノ</strong> / <strong>カスタム</strong> … 同じ変換（<code>@if</code> → <code>[if exp]</code>、<code>@set</code> → <code>[eval]</code> 等、<code>@goto</code> / <code>@call</code> / <code>@return</code> は設定のジャンプ・call・returnタグへ）。カスタムは他エンジン向けにタグ文字列を差し替えて使う想定</li>
                     <li><strong>Ren'Py</strong> … <code>if</code> / <code>$</code>（<code>@set</code>）/ <code>call</code> / <code>return</code> 形式</li>
                 </ul>
-                <p>記号は自由にカスタマイズ可能です。</p>
+                <p>記号や形式は出力設定で変えられます。設定は作品ごとに <code>@meta</code> へ1行ずつ保存され（既定値と同じ項目は書かない）、手で書いても同じです。</p>
+                <pre>
+@meta
+export.format=renpy
+export.renpyStyle=name_quote_both
+@endmeta
+                </pre>
+                <ul>
+                    <li><code>export.format</code>: <code>tyrano</code> / <code>renpy</code> / <code>custom</code>、<code>export.ext</code>: 拡張子、<code>export.unit</code>: <code>block</code> / <code>line</code></li>
+                    <li>ティラノ: <code>export.pageBreak</code> <code>export.lineBreak</code> <code>export.clickWait</code>（<code>true</code> / <code>false</code>）<code>export.clickWaitSymbol</code> <code>export.punctuation</code> <code>export.labelSymbol</code> <code>export.labelBelowTag</code> <code>export.jumpTag</code> <code>export.callTag</code> <code>export.returnTag</code> <code>export.choiceLine</code> <code>export.choiceEnd</code></li>
+                    <li>Ren'Py: <code>export.renpyStyle</code>（<code>name_quote</code> / <code>name_quote_both</code> / <code>quote_only</code>）</li>
+                </ul>
 
                 <h3>サンプル</h3>
                 <pre>
@@ -554,6 +567,7 @@ export.replace.【仮】=
         <div class="modal-content">
             <span class="close export-close">&times;</span>
             <h2>特殊テキスト出力設定</h2>
+            <p class="export-meta-note">変更はこの作品の <code>@meta</code> に <code>export.*</code> として保存されます</p>
             <div class="export-content">
                 <div class="export-settings">
                     <div class="export-setting-item">

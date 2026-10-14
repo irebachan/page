@@ -210,71 +210,41 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function getMetaDefaults() {
-        return {
-            unit: "block",
-            maxCharsPerLine: "28",
-            maxLines: "3",
-            overflow: "wrap",
-        };
-    }
-
-    function parseMetaBlock(scriptText) {
-        const m = scriptText.match(/(^|\n)\s*@meta\s*\n([\s\S]*?)\n\s*@endmeta(?:\n|$)/);
-        if (!m) return null;
-        const body = m[2];
-        const parsed = {};
-        body.split("\n").forEach((rawLine) => {
-            const line = rawLine.trim();
-            if (!line || line.startsWith("//")) return;
-            const eq = line.indexOf("=");
-            if (eq <= 0) return;
-            const key = line.slice(0, eq).trim();
-            const value = line.slice(eq + 1).trim();
-            if (key) parsed[key] = value;
-        });
-        return parsed;
-    }
-
+    /** 空欄・未設定の項目は @meta に書かない（既にあれば消す） */
     function readMetaToForm() {
         if (!metaPreviewUnit || !metaMaxCharsPerLine || !metaMaxLines || !metaPreviewOverflow) return;
-        const defaults = getMetaDefaults();
         const parsed = parseMetaBlock(novelPlayer.getScriptText()) || {};
-        const unit = parsed["preview.unit"] || defaults.unit;
-        const chars = parsed["preview.maxCharsPerLine"] || defaults.maxCharsPerLine;
-        const lines = parsed["preview.maxLines"] || defaults.maxLines;
-        const overflow = parsed["preview.overflow"] || defaults.overflow;
-        metaPreviewUnit.value = (unit === "line") ? "line" : "block";
-        metaMaxCharsPerLine.value = chars;
-        metaMaxLines.value = lines;
-        metaPreviewOverflow.value = overflow === "truncate" ? "truncate" : "wrap";
+        const unit = parsed["preview.unit"];
+        const overflow = parsed["preview.overflow"];
+        metaPreviewUnit.value = unit === "line" || unit === "block" ? unit : "";
+        metaMaxCharsPerLine.value = parsed["preview.maxCharsPerLine"] || "";
+        metaMaxLines.value = parsed["preview.maxLines"] || "";
+        metaPreviewOverflow.value = overflow === "truncate" || overflow === "wrap" ? overflow : "";
     }
 
-    function buildMetaBlockFromForm() {
-        const defaults = getMetaDefaults();
-        const unit = metaPreviewUnit?.value === "line" ? "line" : defaults.unit;
-        const maxChars = Math.max(1, parseInt(metaMaxCharsPerLine?.value || defaults.maxCharsPerLine, 10) || 28);
-        const maxLines = Math.max(1, parseInt(metaMaxLines?.value || defaults.maxLines, 10) || 3);
-        const overflow = metaPreviewOverflow?.value === "truncate" ? "truncate" : defaults.overflow;
+    function positiveIntOrNull(input) {
+        const n = parseInt(input?.value || "", 10);
+        return Number.isFinite(n) && n > 0 ? String(n) : null;
+    }
+
+    function buildMetaValuesFromForm() {
         return [
-            "@meta",
-            `preview.unit=${unit}`,
-            `preview.maxCharsPerLine=${maxChars}`,
-            `preview.maxLines=${maxLines}`,
-            `preview.overflow=${overflow}`,
-            "@endmeta",
-        ].join("\n");
+            ["preview.unit", metaPreviewUnit?.value || null],
+            ["preview.maxCharsPerLine", positiveIntOrNull(metaMaxCharsPerLine)],
+            ["preview.maxLines", positiveIntOrNull(metaMaxLines)],
+            ["preview.overflow", metaPreviewOverflow?.value || null],
+        ];
     }
 
     function applyMetaFromForm() {
         const current = novelPlayer.getScriptText();
-        const block = buildMetaBlockFromForm();
-        const re = /(^|\n)\s*@meta\s*\n[\s\S]*?\n\s*@endmeta(?:\n|$)/;
-        let next;
-        if (re.test(current)) {
-            next = current.replace(re, (matched, lead) => `${lead}${block}\n`);
-        } else {
-            next = `${block}\n\n${current}`;
+        let next = current;
+        for (const [key, value] of buildMetaValuesFromForm()) {
+            next = setMetaValue(next, key, value);
+        }
+        if (next === current) {
+            novelPlayer.focusEditor();
+            return;
         }
         novelPlayer.setScriptText(next);
         if (typeof novelPlayer.updateScript === "function") {

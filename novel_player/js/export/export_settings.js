@@ -1,5 +1,25 @@
 // 特殊出力設定の管理クラス（UI・エクスポート実行。レンダラは export_render_*.js / export_format_custom.js を参照）
 
+/** 出力設定は作品ごとに @meta の export.* 行へ保存する（既定値と同じなら行を書かない） */
+const EXPORT_META_FIELDS = [
+    ["export.format", "exportFormat"],
+    ["export.ext", "exportExtension"],
+    ["export.unit", "outputUnit"],
+    ["export.pageBreak", "pageBreakSymbol"],
+    ["export.lineBreak", "lineBreakSymbol"],
+    ["export.clickWait", "useClickWait"],
+    ["export.clickWaitSymbol", "clickWaitSymbol"],
+    ["export.punctuation", "punctuationMarks"],
+    ["export.labelSymbol", "labelSymbol"],
+    ["export.labelBelowTag", "labelBelowTag"],
+    ["export.jumpTag", "jumpTag"],
+    ["export.callTag", "callTag"],
+    ["export.returnTag", "returnTag"],
+    ["export.choiceLine", "choiceLineTemplate"],
+    ["export.choiceEnd", "choiceBlockEnd"],
+    ["export.renpyStyle", "renpyDialogueStyle"],
+];
+
 class ExportSettings {
     constructor() {
         this.exportSettingsButton = document.getElementById("exportSettingsButton");
@@ -24,14 +44,84 @@ class ExportSettings {
         this.useClickWait = document.getElementById("useClickWait");
         this.outputUnit = document.getElementById("outputUnit");
 
+        this.metaFields = EXPORT_META_FIELDS.map(([key, id]) => {
+            const el = document.getElementById(id);
+            if (!el) return null;
+            const def = el.type === "checkbox" ? String(el.checked) : el.value;
+            return { key, el, def };
+        }).filter(Boolean);
+
         this.exportSettingsButton.addEventListener("click", () => this.showModal());
         this.exportButton.addEventListener("click", () => this.exportScript());
         this.copyFormattedButton.addEventListener("click", () => this.copyFormattedText());
-        if (this.exportFormat) {
-            this.exportFormat.addEventListener("change", () => this.updateFormatVisibility());
+        for (const field of this.metaFields) {
+            field.el.addEventListener("change", () => {
+                if (field.key === "export.format") {
+                    this.updateFormatVisibility();
+                    this.writeMeta("export.ext", null);
+                }
+                this.saveFieldToMeta(field);
+            });
         }
 
         this.updateFormatVisibility();
+    }
+
+    fieldValue(field) {
+        return field.el.type === "checkbox" ? String(field.el.checked) : field.el.value;
+    }
+
+    fieldDefault(field) {
+        if (field.key === "export.ext") {
+            return this.getDefaultExtension(this.exportFormat ? this.exportFormat.value : "tyrano");
+        }
+        return field.def;
+    }
+
+    setFieldValue(field, value) {
+        if (field.el.type === "checkbox") {
+            field.el.checked = value === "true";
+            return;
+        }
+        field.el.value = value;
+        if (field.el.tagName === "SELECT" && field.el.value !== value) {
+            field.el.value = this.fieldDefault(field);
+        }
+    }
+
+    /** 作品の @meta から入力欄へ（書いていない項目は既定値） */
+    loadFromMeta() {
+        const parsed =
+            (typeof parseMetaBlock === "function" && parseMetaBlock(this.getScriptText())) || {};
+        const formatField = this.metaFields.find((f) => f.key === "export.format");
+        if (formatField) {
+            this.setFieldValue(formatField, parsed["export.format"] ?? formatField.def);
+        }
+        this.updateFormatVisibility();
+        for (const field of this.metaFields) {
+            if (field === formatField) continue;
+            this.setFieldValue(
+                field,
+                field.key in parsed ? parsed[field.key] : this.fieldDefault(field)
+            );
+        }
+    }
+
+    saveFieldToMeta(field) {
+        const value = this.fieldValue(field);
+        this.writeMeta(field.key, value === this.fieldDefault(field) ? null : value);
+    }
+
+    writeMeta(key, value) {
+        const np = window.novelPlayer;
+        if (!np || typeof np.setScriptText !== "function" || typeof setMetaValue !== "function") {
+            return;
+        }
+        const current = np.getScriptText();
+        const next = setMetaValue(current, key, value);
+        if (next === current) return;
+        np.setScriptText(next);
+        if (typeof np.updateScript === "function") np.updateScript();
     }
 
     getDefaultExtension(format) {
@@ -54,6 +144,7 @@ class ExportSettings {
     }
 
     showModal() {
+        this.loadFromMeta();
         const modal = document.getElementById("exportSettingsModal");
         modal.style.display = "block";
     }
@@ -69,6 +160,7 @@ class ExportSettings {
     }
 
     getExportText() {
+        this.loadFromMeta();
         const rawScript = this.getScriptText();
         const format = this.exportFormat ? this.exportFormat.value : "tyrano";
         let text;

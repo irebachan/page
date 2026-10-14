@@ -2495,6 +2495,12 @@ body.node-graph-open .cm-scroller {
     margin-top: 1em;
 }
 
+.export-meta-note {
+    margin: 0.25em 0 0;
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+
 .export-option {
     margin-bottom: 1em;
 }

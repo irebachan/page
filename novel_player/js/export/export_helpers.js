@@ -108,6 +108,41 @@ function parseMetaBlock(scriptText) {
     return parsed;
 }
 
+/**
+ * @meta ブロックの key=value を1行だけ書き換える（value が null なら行を消す）。
+ * 他の行・並び・コメントはそのまま。ブロックが無ければ先頭に作り、空になったら消す。
+ */
+function setMetaValue(scriptText, key, value) {
+    const text = scriptText || "";
+    const re = /(^|\n)([ \t]*@meta[ \t]*\n)([\s\S]*?)(\n[ \t]*@endmeta[ \t]*)(?=\n|$)/;
+    const m = text.match(re);
+    if (!m) {
+        if (value == null) return text;
+        return `@meta\n${key}=${value}\n@endmeta\n\n${text}`;
+    }
+    const lines = m[3].split("\n");
+    const idx = lines.findIndex((raw) => {
+        const line = raw.trim();
+        const eq = line.indexOf("=");
+        return !line.startsWith("//") && eq > 0 && line.slice(0, eq).trim() === key;
+    });
+    if (value == null) {
+        if (idx < 0) return text;
+        lines.splice(idx, 1);
+    } else if (idx >= 0) {
+        lines[idx] = `${key}=${value}`;
+    } else {
+        while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+        lines.push(`${key}=${value}`);
+    }
+    const before = text.slice(0, m.index) + m[1];
+    const after = text.slice(m.index + m[0].length);
+    if (!lines.some((l) => l.trim())) {
+        return before + after.replace(before ? /^\n/ : /^\n+/, "");
+    }
+    return before + m[2] + lines.join("\n") + m[4] + after;
+}
+
 const EXPORT_REPLACE_PREFIX = "export.replace.";
 
 /** @meta 本文から export.replace.<検索>=<置換> 行を上から順に集める */
