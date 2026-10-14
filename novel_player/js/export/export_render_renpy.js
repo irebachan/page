@@ -70,7 +70,6 @@ function renderRenpyItem(settings, script, labels, item, indent) {
     } else if (item.type === "return") {
         lines.push(pad + "return");
     } else if (item.type === "end") {
-        lines.push("label end:");
         lines.push(pad + "return");
     } else if (item.type === "comment") {
         lines.push(item.text.replace(/^\/\//, "#"));
