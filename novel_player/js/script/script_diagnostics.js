@@ -622,9 +622,9 @@ const IF_FLOW = {
     forkY: 12,
     slotY: 36,
     slotHalf: 13,
-    endifY: 80,
+    endifY: 92,
     endifHalf: 8,
-    tierH: 96,
+    tierH: 108,
     slotGap: 14,
     rowH: 44,
 };

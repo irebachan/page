@@ -1196,6 +1196,9 @@ class LabelGraphView {
                 graph.node(edge.to),
                 nodeByName.get(edge.to)
             );
+            if (lay.width && Number.isFinite(lay.x) && Number.isFinite(lay.y)) {
+                points.labelPoint = { x: lay.x, y: lay.y };
+            }
             this.appendEdgePaths(edge, points, dimmed);
         }
 
@@ -1773,6 +1776,8 @@ class LabelGraphView {
             labelPt = ifStubLabelPoint(points);
         } else if (edge.disconnected) {
             labelPt = choiceStubLabelPoint(points);
+        } else if (points.labelPoint) {
+            labelPt = points.labelPoint;
         }
 
         if (edge.kind === "if_inline" && edge.detail) {
@@ -1878,6 +1883,9 @@ function adjustDagreEdgePoints(points, edge, fromLay, fromNode) {
     return pts;
 }
 
+/** 枝の箱の下端から、抜ける線が横へ走る高さ。合流線はその倍まで真下に下りてから斜めにする */
+const IF_LEAVE_RUN = 7;
+
 /** @if の枝から抜ける線: 図の横へ逃がしてから下へ（他の段を突っ切らない） */
 function routeAroundIfFlow(dagrePts, start, fromLay) {
     const bottom = fromLay.y + fromLay.height / 2;
@@ -1886,7 +1894,7 @@ function routeAroundIfFlow(dagrePts, start, fromLay) {
     const dx = target.x - fromLay.x;
     const side = Math.abs(dx) > 4 ? Math.sign(dx) : start.x < fromLay.x ? -1 : 1;
     const sideX = fromLay.x + side * (fromLay.width / 2 + 6);
-    const runY = start.y + 6;
+    const runY = start.y + IF_LEAVE_RUN;
     const out = [
         start,
         { x: start.x, y: runY },
@@ -1935,10 +1943,13 @@ function computeIfInlineStubPoints(edge, fromLay, fromNode) {
         { x, y: y0 + IF_FLOW.slotY + IF_FLOW.slotHalf },
     ];
     if (edge.merges) {
-        pts.push({
-            x: fromLay.x,
-            y: y0 + (edge.ifEndifTop ?? IF_FLOW.endifY - IF_FLOW.endifHalf),
-        });
+        pts.push(
+            { x, y: y0 + IF_FLOW.slotY + IF_FLOW.slotHalf + IF_LEAVE_RUN * 2 },
+            {
+                x: fromLay.x,
+                y: y0 + (edge.ifEndifTop ?? IF_FLOW.endifY - IF_FLOW.endifHalf),
+            }
+        );
     }
     return pts;
 }
@@ -2030,8 +2041,7 @@ function layoutLabelGraphWithDagre(nodes, edges) {
     g.setDefaultEdgeLabel(() => ({}));
 
     for (const node of nodes) {
-        const size = measureLabelNode(node);
-        g.setNode(node.name, size);
+        g.setNode(node.name, measureLabelNode(node));
     }
 
     const seen = new Set();
@@ -2043,6 +2053,12 @@ function layoutLabelGraphWithDagre(nodes, edges) {
         if (seen.has(edgeName)) continue;
         seen.add(edgeName);
         const label = { id: edge.id, kind: edge.kind };
+        const chip = edgeDisplayLabel(edge);
+        if (chip) {
+            label.width = estimateTextWidthPx(truncateEdgeLabel(chip, 28), 11) + 16;
+            label.height = 20;
+            label.labelpos = "c";
+        }
         g.setEdge(edge.from, edge.to, label, edgeName);
         edgeKeys.set(edge, edgeName);
     }

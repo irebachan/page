@@ -1951,6 +1951,7 @@ body.node-graph-open .cm-scroller {
     opacity: 0.85;
 }
 
+/* 選択肢の横に置いた「外れ → 選択肢へ戻る」枝の戻り線 */
 /* @if 図: 分岐 → 枝 → @endif 合流は実線（実際に通る流れ） */
 .label-graph-edge.is-stub[data-kind="if_inline"],
 .label-graph-edge.is-stub[data-kind="if_rejoin"] {
